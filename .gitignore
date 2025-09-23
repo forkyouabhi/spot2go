@@ -1,0 +1,7 @@
+node_modules
+.env
+.env.local
+dist
+.DS_Store
+
+/services/api/src/config/step2go_firebase.json
