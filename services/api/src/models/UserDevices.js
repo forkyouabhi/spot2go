@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
 
-const Booking = sequelize.define('Booking', {
+const UserDevice = sequelize.define('UserDevice', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -12,27 +12,17 @@ const Booking = sequelize.define('Booking', {
     field: 'user_id',
     references: { model: 'users', key: 'id' }
   },
-  placeId: {
-    type: DataTypes.INTEGER,
-    field: 'place_id',
-    references: { model: 'places', key: 'id' }
-  },
-  status: {
+  fcmToken: {
     type: DataTypes.TEXT,
-    defaultValue: 'pending', // pending, paid, cancelled
-  },
-  amount: {
-    type: DataTypes.DECIMAL,
-  },
-  paymentId: {
-    type: DataTypes.TEXT,
-    field: 'payment_id',
+    unique: true,
+    allowNull: false,
+    field: 'fcm_token',
   },
 }, {
-  tableName: 'bookings',
+  tableName: 'user_devices',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: false,
 });
 
-module.exports = Booking;
+module.exports = UserDevice;

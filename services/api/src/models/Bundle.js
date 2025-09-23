@@ -1,7 +1,7 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
 
-const MenuItem = sequelize.define('MenuItem', {
+const Bundle = sequelize.define('Bundle', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
@@ -20,13 +20,9 @@ const MenuItem = sequelize.define('MenuItem', {
     type: DataTypes.DECIMAL,
     allowNull: false,
   },
-  available: {
-    type: DataTypes.BOOLEAN,
-    defaultValue: true,
-  },
 }, {
-  tableName: 'menu_items',
+  tableName: 'bundles',
   timestamps: false,
 });
 
-module.exports = MenuItem;
+module.exports = Bundle;
