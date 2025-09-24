@@ -62,7 +62,7 @@ export default function App() {
       email: userData.email,
       avatar: userData.avatar || '',
       provider: userData.provider,
-      dateJoined: mockUser.created_at
+      dateJoined: mockUser.createdAt
     };
     setUser(newUser);
     setCurrentScreen('home');

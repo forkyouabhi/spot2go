@@ -2,16 +2,13 @@ const router = require('express').Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const customerController = require('../controllers/customerController');
 
-// Browse places near location
-router.get('/places', authenticate, requireRole('customer'), customerController.listNearbyPlaces);
+// Allow ANY authenticated user (customers, owners, admins) to see approved places.
+router.get('/places', authenticate, customerController.listNearbyPlaces);
+router.get('/places/:placeId', authenticate, customerController.getPlaceById);
 
-// NEW: Get details for a single place by ID
-router.get('/places/:placeId', authenticate, requireRole('customer'), customerController.getPlaceById);
-
-// Create a booking
-router.post('/bookings', authenticate, requireRole('customer'), customerController.createBooking);
-
-// Get my bookings
-router.get('/bookings', authenticate, requireRole('customer'), customerController.listBookings);
+// Keep booking actions restricted to ONLY customers.
+router.post('/bookings', authenticate, requireRole(['customer']), customerController.createBooking);
+router.get('/bookings', authenticate, requireRole(['customer']), customerController.listBookings);
 
 module.exports = router;
+

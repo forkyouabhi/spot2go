@@ -1,6 +1,6 @@
 const { Place, MenuItem, Bundle } = require('../models');
 
-// Create a new place
+// Create a new place with a 'pending' status by default
 const createPlace = async (req, res) => {
   try {
     const { name, type, amenities, location } = req.body;
@@ -12,21 +12,23 @@ const createPlace = async (req, res) => {
       type,
       amenities,
       location,
+      status: 'pending', // Default status
     });
 
-    res.status(201).json({ message: 'Place created', place });
+    res.status(201).json({ message: 'Place created and awaiting approval', place });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to create place' });
   }
 };
 
-// Get all places owned by the current user
+// Get all places owned by the current user, including their status
 const getOwnerPlaces = async (req, res) => {
   try {
     const ownerPlaces = await Place.findAll({
       where: { ownerId: req.user.id },
-      include: ['menuItems', 'bundles'] // Eager load associated items
+      include: ['menuItems', 'bundles'],
+      order: [['created_at', 'DESC']],
     });
     res.json(ownerPlaces);
   } catch (err) {

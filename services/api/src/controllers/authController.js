@@ -1,13 +1,14 @@
+// services/api/src/controllers/authController.js
+
 const { User } = require('../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 // Handles user registration.
 async function register(req, res) {
-  // UPDATED: Now correctly accepts 'name' from the request body.
+  // Accept 'role' from the request body, defaulting to 'customer'
   const { name, email, password, role = 'customer' } = req.body;
 
-  // UPDATED: Validation now includes the 'name' field.
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Name, email, and password are required fields.' });
   }
@@ -15,20 +16,18 @@ async function register(req, res) {
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
     
-    // UPDATED: Creates the user with the 'name' field, matching the User model.
     const user = await User.create({
       name,
       email,
       password: hashedPassword,
-      role,
+      role, // Use the role from the request
       provider: 'local',
     });
 
-    // UPDATED: Includes the user's name in the JWT payload.
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name, created_at: user.created_at, phone: req.user.phone }, 
+      { id: user.id, email: user.email, role: user.role, name: user.name, createdAt: user.createdAt }, 
       process.env.JWT_SECRET,
-      { expiresIn: '1d' } // It's good practice to set an expiration
+      { expiresIn: '1d' }
     );
     
     res.status(201).json({ token });
@@ -42,7 +41,6 @@ async function register(req, res) {
   }
 }
 
-// Ensure the function is correctly exported
 module.exports = { 
   register 
 };

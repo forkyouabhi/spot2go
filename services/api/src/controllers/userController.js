@@ -1,5 +1,6 @@
 const { User } = require('../models');
-const bcrypt = require('bcrypt');
+const bcrypt = 'bcrypt';
+const jwt = require('jsonwebtoken'); // Import jwt
 
 // Controller to update basic user profile information
 const updateUserProfile = async (req, res) => {
@@ -20,13 +21,21 @@ const updateUserProfile = async (req, res) => {
     // Update the user's fields
     user.name = name || user.name;
     user.email = email || user.email;
-    user.phone = phone || user.phone; // Assuming you add a 'phone' column to your User model
+    // Assuming you add a 'phone' column to your User model
+    user.phone = phone || user.phone; 
 
     await user.save();
 
-    // Return the updated user data (excluding password)
+    // Create a new token with the updated information
+    const token = jwt.sign(
+      { id: user.id, email: user.email, role: user.role, name: user.name, createdAt: user.createdAt },
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
+    );
+
+    // Return the updated user data and the new token
     const { password, ...userWithoutPassword } = user.toJSON();
-    res.json(userWithoutPassword);
+    res.json({ user: userWithoutPassword, token });
 
   } catch (err) {
     console.error(err);
@@ -85,4 +94,3 @@ module.exports = {
   updateUserProfile,
   changePassword,
 };
-

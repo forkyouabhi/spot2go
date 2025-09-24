@@ -1,9 +1,11 @@
 const { Place, Booking } = require('../models');
 
 // List all places (can later filter by proximity)
+// List all places that are approved
 const listNearbyPlaces = async (req, res) => {
   try {
     const places = await Place.findAll({
+      where: { status: 'approved' }, // Only fetch approved places
       attributes: ['id', 'name', 'type', 'amenities', 'location'],
     });
     res.json(places);
@@ -75,7 +77,7 @@ const listBookings = async (req, res) => {
 // IMPORTANT: All functions must be exported in this single object.
 module.exports = {
     listNearbyPlaces,
-    getPlaceById, // This was the missing export
+    getPlaceById,
     createBooking,
     listBookings
 };

@@ -28,11 +28,17 @@ const Place = sequelize.define('Place', {
   location: {
     type: DataTypes.JSONB, // { lat, lng, address }
   },
+  status: { // This new field tracks the approval status
+    type: DataTypes.STRING,
+    defaultValue: 'pending', // 'pending', 'approved', 'rejected'
+    allowNull: false,
+  },
 }, {
   tableName: 'places',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: false,
+  updatedAt: 'updated_at', // Use updatedAt to track status changes
 });
 
 module.exports = Place;
+
