@@ -53,15 +53,15 @@ export default function App() {
     setCurrentScreen('home');
   };
 
-  const handleThirdPartyAuth = async (provider: 'google' | 'apple', userData: any): Promise<void> => {
-    // In a real app, this would save the OAuth user data
+  const handleThirdPartyAuth = (provider: 'google' | 'apple'): void => {
+    // In a real app, this would authenticate with the third-party provider
+    // For now, we'll create a mock user based on the provider
     const newUser = {
       ...mockUser,
-      id: userData.id || mockUser.id,
-      name: userData.name,
-      email: userData.email,
-      avatar: userData.avatar || '',
-      provider: userData.provider,
+      name: `${provider === 'google' ? 'Google' : 'Apple'} User`,
+      email: `user@${provider}.com`,
+      avatar: '',
+      provider: provider,
       dateJoined: mockUser.createdAt
     };
     setUser(newUser);
