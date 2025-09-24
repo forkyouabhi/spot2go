@@ -2,7 +2,7 @@ import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "./ui/tabs";
-import { ArrowLeft, Calendar, Clock, MapPin, Star, Bookmark, Settings, Edit, Shield, Bell, Sparkles, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Calendar, Clock, MapPin, Star, Bookmark, Settings, Edit, Shield, Bell, Sparkles, User as UserIcon, LogOut } from "lucide-react";
 import { User, Booking } from '../types';
 
 interface AccountScreenProps {
@@ -10,9 +10,10 @@ interface AccountScreenProps {
   bookings: Booking[];
   onBack: () => void;
   onNavigateToSettings: () => void;
+  onLogout: () => void; // Added onLogout prop
 }
 
-export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: AccountScreenProps) {
+export function AccountScreen({ user, bookings, onBack, onNavigateToSettings, onLogout }: AccountScreenProps) {
   const upcomingBookings = bookings.filter(booking => 
     booking.status === 'confirmed' && new Date(booking.date) >= new Date()
   );
@@ -112,7 +113,9 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
                     />
                   ) : (
                     <span className="text-xl font-semibold" style={{ color: '#FFF8DC' }}>
-                      {user.name[0]}
+                  
+                    {user?.name?.[0] ?? 'U'}
+                      
                     </span>
                   )}
                 </div>
@@ -167,7 +170,6 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
               </Button>
             </div>
             
-            {/* Quick Stats */}
             <div 
               className="grid grid-cols-3 gap-4 pt-6 border-t-2"
               style={{ borderColor: '#F7C566' }}
@@ -238,6 +240,7 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
           <Card 
             className="border-2 rounded-2xl shadow-lg cursor-pointer transition-button hover:shadow-xl transform hover:scale-[1.02]"
             style={{ borderColor: '#DC6B19', backgroundColor: '#F7C566' }}
+            onClick={onLogout}
           >
             <CardContent className="p-4 text-center">
               <div 
@@ -247,13 +250,13 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
                   borderColor: '#DC6B19'
                 }}
               >
-                <Shield className="h-5 w-5" style={{ color: '#FFF8DC' }} />
+                <LogOut className="h-5 w-5" style={{ color: '#FFF8DC' }} />
               </div>
               <h4 className="font-semibold" style={{ color: '#6C0345' }}>
-                Privacy
+                Logout
               </h4>
               <p className="text-sm mt-1" style={{ color: '#6C0345' }}>
-                Data & security
+                Sign out of your account
               </p>
             </CardContent>
           </Card>
@@ -310,7 +313,6 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
           </TabsList>
 
           <TabsContent value="bookings" className="space-y-6 mt-6">
-            {/* Upcoming Bookings */}
             <Card 
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}
@@ -407,7 +409,6 @@ export function AccountScreen({ user, bookings, onBack, onNavigateToSettings }: 
               </CardContent>
             </Card>
 
-            {/* Past Bookings */}
             <Card 
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}

@@ -8,32 +8,33 @@ export default function LoginPage() {
   const router = useRouter();
   const { login, isAuthenticated } = useAuth();
 
-  // If user is already logged in, redirect to home
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.replace('/');
     }
   }, [isAuthenticated, router]);
-  const handleLogin = async (email: string, password: string) => {
+
+  const handleLogin = async (email, password) => {
     try {
       await login(email, password);
-    } catch (error: any) {
+      toast.success('Login successful! Welcome back.');
+      router.push('/');
+    } catch (error) {
+      const errorMessage = error.response?.data?.error || 'Login failed. Please check your credentials.';
+      toast.error(errorMessage);
       console.error('Login failed:', error);
-      toast.error(error.response?.data?.message || 'Failed to log in. Please check your credentials.');
     }
   };
-  
-  const handleThirdPartyAuth = (provider: string) => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/${provider}`;
-  };
 
-  return (
-    <AuthForm
-      type="login"
-      onSubmit={handleLogin}
-      onThirdPartyAuth={handleThirdPartyAuth}
-      onBack={() => router.push('/')}
-    />
-  );
+ return (
+  <AuthForm
+    type="login"
+    onSubmit={(email, password) => handleLogin(email, password)}
+    onBack={() => router.push('/')}
+    onThirdPartyAuth={(provider) => {
+      // Redirect to the backend OAuth endpoint
+      window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/${provider}`;
+    }}
+  />
+);
 }
-

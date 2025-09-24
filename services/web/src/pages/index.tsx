@@ -1,59 +1,57 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-// Update the path below to the correct relative path if needed
 import { useAuth } from '../context/AuthContext';
-// Update the path below to the correct relative path if needed
 import { getPlaces } from '../lib/api';
 import { HomeScreen } from '../components/HomeScreen';
 import { SplashScreen } from '../components/SplashScreen';
+import { toast } from 'sonner';
 
 export default function Home() {
-  const { isAuthenticated, loading, user } = useAuth();
+  const { isAuthenticated, loading: authLoading, user } = useAuth();
   const router = useRouter();
   const [places, setPlaces] = useState([]);
-  const [dataLoading, setDataLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (loading) return; // Wait until auth check is complete
-
-    if (!isAuthenticated) {
-      setDataLoading(false);
-    } else {
+    if (isAuthenticated) {
       const fetchPlaces = async () => {
         try {
           const response = await getPlaces();
           setPlaces(response.data);
         } catch (error) {
-          console.error("Failed to fetch places", error);
+          toast.error("Could not fetch study places.");
+          console.error("Failed to fetch places:", error);
         } finally {
-          setDataLoading(false);
+          setLoading(false);
         }
       };
       fetchPlaces();
+    } else {
+      setLoading(false);
     }
-  }, [isAuthenticated, loading]);
-  
-  if (loading || dataLoading) {
+  }, [isAuthenticated]);
+
+  if (authLoading || (isAuthenticated && loading)) {
     return (
-        <div className="min-h-screen flex items-center justify-center bg-brand-cream">
-            <div className="text-center space-y-4">
-                <div className="w-16 h-16 rounded-2xl mx-auto animate-spin border-4 border-t-transparent border-brand-orange"/>
-                <p className="font-semibold text-brand-burgundy">Loading Your Spots...</p>
-            </div>
-        </div>
+       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8DC' }}>
+        <p className="font-semibold" style={{ color: '#6C0345' }}>Loading...</p>
+      </div>
     );
   }
 
   if (!isAuthenticated) {
-     return <SplashScreen onNavigate={(screen: string) => router.push(`/${screen}`)} />;
+    return <SplashScreen onNavigate={(screen) => router.push(`/${screen}`)} />;
   }
-  
+
   return (
     <HomeScreen
-      userName={user?.name || user?.email}
+      userName={user?.name || 'User'}
       places={places}
-      onPlaceSelect={(place: { id: string }) => router.push(`/places/${place.id}`)}
-      onNavigate={(screen: string) => router.push(`/${screen}`)}
+      onPlaceSelect={(place) => {
+        toast.info(`Clicked on ${place.name}. Details page coming soon!`);
+      }}
+      // UPDATED: The 'account' string now correctly navigates to the new /account page.
+      onNavigate={(screen) => router.push(`/${screen}`)}
     />
   );
 }

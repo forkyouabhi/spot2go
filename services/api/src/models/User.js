@@ -7,14 +7,19 @@ const User = sequelize.define('User', {
     autoIncrement: true,
     primaryKey: true,
   },
+  // ADDED: name field to store the user's full name from the signup form.
+  name: {
+    type: DataTypes.TEXT,
+    allowNull: false,
+  },
   email: {
     type: DataTypes.TEXT,
     unique: true,
-    allowNull: true, // Allow null for social logins that don't provide email
+    allowNull: true, // For social logins that might not provide an email
   },
   password: {
     type: DataTypes.TEXT,
-    allowNull: true, // Allow null for non-local auth
+    allowNull: true, // For social logins
   },
   role: {
     type: DataTypes.TEXT,
@@ -35,7 +40,8 @@ const User = sequelize.define('User', {
   tableName: 'users',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: false, // Assuming you don't have an updated_at column
+  updatedAt: false,
 });
 
 module.exports = User;
+

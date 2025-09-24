@@ -3,14 +3,15 @@ const passport = require('passport');
 const jwt = require('jsonwebtoken');
 const { register } = require('../controllers/authController');
 
-// Register (local)
+// Register (local) - POST /api/auth/register
 router.post('/register', register);
 
-// Login (local)
+// Login (local) - POST /api/auth/login
 router.post('/login', passport.authenticate('local', { session: false }), (req, res) => {
   const token = jwt.sign(
     { id: req.user.id, email: req.user.email, role: req.user.role },
-    process.env.JWT_SECRET
+    process.env.JWT_SECRET,
+    { expiresIn: '1d' } // Token expires in 1 day
   );
   res.json({ token });
 });
@@ -22,7 +23,8 @@ router.get('/google/callback',
   (req, res) => {
     const token = jwt.sign(
       { id: req.user.id, email: req.user.email, role: req.user.role },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${token}`);
   }
@@ -35,10 +37,12 @@ router.post('/apple/callback',
   (req, res) => {
     const token = jwt.sign(
       { id: req.user.id, email: req.user.email, role: req.user.role },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
+      { expiresIn: '1d' }
     );
     res.redirect(`${process.env.FRONTEND_URL || 'http://localhost:3000'}/auth/success?token=${token}`);
   }
 );
 
 module.exports = router;
+

@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
 import { useRouter } from 'next/router';
+import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+
 import { AuthForm } from '../components/AuthForm';
 import { toast } from 'sonner';
 
@@ -10,29 +11,30 @@ export default function SignupPage() {
 
   useEffect(() => {
     if (isAuthenticated) {
-      router.push('/');
+      router.replace('/');
     }
   }, [isAuthenticated, router]);
 
-  const handleSignup = async (email: string, password: string, name: string) => {
+  const handleSignup = async (email, password, name) => {
     try {
       await register(name, email, password);
-    } catch (error: any) {
-      console.error('Signup failed:', error);
-      toast.error(error?.response?.data?.error || 'Failed to create account.');
+      toast.success('Account created successfully! Welcome.');
+      router.push('/');
+    } catch (error) {
+        const errorMessage = error.response?.data?.error || 'Signup failed. Please try again.';
+        toast.error(errorMessage);
+        console.error('Signup failed:', error);
     }
-  };
-
-   const handleThirdPartyAuth = (provider: string) => {
-    window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/${provider}`;
   };
 
   return (
     <AuthForm
       type="signup"
-      onSubmit={handleSignup}
-      onThirdPartyAuth={handleThirdPartyAuth}
+      onSubmit={(email, password, name) => handleSignup(email, password, name)}
       onBack={() => router.push('/')}
+      onThirdPartyAuth={(provider) => {
+        window.location.href = `${process.env.NEXT_PUBLIC_API_URL}/api/auth/${provider}`;
+      }}
     />
   );
 }
