@@ -22,10 +22,19 @@ export const loginUser = (credentials) => api.post('/auth/login', credentials);
 export const updateUser = (userId, profileData) => api.put(`/users/${userId}`, profileData);
 export const updateUserPassword = (userId, passwordData) => api.put(`/users/${userId}/password`, passwordData);
 
-
 // --- Customer Endpoints ---
 export const getPlaces = () => api.get('/customers/places');
+export const getPlaceById = (placeId) => api.get(`/customers/places/${placeId}`);
 export const getUserBookings = () => api.get('/customers/bookings');
+
+// --- Owner Endpoints ---
+export const addPlace = (placeData) => api.post('/owners/places', placeData);
+export const getOwnerPlaces = () => api.get('/owners/places');
+
+// --- Admin Endpoints ---
+export const getPendingPlaces = () => api.get('/admin/places/pending');
+export const approvePlace = (placeId) => api.put(`/admin/places/${placeId}/status`, { status: 'approved' });
+export const rejectPlace = (placeId) => api.put(`/admin/places/${placeId}/status`, { status: 'rejected' });
 
 
 export default api;

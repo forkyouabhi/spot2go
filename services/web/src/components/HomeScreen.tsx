@@ -11,7 +11,7 @@ interface HomeScreenProps {
   userName: string;
   places: StudyPlace[];
   onPlaceSelect: (place: StudyPlace) => void;
-  onNavigate: (screen: 'account') => void;
+  onNavigate: (screen: 'account' | 'owner/dashboard' | 'admin/dashboard') => void;
 }
 
 export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: HomeScreenProps) {
@@ -42,7 +42,6 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
 
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFF8DC' }}>
-      {/* Clean Header with Brand Colors */}
       <div 
         className="p-4 shadow-sm"
         style={{ backgroundColor: '#6C0345' }}
@@ -70,7 +69,6 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
           </Button>
         </div>
 
-        {/* Search Bar */}
         <div className="relative mb-4">
           <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" 
                  style={{ color: '#6C0345' }} />
@@ -87,7 +85,6 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
           />
         </div>
 
-        {/* Filter Pills */}
         <div className="flex space-x-3 overflow-x-auto pb-2">
           {['all', 'cafe', 'library', 'coworking', 'university'].map((filter) => (
             <Button
@@ -117,7 +114,6 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
         </div>
       </div>
 
-      {/* Map Preview */}
       <div className="p-4">
         <Card className="mb-6 border-2 shadow-sm rounded-2xl" 
               style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}>
@@ -145,7 +141,6 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
           </CardContent>
         </Card>
 
-        {/* Places List */}
         <div className="space-y-4">
           <h3 className="font-semibold" style={{ color: '#6C0345' }}>Study Spaces Near You</h3>
           {filteredPlaces.map((place) => {
@@ -162,7 +157,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2"
                          style={{ borderColor: '#F7C566' }}>
                       <ImageWithFallback
-                        src={place.image}
+                        src={place.image || ''}
                         alt={place.name}
                         className="w-full h-full object-cover"
                       />
@@ -186,7 +181,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                               {place.type}
                             </Badge>
                             <span className="text-sm" style={{ color: '#6C0345' }}>
-                              {place.distance}
+                              {place.distance || 'N/A'}
                             </span>
                           </div>
                         </div>
@@ -198,7 +193,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                         <div className="flex items-center space-x-1">
                           <Star className="h-4 w-4 fill-current" style={{ color: '#F7C566' }} />
                           <span className="text-sm font-medium" style={{ color: '#6C0345' }}>
-                            {place.rating}
+                            {place.rating || 'New'}
                           </span>
                         </div>
                         
@@ -213,7 +208,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                       </div>
                       
                       <div className="flex flex-wrap gap-1">
-                        {place.amenities.slice(0, 4).map((amenity) => (
+                        {(place.amenities || []).slice(0, 4).map((amenity) => (
                           <Badge 
                             key={amenity} 
                             variant="outline" 
@@ -226,7 +221,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                             {amenity}
                           </Badge>
                         ))}
-                        {place.amenities.length > 4 && (
+                        {place.amenities && place.amenities.length > 4 && (
                           <Badge 
                             variant="outline" 
                             className="text-xs px-2 py-1 rounded-full"

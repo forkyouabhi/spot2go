@@ -3,9 +3,11 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  created_at: string;
+  dateJoined: string; // This will be mapped from createdAt in the token
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
+  role: 'customer' | 'owner' | 'admin';
+  createdAt: string; // Keep this to align with the token from the backend
 }
 
 export interface UserSettings {
@@ -28,19 +30,26 @@ export interface UserSettings {
   };
 }
 
+// This interface now matches the backend model precisely.
 export interface StudyPlace {
   id: string;
   name: string;
   type: 'cafe' | 'library' | 'coworking' | 'university';
-  distance: string;
-  rating: number;
-  image: string;
   amenities: string[];
-  description: string;
-  address: string;
+  location: {
+    address: string;
+    lat?: number;
+    lng?: number;
+  };
+  status: 'pending' | 'approved' | 'rejected';
+  // Optional fields that may not always be present from the API
+  distance?: string;
+  rating?: number;
+  image?: string;
   pricePerHour?: number;
-  availableSlots: TimeSlot[];
-  reviews: Review[];
+  availableSlots?: TimeSlot[];
+  reviews?: Review[];
+  description?: string;
 }
 
 export interface TimeSlot {
@@ -72,3 +81,4 @@ export interface Booking {
 }
 
 export type Screen = 'splash' | 'login' | 'signup' | 'home' | 'place-details' | 'booking' | 'account' | 'confirmation' | 'settings';
+

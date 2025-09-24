@@ -1,38 +1,17 @@
-import React, {
-  createContext,
-  useState,
-  useEffect,
-  useContext,
-  ReactNode,
-} from "react";
-import { useRouter } from "next/router";
-import { setAuthToken, registerUser, loginUser, updateUser } from "../lib/api";
-import { jwtDecode } from "jwt-decode";
-import { toast } from "sonner";
-
-/**
- * @typedef {Object} User
- * @property {number} exp
- * @property {any} [key]
- */
+import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import { useRouter } from 'next/router';
+import { setAuthToken, registerUser, loginUser } from '../lib/api';
+import { jwtDecode } from 'jwt-decode';
 
 interface User {
+  id: any;
   exp: number;
   name: string;
+  role: 'customer' | 'owner' | 'admin';
+  createdAt: string;
+  dateJoined: string; // Ensure dateJoined is part of the type
   [key: string]: any;
 }
-
-/**
- * @typedef {Object} AuthContextType
- * @property {User|null} user
- * @property {function} setUser
- * @property {boolean} isAuthenticated
- * @property {boolean} loading
- * @property {function(string, string): Promise<User>} login
- * @property {function(string, string, string): Promise<User>} register
- * @property {function(): void} logout
- * @property {function(User): void} updateUser
- */
 
 interface AuthContextType {
   user: User | null;
@@ -40,30 +19,19 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string) => Promise<User>;
+  // UPDATED: The register function now accepts a role.
+  register: (name: string, email: string, password: string, role: 'customer' | 'owner') => Promise<User>;
   logout: () => void;
-  updateUser: (user: User) => void;
+  // ADDED: A function to update user data in the context for real-time changes.
+  updateUser: (userData: Partial<User>) => void;
 }
 
-const AuthContext = createContext<AuthContextType>({
-  user: null,
-  setUser: () => {},
-  isAuthenticated: false,
-  loading: false,
-  login: async () => {
-    throw new Error("login function not initialized");
-  },
-  register: async () => {
-    throw new Error("register function not initialized");
-  },
-  logout: () => {},
-  updateUser: () => {},
-});
+const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error("useAuth must be used within an AuthProvider");
+    throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;
 };
@@ -78,64 +46,81 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem("token");
+    const token = localStorage.getItem('token');
     if (token) {
       try {
-        const decoded = jwtDecode(token);
-        if (
-          decoded &&
-          typeof decoded.exp === "number" &&
-          decoded.exp * 1000 > Date.now()
-        ) {
-          setUser(decoded as User);
+        const decoded = jwtDecode<User>(token);
+        if (decoded.exp * 1000 > Date.now()) {
+          // Ensure the dateJoined field is populated from the token's createdAt
+          setUser({ ...decoded, dateJoined: decoded.createdAt });
           setAuthToken(token);
         } else {
-          // Token expired or exp is missing
-          localStorage.removeItem("token");
+          localStorage.removeItem('token');
         }
       } catch (error) {
         console.error("Invalid token:", error);
-        localStorage.removeItem("token");
+        localStorage.removeItem('token');
       }
     }
     setLoading(false);
   }, []);
 
-  const login = async (email: string, password: string): Promise<User> => {
-    const response = await loginUser({ email, password });
-    const { token } = response.data;
-    localStorage.setItem("token", token);
-    const decoded: User = jwtDecode(token);
-    setUser(decoded);
+  const handleAuthSuccess = (token: string): User => {
+    localStorage.setItem('token', token);
+    const decoded = jwtDecode<User>(token);
+    // Standardize the user object upon login/registration
+    const fullUser = { ...decoded, dateJoined: decoded.createdAt };
+    setUser(fullUser);
     setAuthToken(token);
-    router.push("/");
-    return decoded;
+    
+    // UPDATED: Redirect based on user role, including admin for future use.
+    if (decoded.role === 'owner') {
+      router.push('/owner/dashboard');
+    } else if (decoded.role === 'admin') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/');
+    }
+    return fullUser;
   };
 
-  const register = async (
-    name: string,
-    email: string,
-    password: string
-  ): Promise<User> => {
-    const response = await registerUser({ name, email, password, role: "customer" });
-    const { token } = response.data;
-    localStorage.setItem("token", token);
-    const decoded: User = jwtDecode(token);
-    setUser(decoded);
-    setAuthToken(token);
-    router.push("/");
-    return decoded;
+  const login = async (email: string, password: string): Promise<User> => {
+    const response = await loginUser({ email, password });
+    return handleAuthSuccess(response.data.token);
+  };
+    
+  // UPDATED: The register function now passes the role to the API.
+  const register = async (name: string, email: string, password: string, role: 'customer' | 'owner'): Promise<User> => {
+    const response = await registerUser({ name, email, password, role });
+    return handleAuthSuccess(response.data.token);
   };
 
   const logout = () => {
-    localStorage.removeItem("token");
+    localStorage.removeItem('token');
     setUser(null);
     setAuthToken(null);
-    router.push("/login");
+    router.push('/login');
   };
 
-  const updateUserInContext = (updatedUser: User) => {
-    setUser(updatedUser);
+  // ADDED: Function to allow other parts of the app to update the user context.
+  const updateUser = (userData: Partial<User>) => {
+    setUser(prevUser => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, ...userData };
+      
+      // Also update the token in localStorage to persist the change
+      const token = localStorage.getItem('token');
+      if (token) {
+        // This is a simplified update; in a real-world scenario, you'd get a new token from the backend
+        const newToken = jwt.sign(
+            {...updatedUser, exp: prevUser.exp}, 
+            process.env.NEXT_PUBLIC_JWT_SECRET || 'fallback_secret'
+        );
+        localStorage.setItem('token', newToken)
+      }
+
+      return updatedUser;
+    });
   };
 
   const authContextValue = {
@@ -146,7 +131,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    updateUser: updateUserInContext,
+    updateUser,
   };
 
   return (
@@ -155,3 +140,4 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
+
