@@ -3,7 +3,7 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  dateJoined: string;
+  created_at: string;
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
 }

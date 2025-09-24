@@ -26,7 +26,7 @@ async function register(req, res) {
 
     // UPDATED: Includes the user's name in the JWT payload.
     const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name, createdAt: user.createdAt }, 
+      { id: user.id, email: user.email, role: user.role, name: user.name, created_at: user.created_at, phone: req.user.phone }, 
       process.env.JWT_SECRET,
       { expiresIn: '1d' } // It's good practice to set an expiration
     );
@@ -46,4 +46,3 @@ async function register(req, res) {
 module.exports = { 
   register 
 };
-

@@ -1,7 +1,14 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
-import { useRouter } from 'next/router';
-import { setAuthToken, registerUser, loginUser } from '../lib/api';
-import { jwtDecode } from 'jwt-decode';
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  ReactNode,
+} from "react";
+import { useRouter } from "next/router";
+import { setAuthToken, registerUser, loginUser, updateUser } from "../lib/api";
+import { jwtDecode } from "jwt-decode";
+import { toast } from "sonner";
 
 /**
  * @typedef {Object} User
@@ -11,6 +18,7 @@ import { jwtDecode } from 'jwt-decode';
 
 interface User {
   exp: number;
+  name: string;
   [key: string]: any;
 }
 
@@ -23,6 +31,7 @@ interface User {
  * @property {function(string, string): Promise<User>} login
  * @property {function(string, string, string): Promise<User>} register
  * @property {function(): void} logout
+ * @property {function(User): void} updateUser
  */
 
 interface AuthContextType {
@@ -33,6 +42,7 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string) => Promise<User>;
   logout: () => void;
+  updateUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -41,18 +51,19 @@ const AuthContext = createContext<AuthContextType>({
   isAuthenticated: false,
   loading: false,
   login: async () => {
-    throw new Error('login function not initialized');
+    throw new Error("login function not initialized");
   },
   register: async () => {
-    throw new Error('register function not initialized');
+    throw new Error("register function not initialized");
   },
   logout: () => {},
+  updateUser: () => {},
 });
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 };
@@ -67,52 +78,64 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const router = useRouter();
 
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = localStorage.getItem("token");
     if (token) {
       try {
         const decoded = jwtDecode(token);
-        if (decoded && typeof decoded.exp === 'number' && decoded.exp * 1000 > Date.now()) {
+        if (
+          decoded &&
+          typeof decoded.exp === "number" &&
+          decoded.exp * 1000 > Date.now()
+        ) {
           setUser(decoded as User);
           setAuthToken(token);
         } else {
           // Token expired or exp is missing
-          localStorage.removeItem('token');
+          localStorage.removeItem("token");
         }
       } catch (error) {
         console.error("Invalid token:", error);
-        localStorage.removeItem('token');
+        localStorage.removeItem("token");
       }
     }
     setLoading(false);
   }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
-      const response = await loginUser({ email, password });
-      const { token } = response.data;
-      localStorage.setItem('token', token);
-      const decoded: User = jwtDecode(token);
-      setUser(decoded);
-      setAuthToken(token);
-      router.push('/');
-      return decoded;
-    };
-    
-    const register = async (name: string, email: string, password: string): Promise<User> => {
-      const response = await registerUser({ name, email, password, role: 'customer' });
-      const { token } = response.data;
-      localStorage.setItem('token', token);
-      const decoded: User = jwtDecode(token);
-      setUser(decoded);
-      setAuthToken(token);
-      router.push('/');
-      return decoded;
-    };
+    const response = await loginUser({ email, password });
+    const { token } = response.data;
+    localStorage.setItem("token", token);
+    const decoded: User = jwtDecode(token);
+    setUser(decoded);
+    setAuthToken(token);
+    router.push("/");
+    return decoded;
+  };
+
+  const register = async (
+    name: string,
+    email: string,
+    password: string
+  ): Promise<User> => {
+    const response = await registerUser({ name, email, password, role: "customer" });
+    const { token } = response.data;
+    localStorage.setItem("token", token);
+    const decoded: User = jwtDecode(token);
+    setUser(decoded);
+    setAuthToken(token);
+    router.push("/");
+    return decoded;
+  };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     setUser(null);
     setAuthToken(null);
-    router.push('/login');
+    router.push("/login");
+  };
+
+  const updateUserInContext = (updatedUser: User) => {
+    setUser(updatedUser);
   };
 
   const authContextValue = {
@@ -123,6 +146,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
+    updateUser: updateUserInContext,
   };
 
   return (
@@ -131,4 +155,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-

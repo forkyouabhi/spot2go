@@ -7,6 +7,11 @@ const User = sequelize.define('User', {
     autoIncrement: true,
     primaryKey: true,
   },
+    phone: {
+    type: DataTypes.TEXT, 
+    allowNull: true,
+    
+  },
   // ADDED: name field to store the user's full name from the signup form.
   name: {
     type: DataTypes.TEXT,

@@ -34,10 +34,12 @@ passport.use(new GoogleStrategy({
   try {
     const googleId = profile.id;
     const email = profile.emails?.[0]?.value;
+    const name = profile.displayName; // Get the user's name
 
     const [user] = await User.findOrCreate({
       where: { provider: 'google', providerId: googleId },
       defaults: {
+        name, // Save the name
         email,
         role: 'customer',
         provider: 'google',
@@ -61,6 +63,7 @@ passport.use(new AppleStrategy({
   try {
     const appleId = profile.id || idToken.sub;
     const email = profile.email || idToken.email;
+    const name = profile.name ? `${profile.name.firstName} ${profile.name.lastName}` : email.split('@')[0]; // Get the user's name
 
     if (!appleId) {
       return done(new Error('No Apple ID returned'));
@@ -69,6 +72,7 @@ passport.use(new AppleStrategy({
     const [user] = await User.findOrCreate({
         where: { provider: 'apple', providerId: appleId },
         defaults: {
+            name, // Save the name
             email,
             role: 'customer',
             provider: 'apple',
