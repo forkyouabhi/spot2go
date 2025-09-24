@@ -42,7 +42,7 @@ export default function App() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [ticketId, setTicketId] = useState<string>('');
 
-  const handleAuth = (email: string, password: string, name?: string) => {
+  const handleAuth = async (email: string, password: string, name?: string): Promise<void> => {
     // In a real app, this would authenticate with a backend
     const newUser = {
       ...mockUser,
@@ -53,7 +53,7 @@ export default function App() {
     setCurrentScreen('home');
   };
 
-  const handleThirdPartyAuth = (provider: 'google' | 'apple', userData: any) => {
+  const handleThirdPartyAuth = async (provider: 'google' | 'apple', userData: any): Promise<void> => {
     // In a real app, this would save the OAuth user data
     const newUser = {
       ...mockUser,

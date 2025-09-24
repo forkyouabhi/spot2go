@@ -14,13 +14,13 @@ interface PlaceDetailsProps {
 export function PlaceDetails({ place, onBack, onBookNow }: PlaceDetailsProps) {
   return (
     <div className="min-h-screen" style={{ backgroundColor: '#FFF8DC' }}>
-      <div 
+      <div
         className="p-4 shadow-sm flex items-center space-x-3 sticky top-0 z-10"
         style={{ backgroundColor: '#6C0345' }}
       >
-        <Button 
-          variant="ghost" 
-          size="sm" 
+        <Button
+          variant="ghost"
+          size="sm"
           onClick={onBack}
           className="rounded-xl border-2 transition-button"
           style={{

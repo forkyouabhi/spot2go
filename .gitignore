@@ -4,4 +4,6 @@ node_modules
 dist
 .DS_Store
 
+/.next/
+
 /services/api/src/config/step2go_firebase.json
