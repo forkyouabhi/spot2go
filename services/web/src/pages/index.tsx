@@ -11,36 +11,41 @@ import { MapPin, Search, Star, Loader2, Building2 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
+import { SplashScreen } from '../components/SplashScreen'; // Import SplashScreen
 
 const PLACE_TYPES = ['All', 'cafe', 'library', 'coworking', 'university'];
 
 export default function HomePage() {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const router = useRouter();
   const [allPlaces, setAllPlaces] = useState<StudyPlace[]>([]);
   const [filteredPlaces, setFilteredPlaces] = useState<StudyPlace[]>([]);
   const [selectedType, setSelectedType] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [isLoading, setIsLoading] = useState(true);
+  const [dataLoading, setDataLoading] = useState(true);
 
+  // This useEffect is now solely responsible for fetching data WHEN authenticated
   useEffect(() => {
-    if (isAuthenticated) {
+    // Only run if authentication is complete AND the user is logged in
+    if (!authLoading && isAuthenticated) {
       const fetchPlaces = async () => {
-        setIsLoading(true);
+        setDataLoading(true);
         try {
           const response = await getPlaces();
           setAllPlaces(response.data);
           setFilteredPlaces(response.data);
         } catch (error) {
           toast.error('Could not fetch study spots.');
+          console.error("API Error:", error);
         } finally {
-          setIsLoading(false);
+          setDataLoading(false);
         }
       };
       fetchPlaces();
     }
-  }, [isAuthenticated]);
+  }, [isAuthenticated, authLoading]); // Dependency array ensures this runs when auth state is confirmed
 
+  // This useEffect handles filtering when the source data or filters change
   useEffect(() => {
     let currentFiltered = allPlaces;
     if (selectedType !== 'All') {
@@ -55,11 +60,19 @@ export default function HomePage() {
     setFilteredPlaces(currentFiltered);
   }, [allPlaces, selectedType, searchTerm]);
   
-  if (loading || (!isAuthenticated && !loading)) {
-    // Show a loading spinner while checking auth or redirecting
+  // --- RENDER LOGIC ---
+
+  // 1. Show a loading spinner ONLY while the initial authentication check is happening
+  if (authLoading) {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
+
+  // 2. If authentication is done and the user is NOT logged in, show the SplashScreen
+  if (!isAuthenticated) {
+    return <SplashScreen onNavigate={(screen) => router.push(`/${screen}`)} />;
+  }
   
+  // 3. If the user IS authenticated, show the main dashboard
   return (
     <div className="min-h-screen bg-brand-cream">
       <header className="bg-brand-burgundy text-brand-cream p-4 shadow-md sticky top-0 z-20">
@@ -89,8 +102,8 @@ export default function HomePage() {
         <section>
           <h2 className="text-2xl font-semibold text-brand-burgundy mb-4">Available Spaces ({filteredPlaces.length})</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {isLoading ? (
-                  <p>Loading places...</p>
+              {dataLoading ? (
+                  <p className="col-span-full">Loading places...</p>
               ) : filteredPlaces.map(place => (
                 <Link href={`/places/${place.id}`} key={place.id} passHref>
                   <Card className="border-2 border-brand-yellow bg-white overflow-hidden flex flex-col h-full cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1">
