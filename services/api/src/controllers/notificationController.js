@@ -3,7 +3,7 @@ const { UserDevice } = require('../models');
 
 // --- Firebase Admin SDK Initialization ---
 try {
-  const serviceAccount = require('../config/step2go_firebase.json'); 
+  const serviceAccount = require('/etc/secrets/step2go_firebase.json'); 
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)

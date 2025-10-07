@@ -41,11 +41,13 @@ const Place = sequelize.define('Place', {
     defaultValue: 'pending', // 'pending', 'approved', 'rejected'
     allowNull: false,
   },
+  
 }, {
   tableName: 'places',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
+  
 });
 
 module.exports = Place;
