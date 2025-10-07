@@ -185,7 +185,7 @@ export function AccountScreen({
                   >
                     <Calendar className="h-3 w-3 mr-1" />
                     Member since{" "}
-                    {new Date(user.created_at).toLocaleDateString("en-US", {
+                    {new Date(user.createdAt).toLocaleDateString("en-US", {
                       year: "numeric",
                       month: "long",
                     })}

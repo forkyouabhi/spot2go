@@ -49,7 +49,7 @@ export default function AccountPage() {
 
   return (
     <AccountScreen
-      user={{...user, createdAt: user.created_at}}
+      user={{...user, createdAt: user.created_at, email: user.email}}
       bookings={bookings}
       onBack={() => router.push('/')}
       onNavigateToSettings={() => router.push('/settings')}

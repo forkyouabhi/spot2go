@@ -109,16 +109,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const updatedUser = { ...prevUser, ...userData };
       
       // Also update the token in localStorage to persist the change
-      const token = localStorage.getItem('token');
-      if (token) {
-        // This is a simplified update; in a real-world scenario, you'd get a new token from the backend
-        const newToken = jwt.sign(
-            {...updatedUser, exp: prevUser.exp}, 
-            process.env.NEXT_PUBLIC_JWT_SECRET || 'fallback_secret'
-        );
-        localStorage.setItem('token', newToken)
-      }
-
+      // Note: Updating JWTs client-side is not secure and not recommended.
+      // If user data needs to be updated, this should be handled via backend API and a new token should be issued.
+      // Here, we only update the user context.
       return updatedUser;
     });
   };

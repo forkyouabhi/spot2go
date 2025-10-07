@@ -57,13 +57,16 @@
     "sonner": "^1.5.0",
     "tailwind-merge": "*",
     "tailwindcss-animate": "^1.0.7",
-    "vaul": "^1.1.2"
+    "vaul": "^1.1.2",
+    "vite": "^7.1.9"
   },
   "devDependencies": {
     "@types/jwt-decode": "^3.1.0",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "@types/react-toastify": "^4.0.2",
+    "@vitejs/plugin-react-swc": "^4.1.0",
     "autoprefixer": "^10.4.21",
     "cross-env": "^10.0.0",
     "eslint": "^8",

@@ -199,6 +199,10 @@ export default function App() {
             bookings={mockBookings}
             onBack={() => setCurrentScreen('home')}
             onNavigateToSettings={() => setCurrentScreen('settings')}
+            onLogout={() => {
+              setUser(null);
+              setCurrentScreen('splash');
+            }}
             {...commonProps}
           />
         ) : null;
@@ -211,6 +215,10 @@ export default function App() {
             onBack={() => setCurrentScreen('account')}
             onUpdateUser={handleUpdateUser}
             onUpdateSettings={handleUpdateSettings}
+            onLogout={() => {
+              setUser(null);
+              setCurrentScreen('splash');
+            }}
             {...commonProps}
           />
         ) : null;

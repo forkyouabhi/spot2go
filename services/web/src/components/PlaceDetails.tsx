@@ -38,7 +38,7 @@ export function PlaceDetails({ place, onBack, onBookNow }: PlaceDetailsProps) {
 
       <div className="h-48 w-full">
         <ImageWithFallback
-          src={place.image || "https://images.unsplash.com/photo-1562727226-fbcc78ac89e9?w=1080"}
+          src={place.images?.[0] || "https://images.unsplash.com/photo-1562727226-fbcc78ac89e9?w=1080"}
           alt={place.name}
           className="w-full h-full object-cover"
         />

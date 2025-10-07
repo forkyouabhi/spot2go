@@ -31,7 +31,17 @@ export default function SettingsPage() {
       if (token) {
         localStorage.setItem('token', token);
         const decoded = jwtDecode(token);
-        setUser({ ...decoded, created_at: decoded.created_at });
+        setUser(prevUser => ({
+          ...prevUser,
+          // Map decoded JWT fields to User fields as needed
+          id: decoded.sub || prevUser.id,
+          name: updatedUser?.name || prevUser.name,
+          role: updatedUser?.role || prevUser.role,
+          createdAt: updatedUser?.createdAt || prevUser.createdAt,
+          dateJoined: updatedUser?.dateJoined || prevUser.dateJoined,
+          email: updatedUser?.email || prevUser.email,
+          phone: updatedUser?.phone || prevUser.phone,
+        }));
       } else {
         // If no new token, just update the context with the returned user data
         setUser(prevUser => ({...prevUser, ...updatedUser}));
@@ -59,9 +69,15 @@ export default function SettingsPage() {
     return <div>Loading...</div>;
   }
 
+  // Ensure user always has an email property to satisfy type requirements
+  const userWithEmail = {
+    ...user,
+    email: user?.email || '',
+  };
+
   return (
     <SettingsScreen
-      user={user}
+      user={userWithEmail}
       settings={settings}
       onBack={() => router.push('/account')}
       onUpdateUser={handleUpdateUser}

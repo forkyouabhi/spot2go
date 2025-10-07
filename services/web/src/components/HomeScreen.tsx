@@ -157,7 +157,7 @@ export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: Home
                     <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2"
                          style={{ borderColor: '#F7C566' }}>
                       <ImageWithFallback
-                        src={place.image || ''}
+                        src={place.images && place.images.length > 0 ? place.images[0] : ''}
                         alt={place.name}
                         className="w-full h-full object-cover"
                       />

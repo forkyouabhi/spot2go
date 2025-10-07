@@ -3,11 +3,13 @@ export interface User {
   name: string;
   email: string;
   phone?: string;
-  dateJoined: string; // This will be mapped from createdAt in the token
+  dateJoined: string;
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
   role: 'customer' | 'owner' | 'admin';
-  createdAt: string; // Keep this to align with the token from the backend
+  createdAt: string;
+  // This is sometimes included from the token, good to have for compatibility
+  created_at?: string; 
 }
 
 export interface UserSettings {
@@ -30,7 +32,13 @@ export interface UserSettings {
   };
 }
 
-// This interface now matches the backend model precisely.
+// NEW: Interface for menu items
+export interface MenuItem {
+  id: number;
+  name: string;
+  price: string;
+}
+
 export interface StudyPlace {
   id: string;
   name: string;
@@ -42,14 +50,18 @@ export interface StudyPlace {
     lng?: number;
   };
   status: 'pending' | 'approved' | 'rejected';
-  images?: string[]; // UPDATED: Changed from image?: string to handle multiple images
+  images?: string[];
+  description?: string;
+  menuItems?: MenuItem[]; // ADDED: menuItems property
+  
   // Optional fields that may not always be present from the API
   distance?: string;
   rating?: number;
   pricePerHour?: number;
   availableSlots?: TimeSlot[];
   reviews?: Review[];
-  description?: string;
+  created_at: string; // From the database
+  owner?: Partial<User>; // For admin dashboard
 }
 
 export interface TimeSlot {
