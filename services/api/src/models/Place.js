@@ -22,13 +22,21 @@ const Place = sequelize.define('Place', {
   type: {
     type: DataTypes.TEXT, // e.g., cafe, library, coworking
   },
+  description: { // ADDED description field
+    type: DataTypes.TEXT,
+    allowNull: true,
+  },
   amenities: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
+  },
+  images: { // ADDED images field
+    type: DataTypes.ARRAY(DataTypes.TEXT),
+    allowNull: true,
   },
   location: {
     type: DataTypes.JSONB, // { lat, lng, address }
   },
-  status: { // This new field tracks the approval status
+  status: {
     type: DataTypes.STRING,
     defaultValue: 'pending', // 'pending', 'approved', 'rejected'
     allowNull: false,
@@ -37,8 +45,7 @@ const Place = sequelize.define('Place', {
   tableName: 'places',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at', // Use updatedAt to track status changes
+  updatedAt: 'updated_at',
 });
 
 module.exports = Place;
-

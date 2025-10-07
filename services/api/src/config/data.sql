@@ -1,12 +1,14 @@
 -- Users table
 CREATE TABLE IF NOT EXISTS users (
     id SERIAL PRIMARY KEY,
+    name TEXT NOT NULL,
+    phone TEXT,
     email TEXT UNIQUE,
     password TEXT,
-    role TEXT NOT NULL CHECK (role IN ('customer','owner')),
+    role TEXT NOT NULL CHECK (role IN ('customer','owner', 'admin')),
     provider TEXT DEFAULT 'local',
     provider_id TEXT,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Places owned by business owners
@@ -14,10 +16,14 @@ CREATE TABLE IF NOT EXISTS places (
     id SERIAL PRIMARY KEY,
     owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
-    type TEXT,  -- e.g., cafe, library, coworking
-    amenities TEXT[], -- wifi, power, etc.
-    location JSONB,   -- { lat, lng, address }
-    created_at TIMESTAMP DEFAULT NOW()
+    type TEXT,
+    description TEXT, -- ADDED description field
+    amenities TEXT[],
+    images TEXT[],    -- ADDED images field for Cloudinary URLs
+    location JSONB,
+    status TEXT DEFAULT 'pending' NOT NULL,
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Menu items
@@ -52,7 +58,7 @@ CREATE TABLE IF NOT EXISTS bookings (
     status TEXT DEFAULT 'pending', -- pending, paid, cancelled
     amount NUMERIC,
     payment_id TEXT, -- Stripe PaymentIntent ID
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Device tokens for push notifications
@@ -60,7 +66,7 @@ CREATE TABLE IF NOT EXISTS user_devices (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     fcm_token TEXT UNIQUE NOT NULL,
-    created_at TIMESTAMP DEFAULT NOW()
+    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
 -- Helpful indexes

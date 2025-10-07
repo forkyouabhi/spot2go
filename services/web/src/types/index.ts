@@ -42,10 +42,10 @@ export interface StudyPlace {
     lng?: number;
   };
   status: 'pending' | 'approved' | 'rejected';
+  images?: string[]; // UPDATED: Changed from image?: string to handle multiple images
   // Optional fields that may not always be present from the API
   distance?: string;
   rating?: number;
-  image?: string;
   pricePerHour?: number;
   availableSlots?: TimeSlot[];
   reviews?: Review[];
@@ -81,4 +81,3 @@ export interface Booking {
 }
 
 export type Screen = 'splash' | 'login' | 'signup' | 'home' | 'place-details' | 'booking' | 'account' | 'confirmation' | 'settings';
-

@@ -1,9 +1,9 @@
 "use client";
 
 import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
-import L from "leaflet";
+import L, { LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 
 const markerIcon = L.icon({
   iconUrl: "https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png",
@@ -14,34 +14,28 @@ const markerIcon = L.icon({
 interface MapPickerProps {
   location: { lat: number; lng: number } | null;
   setLocation: (loc: { lat: number; lng: number }) => void;
-  setAddress: (address: string) => void; // New prop
+  setAddress: (address: string) => void; 
 }
 
-export default function MapPicker({ location, setLocation, setAddress }: MapPickerProps) {
-  const MapClickMarker = () => {
-    useMapEvents({
-      click: async (e) => {
-        const latlng = e.latlng;
-        setLocation(latlng);
-        // Reverse geocode using OpenStreetMap Nominatim
-        try {
-          const res = await fetch(
-            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`
-          );
-          const data = await res.json();
-          setAddress(data.display_name || "");
-        } catch {
-          setAddress("");
-        }
-      },
-    });
-    return location ? <Marker position={location} icon={markerIcon} /> : null;
-  };
-
-  const CurrentLocationButton = () => {
+// Separate component for the "Use My Location" button
+function CurrentLocationButton({ setLocation, setAddress }: { setLocation: MapPickerProps['setLocation'], setAddress: MapPickerProps['setAddress'] }) {
   const map = useMapEvents({});
-  const useCurrentLocation = async () => {
-    if (!navigator.geolocation) return alert("Geolocation not supported");
+  const buttonRef = useRef<HTMLButtonElement>(null);
+
+  // This effect prevents click events on the button from propagating to the map
+  useEffect(() => {
+    if (buttonRef.current) {
+      L.DomEvent.disableClickPropagation(buttonRef.current);
+      L.DomEvent.disableScrollPropagation(buttonRef.current);
+    }
+  }, []);
+
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      alert("Geolocation is not supported by your browser");
+      return;
+    }
+
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setLocation(newLoc);
@@ -61,9 +55,10 @@ export default function MapPicker({ location, setLocation, setAddress }: MapPick
 
   return (
     <button
+      ref={buttonRef}
       type="button"
       onClick={useCurrentLocation}
-      className="absolute top-2 right-2 z-30 bg-[#DC6B19] text-[#FFF8DC] text-sm px-3 py-1 rounded-xl shadow-md hover:bg-[#b45336] transition"
+      className="absolute top-2 right-2 z-[1000] bg-[#DC6B19] text-[#FFF8DC] text-sm px-3 py-1 rounded-xl shadow-md hover:bg-[#b45336] transition"
     >
       Use My Location
     </button>
@@ -71,14 +66,34 @@ export default function MapPicker({ location, setLocation, setAddress }: MapPick
 };
 
 
+export default function MapPicker({ location, setLocation, setAddress }: MapPickerProps) {
+  const MapClickHandler = () => {
+    useMapEvents({
+      click: async (e: LeafletMouseEvent) => {
+        const latlng = e.latlng;
+        setLocation(latlng);
+        try {
+          const res = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${latlng.lat}&lon=${latlng.lng}`
+          );
+          const data = await res.json();
+          setAddress(data.display_name || "Address not found");
+        } catch {
+          setAddress("Could not fetch address");
+        }
+      },
+    });
+    return location ? <Marker position={location} icon={markerIcon} /> : null;
+  };
+
   return (
-    <MapContainer center={[51.0447, -114.0719]} zoom={13} className="h-64 w-full rounded-xl">
+    <MapContainer center={[48.3809, -89.2477]} zoom={13} className="h-64 w-full rounded-xl">
       <TileLayer
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
       />
-      <MapClickMarker />
-      <CurrentLocationButton />
+      <MapClickHandler />
+      <CurrentLocationButton setLocation={setLocation} setAddress={setAddress} />
     </MapContainer>
   );
 }

@@ -1,35 +1,37 @@
-const { Place, Booking } = require('../models');
-
-// List all places (can later filter by proximity)
-// List all places that are approved
+const { Place,Booking, MenuItem, User } = require('../models');
 const listNearbyPlaces = async (req, res) => {
   try {
     const places = await Place.findAll({
-      where: { status: 'approved' }, // Only fetch approved places
-      attributes: ['id', 'name', 'type', 'amenities', 'location'],
+      where: { status: 'approved' },
+      // We don't need to include menuItems here to keep the initial load light
+      order: [['created_at', 'DESC']],
     });
     res.json(places);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching places for customer:', err);
     res.status(500).json({ error: 'Failed to fetch places' });
   }
 };
-
-// Get a single place by its ID
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
-    const place = await Place.findByPk(placeId, {
-       // In the future, you can include associated data like reviews here
-       // include: ['reviews'] 
+    const place = await Place.findOne({
+       where: { id: placeId, status: 'approved' },
+       include: [
+        {
+          model: MenuItem,
+          as: 'menuItems',
+          attributes: ['id', 'name', 'price'],
+        }
+      ],
     });
 
     if (!place) {
-      return res.status(404).json({ error: 'Place not found' });
+      return res.status(404).json({ error: 'Place not found or not approved' });
     }
     res.json(place);
   } catch (err) {
-    console.error(err);
+    console.error('Error fetching place by ID:', err);
     res.status(500).json({ error: 'Failed to fetch place details' });
   }
 };

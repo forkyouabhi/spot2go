@@ -104,6 +104,23 @@ export default function App() {
     setUserSettings(newSettings);
   };
 
+  const handleNavigate = (screen: "account" | "owner/dashboard" | "admin/dashboard") => {
+    // Map the navigation screens to our Screen type
+    switch (screen) {
+      case "account":
+        setCurrentScreen("account");
+        break;
+      case "owner/dashboard":
+      case "admin/dashboard":
+        // For now, these dashboard screens aren't implemented, so we'll stay on home
+        // In a real app, you'd add these to your Screen type and implement them
+        console.log(`Navigation to ${screen} not yet implemented`);
+        break;
+      default:
+        break;
+    }
+  };
+
   const renderScreen = () => {
     const commonProps = { key: currentScreen }; // Force remount on screen change
 
@@ -139,7 +156,7 @@ export default function App() {
             userName={user?.name || 'User'}
             places={mockPlaces}
             onPlaceSelect={handlePlaceSelect}
-            onNavigate={setCurrentScreen}
+            onNavigate={handleNavigate}
             {...commonProps}
           />
         );

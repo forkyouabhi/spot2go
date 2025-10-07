@@ -1,6 +1,6 @@
 const { User } = require('../models');
-const bcrypt = 'bcrypt';
-const jwt = require('jsonwebtoken'); // Import jwt
+const bcrypt = require('bcrypt'); // FIX: This was incorrectly set to 'bcrypt' as a string
+const jwt = require('jsonwebtoken');
 
 // Controller to update basic user profile information
 const updateUserProfile = async (req, res) => {
@@ -21,7 +21,6 @@ const updateUserProfile = async (req, res) => {
     // Update the user's fields
     user.name = name || user.name;
     user.email = email || user.email;
-    // Assuming you add a 'phone' column to your User model
     user.phone = phone || user.phone; 
 
     await user.save();
@@ -65,18 +64,15 @@ const changePassword = async (req, res) => {
             return res.status(404).json({ error: 'User not found.' });
         }
         
-        // Check if the user has a local password (they might have signed up via OAuth)
         if (!user.password) {
             return res.status(400).json({ error: 'Cannot change password for an account created with Google or Apple.' });
         }
 
-        // Verify the current password
         const isMatch = await bcrypt.compare(currentPassword, user.password);
         if (!isMatch) {
             return res.status(401).json({ error: 'Incorrect current password.' });
         }
 
-        // Hash and save the new password
         const hashedPassword = await bcrypt.hash(newPassword, 10);
         user.password = hashedPassword;
         await user.save();

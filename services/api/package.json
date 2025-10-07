@@ -26,5 +26,10 @@
     "pg-hstore": "^2.3.4",
     "sequelize": "^6.37.7",
     "stripe": "^18.5.0"
+  },
+  "dependencies": {
+    "cloudinary": "^1.41.3",
+    "multer": "^2.0.2",
+    "multer-storage-cloudinary": "^4.0.0"
   }
 }
