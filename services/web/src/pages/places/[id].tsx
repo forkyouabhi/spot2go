@@ -11,6 +11,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { MapPin, Star, Loader2, Phone, Bookmark, Calendar, Info, VenetianMask, Utensils, MessageSquare } from 'lucide-react';
+import { Input } from '../../components/ui/input';
+import { Label } from '../../components/ui/label';
 import dynamic from 'next/dynamic';
 
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
