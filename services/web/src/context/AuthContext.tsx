@@ -20,7 +20,6 @@ interface AuthContextType {
   login: (email: string, password: string) => Promise<User>;
   register: (name: string, email: string, password: string, role: 'customer' | 'owner') => Promise<User>;
   logout: () => void;
-  // This function will now handle receiving a new token from the backend
   handleTokenUpdate: (token: string) => void;
 }
 
@@ -43,41 +42,45 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  const handleAuthSuccess = useCallback((token: string): User => {
+  const handleAuthSuccess = useCallback((token: string, redirect: boolean = true) => {
     localStorage.setItem('token', token);
+    setAuthToken(token);
     const decoded = jwtDecode<User>(token);
     const fullUser = { ...decoded, dateJoined: decoded.createdAt };
     setUser(fullUser);
-    setAuthToken(token);
-    
-    if (decoded.role === 'owner') {
-      router.push('/owner/dashboard');
-    } else if (decoded.role === 'admin') {
-      router.push('/admin/dashboard');
-    } else {
-      router.push('/');
+
+    if (redirect) {
+      // Clean the URL of the token after processing
+      const targetPath = decoded.role === 'owner' ? '/owner/dashboard' : decoded.role === 'admin' ? '/admin/dashboard' : '/';
+      router.replace(targetPath);
     }
     return fullUser;
   }, [router]);
-  
-  // This function is now exposed to be called after a successful profile update
+
   const handleTokenUpdate = useCallback((token: string) => {
-    localStorage.setItem('token', token);
-    const decoded = jwtDecode<User>(token);
-    const fullUser = { ...decoded, dateJoined: decoded.createdAt };
-    setUser(fullUser);
-    setAuthToken(token);
-  }, []);
+    // This is for profile updates, no redirect needed
+    handleAuthSuccess(token, false);
+  }, [handleAuthSuccess]);
 
   useEffect(() => {
-    const checkToken = () => {
-      const token = localStorage.getItem('token');
-      if (token) {
+    // This function checks for a token in the URL first, then localStorage
+    const processToken = () => {
+      // Check for token in URL (from OAuth redirect)
+      const urlToken = router.query.token as string;
+      if (urlToken) {
+        handleAuthSuccess(urlToken, true);
+        // The handleAuthSuccess function will redirect and clean the URL
+        return; // Stop processing to avoid conflicts
+      }
+
+      // If no token in URL, check localStorage
+      const localToken = localStorage.getItem('token');
+      if (localToken) {
         try {
-          const decoded = jwtDecode<User>(token);
+          const decoded = jwtDecode<User>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
             setUser({ ...decoded, dateJoined: decoded.createdAt });
-            setAuthToken(token);
+            setAuthToken(localToken);
           } else {
             // Token expired
             localStorage.removeItem('token');
@@ -94,22 +97,12 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     };
 
-    checkToken();
-
-    // Listen for storage changes to solve the race condition
-    const handleStorageChange = (event: StorageEvent) => {
-      if (event.key === 'token') {
-        checkToken();
-      }
-    };
-    
-    window.addEventListener('storage', handleStorageChange);
-
-    return () => {
-      window.removeEventListener('storage', handleStorageChange);
-    };
-  }, []);
-
+    // router.isReady is crucial to ensure router.query is populated
+    if (router.isReady) {
+      processToken();
+    }
+  }, [router.isReady, router.query.token, handleAuthSuccess]);
+  
   const login = async (email: string, password: string): Promise<User> => {
     const response = await loginUser({ email, password });
     return handleAuthSuccess(response.data.token);
@@ -134,7 +127,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    handleTokenUpdate, // Expose the new secure update function
+    handleTokenUpdate,
   };
 
   return (

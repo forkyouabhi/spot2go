@@ -2,18 +2,16 @@ import '../styles/globals.css';
 import { AuthProvider } from '../context/AuthContext';
 import { Toaster } from '../components/ui/sonner';
 import type { AppProps } from 'next/app';
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import Head from 'next/head';
 
-// This is the main entry point for your application.
-// It wraps all pages with the necessary providers.
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <AuthProvider>
+      <Head>
+        <title>Spot2Go - Find Your Study Spot</title>
+      </Head>
       <Toaster />
       <Component {...pageProps} />
-      <SpeedInsights />
     </AuthProvider>
-      
   );
 }
-
