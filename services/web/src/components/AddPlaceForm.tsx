@@ -70,6 +70,13 @@ export function AddPlaceForm({ onSuccess, initialData }: AddPlaceFormProps) {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    // **FIX:** Add client-side validation for images before submitting
+    if (images.length === 0 && !isEditMode) {
+      toast.error("At least one image is required to add a new spot.");
+      return;
+    }
+
     if (!type || !location) {
       toast.error("Spot Type and Location are required.");
       return;
