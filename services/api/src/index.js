@@ -19,7 +19,7 @@ app.use(passport.initialize());
 app.use('/api', routes); // Using a /api prefix for all routes
 app.use('/', routes); // Serve static files from the uploads directory
 // Health check
-app.get('/', (req, res) => res.json({ status: 'ok', message: 'Spot2Go API running' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', message: 'Spot2Go API running' }));
 
 // 404 handler for routes not found
 app.use((req, res, next) => {
