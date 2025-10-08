@@ -6,7 +6,7 @@ const api = axios.create({
   baseURL: API_URL,
 });
 
-// FIX: Add a request interceptor to automatically attach the token
+// Request interceptor to automatically attach the token
 api.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token');
@@ -20,7 +20,6 @@ api.interceptors.request.use(
   }
 );
 
-// This function is still useful for initial setup after login, but the interceptor is the primary mechanism.
 export const setAuthToken = (token) => {
   if (token) {
     api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
@@ -36,6 +35,7 @@ export const loginUser = (credentials) => api.post('/auth/login', credentials);
 // --- User Endpoints ---
 export const updateUser = (userId, profileData) => api.put(`/users/${userId}`, profileData);
 export const updateUserPassword = (userId, passwordData) => api.put(`/users/${userId}/password`, passwordData);
+export const updateUserSettings = (userId, settings) => api.put(`/users/${userId}/settings`, { settings });
 
 // --- Customer Endpoints ---
 export const getPlaces = () => api.get('/customers/places');

@@ -1,4 +1,4 @@
-import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
+import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { setAuthToken, registerUser, loginUser } from '../lib/api';
 import { jwtDecode } from 'jwt-decode';
@@ -9,21 +9,19 @@ interface User {
   name: string;
   role: 'customer' | 'owner' | 'admin';
   createdAt: string;
-  dateJoined: string; // Ensure dateJoined is part of the type
+  dateJoined: string;
   [key: string]: any;
 }
 
 interface AuthContextType {
   user: User | null;
-  setUser: React.Dispatch<React.SetStateAction<User | null>>;
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  // UPDATED: The register function now accepts a role.
   register: (name: string, email: string, password: string, role: 'customer' | 'owner') => Promise<User>;
   logout: () => void;
-  // ADDED: A function to update user data in the context for real-time changes.
-  updateUser: (userData: Partial<User>) => void;
+  // This function will now handle receiving a new token from the backend
+  handleTokenUpdate: (token: string) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -45,35 +43,13 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  useEffect(() => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      try {
-        const decoded = jwtDecode<User>(token);
-        if (decoded.exp * 1000 > Date.now()) {
-          // Ensure the dateJoined field is populated from the token's createdAt
-          setUser({ ...decoded, dateJoined: decoded.createdAt });
-          setAuthToken(token);
-        } else {
-          localStorage.removeItem('token');
-        }
-      } catch (error) {
-        console.error("Invalid token:", error);
-        localStorage.removeItem('token');
-      }
-    }
-    setLoading(false);
-  }, []);
-
-  const handleAuthSuccess = (token: string): User => {
+  const handleAuthSuccess = useCallback((token: string): User => {
     localStorage.setItem('token', token);
     const decoded = jwtDecode<User>(token);
-    // Standardize the user object upon login/registration
     const fullUser = { ...decoded, dateJoined: decoded.createdAt };
     setUser(fullUser);
     setAuthToken(token);
     
-    // UPDATED: Redirect based on user role, including admin for future use.
     if (decoded.role === 'owner') {
       router.push('/owner/dashboard');
     } else if (decoded.role === 'admin') {
@@ -82,14 +58,63 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       router.push('/');
     }
     return fullUser;
-  };
+  }, [router]);
+  
+  // This function is now exposed to be called after a successful profile update
+  const handleTokenUpdate = useCallback((token: string) => {
+    localStorage.setItem('token', token);
+    const decoded = jwtDecode<User>(token);
+    const fullUser = { ...decoded, dateJoined: decoded.createdAt };
+    setUser(fullUser);
+    setAuthToken(token);
+  }, []);
+
+  useEffect(() => {
+    const checkToken = () => {
+      const token = localStorage.getItem('token');
+      if (token) {
+        try {
+          const decoded = jwtDecode<User>(token);
+          if (decoded.exp * 1000 > Date.now()) {
+            setUser({ ...decoded, dateJoined: decoded.createdAt });
+            setAuthToken(token);
+          } else {
+            // Token expired
+            localStorage.removeItem('token');
+            setUser(null);
+          }
+        } catch (error) {
+          console.error("Invalid token:", error);
+          localStorage.removeItem('token');
+          setUser(null);
+        }
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    };
+
+    checkToken();
+
+    // Listen for storage changes to solve the race condition
+    const handleStorageChange = (event: StorageEvent) => {
+      if (event.key === 'token') {
+        checkToken();
+      }
+    };
+    
+    window.addEventListener('storage', handleStorageChange);
+
+    return () => {
+      window.removeEventListener('storage', handleStorageChange);
+    };
+  }, []);
 
   const login = async (email: string, password: string): Promise<User> => {
     const response = await loginUser({ email, password });
     return handleAuthSuccess(response.data.token);
   };
     
-  // UPDATED: The register function now passes the role to the API.
   const register = async (name: string, email: string, password: string, role: 'customer' | 'owner'): Promise<User> => {
     const response = await registerUser({ name, email, password, role });
     return handleAuthSuccess(response.data.token);
@@ -102,29 +127,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     router.push('/login');
   };
 
-  // ADDED: Function to allow other parts of the app to update the user context.
-  const updateUser = (userData: Partial<User>) => {
-    setUser(prevUser => {
-      if (!prevUser) return null;
-      const updatedUser = { ...prevUser, ...userData };
-      
-      // Also update the token in localStorage to persist the change
-      // Note: Updating JWTs client-side is not secure and not recommended.
-      // If user data needs to be updated, this should be handled via backend API and a new token should be issued.
-      // Here, we only update the user context.
-      return updatedUser;
-    });
-  };
-
-  const authContextValue = {
+  const authContextValue: AuthContextType = {
     user,
-    setUser,
     isAuthenticated: !!user,
     loading,
     login,
     register,
     logout,
-    updateUser,
+    handleTokenUpdate, // Expose the new secure update function
   };
 
   return (
@@ -133,4 +143,3 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     </AuthContext.Provider>
   );
 };
-

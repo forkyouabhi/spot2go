@@ -3,77 +3,82 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { SettingsScreen } from '../components/SettingsScreen';
 import { toast } from 'sonner';
-import { updateUser, updateUserPassword } from '../lib/api';
-import { mockUserSettings } from '../data/mockData'; 
-import { jwtDecode } from 'jwt-decode';
+import { updateUser, updateUserPassword,updateUserSettings } from '../lib/api';
+import { mockUserSettings } from '../data/mockData';
+import { UserSettings } from '../types';
 
 export default function SettingsPage() {
   const router = useRouter();
-  // We get setUser from the context now
-  const { user, isAuthenticated, loading, logout, setUser } = useAuth();
-  const [settings, setSettings] = useState(mockUserSettings);
+  const { user, isAuthenticated, loading, logout, handleTokenUpdate } = useAuth();
+  
+  const [settings, setSettings] = useState<UserSettings>(user?.settings || mockUserSettings);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
       router.replace('/login');
     }
-  }, [isAuthenticated, loading, router]);
+    if (user?.settings) {
+        setSettings(user.settings);
+    }
+  }, [isAuthenticated, loading, router, user]);
 
-  const handleUpdateUser = async (formData) => {
+  const handleUpdateUser = async (formData: any) => {
+    if (!user) {
+      toast.error("You must be logged in to update your profile.");
+      return;
+    }
+
     try {
       const { name, email, phone, currentPassword, newPassword } = formData;
       const profileData = { name, email, phone };
 
-      // The API now returns the updated user and a new token
       const response = await updateUser(user.id, profileData);
-      const { token, user: updatedUser } = response.data;
+      const { token } = response.data;
 
       if (token) {
-        localStorage.setItem('token', token);
-        const decoded = jwtDecode(token);
-        setUser(prevUser => ({
-          ...prevUser,
-          // Map decoded JWT fields to User fields as needed
-          id: decoded.sub || prevUser.id,
-          name: updatedUser?.name || prevUser.name,
-          role: updatedUser?.role || prevUser.role,
-          createdAt: updatedUser?.createdAt || prevUser.createdAt,
-          dateJoined: updatedUser?.dateJoined || prevUser.dateJoined,
-          email: updatedUser?.email || prevUser.email,
-          phone: updatedUser?.phone || prevUser.phone,
-        }));
-      } else {
-        // If no new token, just update the context with the returned user data
-        setUser(prevUser => ({...prevUser, ...updatedUser}));
+        handleTokenUpdate(token);
+        toast.success('Profile updated successfully!');
       }
 
-      toast.success('Profile updated successfully!');
-
+      // This is the section for "passwordData"
       if (newPassword && currentPassword) {
+        // This object is the correct format for the API
         const passwordData = { currentPassword, newPassword };
         await updateUserPassword(user.id, passwordData);
         toast.success('Password changed successfully!');
       }
-    } catch (error) {
-      const errorMessage = error.response?.data?.error || 'Failed to update settings.';
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || 'Failed to update settings. Please try again.';
       toast.error(errorMessage);
       console.error('Update failed:', error);
     }
   };
 
-  const handleUpdateSettings = (newSettings) => {
+  const handleUpdateSettings = async (newSettings: UserSettings) => {
+    if (!user) {
+      toast.error("You must be logged in to update settings.");
+      return;
+    }
+    
     setSettings(newSettings);
-  };
 
-  if (loading || !isAuthenticated) {
-    return <div>Loading...</div>;
+    try {
+      await updateUserSettings(user.id, newSettings);
+      toast.success("Settings saved!");
+    } catch (error) {
+      toast.error("Failed to save settings.");
+    }
+  };
+  
+  if (loading || !isAuthenticated || !user) {
+    return (
+        <div className="min-h-screen flex items-center justify-center bg-brand-cream">
+            <p>Loading...</p>
+        </div>
+    );
   }
 
-  // Ensure user always has an email property to satisfy type requirements
-  const userWithEmail = {
-    ...user,
-    email: user?.email || '',
-  };
+  const userWithEmail = { ...user, email: user.email || '' };
 
   return (
     <SettingsScreen

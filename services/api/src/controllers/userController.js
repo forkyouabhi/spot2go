@@ -1,5 +1,5 @@
 const { User } = require('../models');
-const bcrypt = require('bcrypt'); // FIX: This was incorrectly set to 'bcrypt' as a string
+const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 
 // Controller to update basic user profile information
@@ -21,7 +21,7 @@ const updateUserProfile = async (req, res) => {
     // Update the user's fields
     user.name = name || user.name;
     user.email = email || user.email;
-    user.phone = phone || user.phone; 
+    user.phone = phone || user.phone;
 
     await user.save();
 
@@ -85,8 +85,33 @@ const changePassword = async (req, res) => {
     }
 };
 
+// New function to update user settings
+const updateUserSettings = async (req, res) => {
+  const { userId } = req.params;
+  const { settings } = req.body;
+
+  if (req.user.id !== parseInt(userId, 10)) {
+    return res.status(403).json({ error: 'Forbidden: You can only update your own settings.' });
+  }
+
+  try {
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+
+    user.settings = settings;
+    await user.save();
+
+    res.json({ message: 'Settings updated successfully.', settings: user.settings });
+  } catch (err) {
+    console.error('Error updating user settings:', err);
+    res.status(500).json({ error: 'Failed to update settings.' });
+  }
+};
 
 module.exports = {
   updateUserProfile,
   changePassword,
+  updateUserSettings,
 };

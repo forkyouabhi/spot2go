@@ -10,4 +10,7 @@ router.put('/:userId', authenticate, userController.updateUserProfile);
 // This is a separate, dedicated route for security.
 router.put('/:userId/password', authenticate, userController.changePassword);
 
+// Route to update a user's settings
+router.put('/:userId/settings', authenticate, userController.updateUserSettings);
+
 module.exports = router;

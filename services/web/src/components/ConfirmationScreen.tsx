@@ -39,7 +39,6 @@ export function ConfirmationScreen({ place, slot, ticketId, onGoHome }: Confirma
           <CardContent className="space-y-4 p-6">
             <div className="text-center">
               <h3 className="font-semibold text-xl text-brand-burgundy">{place.name}</h3>
-              {/* FIX: Changed place.address to place.location.address */}
               <p className="text-sm text-gray-600">{place.location.address}</p>
             </div>
 

@@ -7,12 +7,10 @@ const User = sequelize.define('User', {
     autoIncrement: true,
     primaryKey: true,
   },
-    phone: {
-    type: DataTypes.TEXT, 
+  phone: {
+    type: DataTypes.TEXT,
     allowNull: true,
-    
   },
-  // ADDED: name field to store the user's full name from the signup form.
   name: {
     type: DataTypes.TEXT,
     allowNull: false,
@@ -41,6 +39,10 @@ const User = sequelize.define('User', {
     type: DataTypes.TEXT,
     field: 'provider_id',
   },
+  settings: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+  },
 }, {
   tableName: 'users',
   timestamps: true,
@@ -49,4 +51,3 @@ const User = sequelize.define('User', {
 });
 
 module.exports = User;
-
