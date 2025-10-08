@@ -9,12 +9,12 @@ const adminRoutes = require('./admin');
 const router = Router();
 
 router.use('/api/auth', authRoutes);
-router.use('/api/notifications', notificationRoutes);
-router.use('/api/owners', ownerRoutes);
-router.use('/api/customers', customerRoutes);
-router.use('/api/payments', paymentRoutes);
-router.use('/api/users', userRoutes);
-router.use('/api/admin', adminRoutes);
+router.use('/notifications', notificationRoutes);
+router.use('/owners', ownerRoutes);
+router.use('/customers', customerRoutes);
+router.use('/payments', paymentRoutes);
+router.use('/users', userRoutes);
+router.use('/admin', adminRoutes);
 
 module.exports = router;
 
