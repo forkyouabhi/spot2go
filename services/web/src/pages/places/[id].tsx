@@ -1,5 +1,5 @@
 import { useRouter } from 'next/router';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import Head from 'next/head';
 import { useAuth } from '../../context/AuthContext';
 import { getPlaceById, createBooking } from '../../lib/api';
@@ -42,37 +42,41 @@ const ReviewCard = ({ review }: { review: Review }) => (
   </Card>
 );
 
-const BookingWidget = ({ place, onConfirmBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void }) => {
-    const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void, isBooking: boolean }) => {
+    const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
     const availableSlotsForDate = place.availableSlots?.filter(
-        slot => slot.date === formatDate(selectedDate) && slot.available
+        slot => selectedDate && slot.date === formatDate(selectedDate) && slot.available
     ) || [];
+
+    useEffect(() => {
+        setSelectedSlot(null);
+    }, [selectedDate]);
     
     return (
-        <Card className="shadow-lg border-2 border-brand-orange">
+        <Card className="shadow-lg border-2 border-brand-orange bg-white">
             <CardHeader>
                 <CardTitle className="text-2xl text-brand-burgundy">Book a Spot</CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
                 <div>
-                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><CalendarIcon className="h-4 w-4" />Select Date</Label>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><CalendarIcon className="h-4 w-4 text-brand-orange" />Select Date</Label>
                     <Calendar
                         mode="single"
                         selected={selectedDate}
-                        onSelect={(date) => { if (date) { setSelectedDate(date); setSelectedSlot(null); }}}
+                        onSelect={setSelectedDate}
                         disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1)) || date > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)}
-                        className="rounded-xl border-2 p-0" style={{ borderColor: '#F7C566' }}
+                        className="rounded-xl border-2 p-0 bg-brand-cream" style={{ borderColor: '#F7C566' }}
                     />
                 </div>
                 <div>
-                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4" />Available Times</Label>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-brand-orange" />Available Times</Label>
                     {availableSlotsForDate.length > 0 ? (
                         <div className="grid grid-cols-2 gap-2">
-                            {availableSlotsForDate.map((slot, index) => (
+                            {availableSlotsForDate.map((slot) => (
                             <Button
                                 key={slot.id}
                                 className={`h-auto p-2 flex flex-col items-center rounded-xl border-2 transition-transform ${selectedSlot?.id === slot.id ? 'shadow-lg scale-105' : ''}`}
@@ -92,10 +96,10 @@ const BookingWidget = ({ place, onConfirmBooking }: { place: StudyPlace, onConfi
                 </div>
                  <Button 
                     onClick={() => selectedSlot && onConfirmBooking(selectedSlot)}
-                    disabled={!selectedSlot}
+                    disabled={!selectedSlot || isBooking}
                     size="lg" className="w-full h-12 text-lg font-bold bg-brand-orange text-brand-cream"
                 >
-                   {selectedSlot ? 'Confirm Booking' : 'Select a Slot'}
+                   {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? 'Confirm Booking' : 'Select a Slot')}
                 </Button>
             </CardContent>
         </Card>
@@ -110,6 +114,7 @@ export default function PlaceDetailPage() {
   const [place, setPlace] = useState<StudyPlace | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
+  const mobileBookingSectionRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (id && isAuthenticated) {
@@ -158,8 +163,8 @@ export default function PlaceDetailPage() {
                 placeName: place.name,
                 placeAddress: place.location.address,
                 date: booking.date,
-                startTime: booking.startTime.slice(0, 5),
-                endTime: booking.endTime.slice(0, 5),
+                startTime: booking.startTime,
+                endTime: booking.endTime,
                 ticketId: booking.ticketId,
             },
         });
@@ -196,7 +201,7 @@ export default function PlaceDetailPage() {
            </div>
          </header>
          
-         <main className="max-w-screen-xl mx-auto p-4 md:p-8">
+         <main className="max-w-screen-xl mx-auto p-4 md:p-8 pb-24">
           <div 
             className="h-48 md:h-80 w-full grid grid-cols-4 grid-rows-2 gap-2 rounded-xl overflow-hidden mb-6 cursor-pointer"
             onClick={() => setIsModalOpen(true)}
@@ -222,7 +227,7 @@ export default function PlaceDetailPage() {
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-brand-orange mt-2">
                           <Badge className="bg-brand-yellow text-brand-burgundy font-semibold">{place.type}</Badge>
                           <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'}</div>
-                          {place.pricePerHour > 0 && <span>${place.pricePerHour}.00 / hour (est.)</span>}
+                          {place.pricePerHour && place.pricePerHour > 0 && <span>${place.pricePerHour}.00 / hour (est.)</span>}
                       </div>
                       <div className="flex flex-wrap justify-between items-center mt-4">
                         <p className="text-sm text-gray-600 flex items-center gap-2"><MapPin className="h-4 w-4" />{place.location.address}</p>
@@ -265,29 +270,31 @@ export default function PlaceDetailPage() {
               {/* Desktop Booking Widget */}
               {hasReservations && (
                 <div className="hidden lg:block lg:sticky top-24 self-start">
-                    <BookingWidget place={place} onConfirmBooking={handleConfirmBooking} />
+                    <BookingWidget place={place} onConfirmBooking={handleConfirmBooking} isBooking={isBooking} />
                 </div>
               )}
           </div>
+          
+           {/* Mobile Booking Section */}
+           {hasReservations && (
+                <div ref={mobileBookingSectionRef} id="booking-section" className="lg:hidden pt-8">
+                     <BookingWidget place={place} onConfirmBooking={handleConfirmBooking} isBooking={isBooking} />
+                </div>
+            )}
          </main>
 
-         {/* Mobile Booking Section */}
+         {/* Mobile Floating Button */}
          {hasReservations && (
-            <>
-                <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t-2 z-20" style={{borderColor: '#F7C566'}}>
-                    <Button
-                        onClick={() => { const el = document.getElementById('booking-section'); el?.scrollIntoView({behavior: 'smooth'})}}
-                        className="w-full max-w-screen-xl mx-auto h-14 rounded-2xl font-semibold text-lg shadow-xl"
-                        style={{ backgroundColor: '#DC6B19', color: '#FFF8DC' }}
-                        size="lg"
-                    >
-                        Book Now
-                    </Button>
-                </div>
-                <div id="booking-section" className="lg:hidden p-4 md:p-8">
-                     <BookingWidget place={place} onConfirmBooking={handleConfirmBooking} />
-                </div>
-            </>
+            <div className="lg:hidden fixed bottom-0 left-0 right-0 p-4 bg-white/80 backdrop-blur-sm border-t-2 z-20" style={{borderColor: '#F7C566'}}>
+                <Button
+                    onClick={() => mobileBookingSectionRef.current?.scrollIntoView({ behavior: 'smooth' })}
+                    className="w-full max-w-screen-xl mx-auto h-14 rounded-2xl font-semibold text-lg shadow-xl"
+                    style={{ backgroundColor: '#DC6B19', color: '#FFF8DC' }}
+                    size="lg"
+                >
+                    Book Now
+                </Button>
+            </div>
          )}
       </div>
     </>

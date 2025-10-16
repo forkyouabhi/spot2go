@@ -17,20 +17,6 @@ const Booking = sequelize.define('Booking', {
     field: 'place_id',
     references: { model: 'places', key: 'id' }
   },
-  date: {
-    type: DataTypes.DATEONLY,
-    allowNull: false
-  },
-  startTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-    field: 'start_time'
-  },
-  endTime: {
-    type: DataTypes.TIME,
-    allowNull: false,
-    field: 'end_time'
-  },
   status: {
     type: DataTypes.TEXT,
     defaultValue: 'pending', // pending, confirmed, cancelled
@@ -42,10 +28,24 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.TEXT,
     field: 'payment_id',
   },
+  date: {
+    type: DataTypes.DATEONLY,
+    allowNull: true,
+  },
+  startTime: {
+    type: DataTypes.TIME,
+    allowNull: true,
+    field: 'startTime'
+  },
+  endTime: {
+    type: DataTypes.TIME,
+    allowNull: true,
+    field: 'endTime'
+  },
   ticketId: {
     type: DataTypes.TEXT,
-    field: 'ticket_id',
     unique: true,
+    field: 'ticketId'
   }
 }, {
   tableName: 'bookings',
