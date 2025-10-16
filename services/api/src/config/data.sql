@@ -8,6 +8,7 @@ CREATE TABLE IF NOT EXISTS users (
     role TEXT NOT NULL CHECK (role IN ('customer','owner', 'admin')),
     provider TEXT DEFAULT 'local',
     provider_id TEXT,
+    settings JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 
@@ -17,11 +18,13 @@ CREATE TABLE IF NOT EXISTS places (
     owner_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     type TEXT,
-    description TEXT, -- ADDED description field
+    description TEXT,
     amenities TEXT[],
-    images TEXT[],    -- ADDED images field for Cloudinary URLs
+    images TEXT[],
     location JSONB,
     status TEXT DEFAULT 'pending' NOT NULL,
+    reservable BOOLEAN DEFAULT false NOT NULL,
+    reservable_hours JSONB,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
@@ -55,9 +58,13 @@ CREATE TABLE IF NOT EXISTS bookings (
     id SERIAL PRIMARY KEY,
     user_id INT REFERENCES users(id) ON DELETE CASCADE,
     place_id INT REFERENCES places(id) ON DELETE CASCADE,
-    status TEXT DEFAULT 'pending', -- pending, paid, cancelled
+    date DATE NOT NULL,
+    start_time TIME NOT NULL,
+    end_time TIME NOT NULL,
+    status TEXT DEFAULT 'pending', -- pending, confirmed, cancelled
     amount NUMERIC,
     payment_id TEXT, -- Stripe PaymentIntent ID
+    ticket_id TEXT UNIQUE,
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );
 

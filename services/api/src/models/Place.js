@@ -22,14 +22,14 @@ const Place = sequelize.define('Place', {
   type: {
     type: DataTypes.TEXT, // e.g., cafe, library, coworking
   },
-  description: { // ADDED description field
+  description: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
   amenities: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
   },
-  images: { // ADDED images field
+  images: {
     type: DataTypes.ARRAY(DataTypes.TEXT),
     allowNull: true,
   },
@@ -41,13 +41,21 @@ const Place = sequelize.define('Place', {
     defaultValue: 'pending', // 'pending', 'approved', 'rejected'
     allowNull: false,
   },
-  
+  reservable: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+  },
+  reservableHours: {
+    type: DataTypes.JSONB,
+    allowNull: true,
+    field: 'reservable_hours',
+  },
 }, {
   tableName: 'places',
   timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
-  
 });
 
 module.exports = Place;

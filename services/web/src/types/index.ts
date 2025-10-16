@@ -53,7 +53,11 @@ export interface StudyPlace {
   images?: string[];
   description?: string;
   menuItems?: MenuItem[]; // ADDED: menuItems property
-  
+  reservable?: boolean;
+  reservableHours?: {
+    start: string;
+    end: string;
+  };
   // Optional fields that may not always be present from the API
   distance?: string;
   rating?: number;

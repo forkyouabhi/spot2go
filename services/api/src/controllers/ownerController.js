@@ -2,7 +2,7 @@ const { Place, MenuItem, Bundle } = require('../models');
 
 const createPlace = async (req, res) => {
   try {
-    const { name, type, description, amenities, location } = req.body;
+    const { name, type, description, amenities, location, reservable, reservableHours } = req.body;
     const ownerId = req.user.id;
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'At least one image is required.' });
@@ -26,6 +26,8 @@ const createPlace = async (req, res) => {
       location: parsedLocation,
       images: imageUrls,
       status: 'pending',
+      reservable: reservable === 'true',
+      reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
     });
     res.status(201).json({ message: 'Place submitted for approval!', place });
   } catch (err) {
@@ -39,9 +41,8 @@ const updateOwnerPlace = async (req, res) => {
   try {
     const { placeId } = req.params;
     const ownerId = req.user.id;
-    const { name, type, description, amenities, location } = req.body;
+    const { name, type, description, amenities, location, reservable, reservableHours } = req.body;
 
-    // Security Check: Find the place and ensure it belongs to the authenticated owner
     const place = await Place.findOne({ where: { id: placeId, ownerId } });
     if (!place) {
       return res.status(404).json({ error: 'Place not found or you do not have permission to edit it.' });
@@ -73,6 +74,8 @@ const updateOwnerPlace = async (req, res) => {
       amenities: amenitiesArray,
       location: parsedLocation,
       images: newImageUrls,
+      reservable: reservable === 'true',
+      reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
       status: 'pending', // Re-submit for approval
     });
 

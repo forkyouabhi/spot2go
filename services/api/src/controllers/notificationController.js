@@ -1,9 +1,16 @@
 const admin = require('firebase-admin');
 const { UserDevice } = require('../models');
+const path = require('path'); // Import the 'path' module
 
 // --- Firebase Admin SDK Initialization ---
 try {
-  const serviceAccount = require('/etc/secrets/step2go_firebase.json'); 
+  // Construct a reliable path to the service account key
+  const serviceAccountPath = process.env.NODE_ENV === 'production'
+    ? '/etc/secrets/step2go_firebase.json'
+    : path.join(__dirname, '..', 'config', 'step2go_firebase.json');
+
+  const serviceAccount = require(serviceAccountPath);
+
   if (!admin.apps.length) {
     admin.initializeApp({
       credential: admin.credential.cert(serviceAccount)
@@ -12,8 +19,10 @@ try {
   }
 } catch (error) {
   console.error('Failed to initialize Firebase Admin SDK:', error.message);
-  throw new Error('Firebase initialization failed. Check the path to your service account key file.');
+  throw new Error('Firebase initialization failed. Check your service account key path and NODE_ENV.');
 }
+
+// ... rest of the file remains the same
 
 // Save device token for a user
 async function saveDevice(req, res) {

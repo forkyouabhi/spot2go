@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import { toast } from 'sonner';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
@@ -34,7 +34,7 @@ export function ManageMenu({ place, onMenuItemAdded }: ManageMenuProps) {
       const response = await addMenuItem(place.id, { name: newItemName, price: parseFloat(newItemPrice) });
       const newItem = response.data.item;
       setMenuItems(prev => [...prev, newItem]);
-      onMenuItemAdded(newItem); // Notify parent component
+      onMenuItemAdded(newItem);
       toast.success(`'${newItemName}' added to menu!`);
       setNewItemName('');
       setNewItemPrice('');
@@ -47,27 +47,27 @@ export function ManageMenu({ place, onMenuItemAdded }: ManageMenuProps) {
 
   return (
     <div className="grid md:grid-cols-2 gap-6 pt-4">
-      <Card>
+      <Card className="bg-white border-brand-yellow">
         <CardHeader>
           <CardTitle className="text-xl text-brand-burgundy">Current Menu</CardTitle>
         </CardHeader>
         <CardContent>
           {menuItems.length > 0 ? (
-            <ul className="space-y-3 max-h-60 overflow-y-auto">
+            <ul className="space-y-3 max-h-60 overflow-y-auto pr-2">
               {menuItems.map(item => (
-                <li key={item.id} className="flex justify-between items-center p-3 bg-white rounded-lg border border-brand-yellow">
+                <li key={item.id} className="flex justify-between items-center p-3 bg-brand-cream rounded-lg border border-brand-orange">
                   <span className="font-medium text-brand-burgundy">{item.name}</span>
                   <span className="font-semibold text-brand-orange">${parseFloat(item.price).toFixed(2)}</span>
                 </li>
               ))}
             </ul>
           ) : (
-            <p className="text-center text-gray-500 py-8">No menu items added yet.</p>
+            <p className="text-center text-brand-orange py-8">No menu items added yet.</p>
           )}
         </CardContent>
       </Card>
 
-      <Card>
+      <Card className="bg-white border-brand-yellow">
         <CardHeader>
           <CardTitle className="text-xl text-brand-burgundy">Add New Item</CardTitle>
         </CardHeader>
@@ -104,7 +104,7 @@ export function ManageMenu({ place, onMenuItemAdded }: ManageMenuProps) {
                 />
               </div>
             </div>
-            <Button type="submit" disabled={isSubmitting} className="w-full bg-brand-orange hover:bg-brand-orange/90">
+            <Button type="submit" disabled={isSubmitting} className="w-full bg-brand-orange hover:bg-brand-orange/90 text-brand-cream">
               {isSubmitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <PlusCircle className="h-5 w-5 mr-2" />}
               Add to Menu
             </Button>

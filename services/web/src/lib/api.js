@@ -9,9 +9,11 @@ const api = axios.create({
 // Request interceptor to automatically attach the token
 api.interceptors.request.use(
   (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers['Authorization'] = `Bearer ${token}`;
+    if (typeof window !== 'undefined') {
+        const token = localStorage.getItem('token');
+        if (token) {
+          config.headers['Authorization'] = `Bearer ${token}`;
+        }
     }
     return config;
   },
@@ -41,6 +43,7 @@ export const updateUserSettings = (userId, settings) => api.put(`/users/${userId
 export const getPlaces = () => api.get('/customers/places');
 export const getPlaceById = (placeId) => api.get(`/customers/places/${placeId}`);
 export const getUserBookings = () => api.get('/customers/bookings');
+export const createBooking = (bookingData) => api.post('/customers/bookings', bookingData);
 
 // --- Owner Endpoints ---
 export const addPlace = (placeData) => api.post('/owners/places', placeData);
