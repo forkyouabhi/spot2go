@@ -13,6 +13,7 @@ export const mockUser: User = {
   dateJoined: "2024-03-15",
   provider: "email",
   role: "customer",
+  status: "active",
   createdAt: "2024-03-15T10:00:00Z",
 };
 
