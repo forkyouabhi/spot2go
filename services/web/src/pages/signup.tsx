@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { AuthForm } from '../components/AuthForm';
 import { toast } from 'sonner';
-import Link from 'next/link';
+import Link from 'next/link'; // Import Link
 
 export default function SignupPage() {
   const router = useRouter();
@@ -39,8 +39,7 @@ export default function SignupPage() {
           window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/${provider}`;
         }}
       />
-      {/* Link to the new business signup page */}
-      <div className="text-center -mt-4 pb-4 relative z-10">
+      <div className="absolute bottom-6 w-full text-center z-20">
         <Link href="/business" legacyBehavior>
           <a className="text-sm font-medium text-brand-yellow hover:text-white underline">
             Are you a business owner? Partner with us
