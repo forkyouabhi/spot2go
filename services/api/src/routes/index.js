@@ -12,7 +12,7 @@ const { generateCalendarFile } = require('../controllers/bookingController');
 
 const router = Router();
 
-router.use('/api/auth', authRoutes);
+router.use('/auth', authRoutes);
 router.use('/notifications', notificationRoutes);
 router.use('/owners', ownerRoutes);
 router.use('/customers', customerRoutes);
