@@ -1,27 +1,66 @@
+// services/api/src/controllers/authController.js
 const { User } = require('../models');
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
-const { sendEmail } = require('../utils/emailService'); // Import email service
-const { Op } = require('sequelize'); // Import Op
-// Handles user registration.
+const { sendEmail } = require('../utils/emailService');
+const { Op } = require('sequelize');
+
+// Handles user registration, setting status based on role.
 async function register(req, res) {
+  // role defaults to 'customer' unless explicitly provided
   const { name, email, password, role = 'customer' } = req.body;
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
   }
 
+  // Determine initial status based on role
+  const initialStatus = role === 'owner' ? 'pending_verification' : 'active';
+
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
-    const user = await User.create({ name, email, password: hashedPassword, role, provider: 'local' });
+    const user = await User.create({
+        name,
+        email,
+        password: hashedPassword,
+        role,
+        status: initialStatus, // Set status here
+        provider: 'local'
+    });
 
-    const token = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name, createdAt: user.createdAt }, 
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-    
+    // Notify admin if a new owner needs verification
+    if (initialStatus === 'pending_verification') {
+      try {
+        const adminEmail = process.env.ADMIN_EMAIL;
+        if (adminEmail) {
+          await sendEmail(adminEmail, 'newOwnerForVerification', {
+            name: user.name,
+            email: user.email,
+            adminDashboardLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard`
+          });
+        } else {
+          console.warn('ADMIN_EMAIL not set. Skipping new owner notification.');
+        }
+      } catch (emailError) {
+        console.error(`Failed to send new owner notification email to admin:`, emailError);
+      }
+    }
+
+    // Always issue a token, but the frontend will check the status
+    const tokenPayload = {
+        id: user.id,
+        email: user.email,
+        role: user.role,
+        name: user.name,
+        status: user.status, // Include status in the token payload
+        createdAt: user.createdAt
+    };
+    const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: '1d' });
+
+    // Send back the token.
+    // If pending, the frontend (AuthContext) will still log them in,
+    // but the owner/dashboard will show a "pending" message.
     res.status(201).json({ token });
 
   } catch (err) {
@@ -32,7 +71,8 @@ async function register(req, res) {
     res.status(500).json({ error: 'Registration failed due to a server error.' });
   }
 }
-// Request Password Reset
+
+// --- requestPasswordReset and resetPassword functions remain the same ---
 async function requestPasswordReset(req, res) {
   const { email } = req.body;
   if (!email) {
@@ -40,19 +80,16 @@ async function requestPasswordReset(req, res) {
   }
 
   try {
-    const user = await User.findOne({ where: { email, provider: 'local' } }); // Only allow for local accounts
+    const user = await User.findOne({ where: { email, provider: 'local' } });
 
     if (!user) {
-      // Don't reveal if the user exists or not for security
       console.log(`Password reset requested for non-existent or non-local email: ${email}`);
       return res.json({ message: 'If an account with that email exists, a password reset link has been sent.' });
     }
 
-    // Generate a secure token
     const resetToken = crypto.randomBytes(32).toString('hex');
-    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex'); // Store hashed token
+    const hashedToken = crypto.createHash('sha256').update(resetToken).digest('hex');
 
-    // Set token expiry (e.g., 1 hour from now)
     const expires = new Date();
     expires.setHours(expires.getHours() + 1);
 
@@ -60,10 +97,8 @@ async function requestPasswordReset(req, res) {
     user.passwordResetExpires = expires;
     await user.save();
 
-    // Create the reset link for the email (adjust frontend URL as needed)
     const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
 
-    // Send the email
     await sendEmail(user.email, 'passwordResetRequest', {
       name: user.name,
       resetLink: resetLink,
@@ -77,7 +112,6 @@ async function requestPasswordReset(req, res) {
   }
 }
 
-// Reset Password
 async function resetPassword(req, res) {
   const { token, password } = req.body;
 
@@ -88,11 +122,10 @@ async function resetPassword(req, res) {
   try {
     const hashedToken = crypto.createHash('sha256').update(token).digest('hex');
 
-    // Find the user by the hashed token and check expiry
     const user = await User.findOne({
       where: {
         passwordResetToken: hashedToken,
-        passwordResetExpires: { [Op.gt]: new Date() }, // Check if token hasn't expired
+        passwordResetExpires: { [Op.gt]: new Date() },
       },
     });
 
@@ -100,31 +133,27 @@ async function resetPassword(req, res) {
       return res.status(400).json({ error: 'Password reset token is invalid or has expired.' });
     }
 
-    // Hash the new password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Update password and clear reset token fields
     user.password = hashedPassword;
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
     await user.save();
 
-    // Optional: Send password change confirmation email
     try {
          await sendEmail(user.email, 'passwordResetConfirmation', { name: user.name });
     } catch (emailError) {
          console.error(`Failed to send password change confirmation email to ${user.email}:`, emailError);
     }
 
-
-    // Log the user in automatically by sending a new JWT token
+    // Also include status in the new token
     const jwtToken = jwt.sign(
-      { id: user.id, email: user.email, role: user.role, name: user.name, createdAt: user.createdAt },
+      { id: user.id, email: user.email, role: user.role, name: user.name, status: user.status, createdAt: user.createdAt },
       process.env.JWT_SECRET,
       { expiresIn: '1d' }
     );
 
-    res.json({ message: 'Password has been reset successfully.', token: jwtToken }); // Send token back
+    res.json({ message: 'Password has been reset successfully.', token: jwtToken });
 
   } catch (err) {
     console.error('Error resetting password:', err);
@@ -132,9 +161,9 @@ async function resetPassword(req, res) {
   }
 }
 
-module.exports = { 
+
+module.exports = {
   register,
-  requestPasswordReset, 
+  requestPasswordReset,
   resetPassword,
 };
-

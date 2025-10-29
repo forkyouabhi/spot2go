@@ -1,3 +1,4 @@
+// services/web/src/types/index.ts
 export interface User {
   id: string;
   name: string;
@@ -7,8 +8,8 @@ export interface User {
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
   role: 'customer' | 'owner' | 'admin';
+  status: 'active' | 'pending_verification' | 'rejected'; // ADDED STATUS
   createdAt: string;
-  // This is sometimes included from the token, good to have for compatibility
   created_at?: string; 
 }
 
@@ -32,7 +33,6 @@ export interface UserSettings {
   };
 }
 
-// NEW: Interface for menu items
 export interface MenuItem {
   id: number;
   name: string;
@@ -52,20 +52,19 @@ export interface StudyPlace {
   status: 'pending' | 'approved' | 'rejected';
   images?: string[];
   description?: string;
-  menuItems?: MenuItem[]; // ADDED: menuItems property
+  menuItems?: MenuItem[];
   reservable?: boolean;
   reservableHours?: {
     start: string;
     end: string;
   };
-  // Optional fields that may not always be present from the API
   distance?: string;
   rating?: number;
   pricePerHour?: number;
   availableSlots?: TimeSlot[];
   reviews?: Review[];
-  created_at: string; // From the database
-  owner?: Partial<User>; // For admin dashboard
+  created_at: string;
+  owner?: Partial<User>;
 }
 
 export interface TimeSlot {

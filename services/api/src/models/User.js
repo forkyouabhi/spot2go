@@ -25,12 +25,12 @@ const User = sequelize.define('User', {
     type: DataTypes.TEXT,
     allowNull: true, // For social logins
   },
-  passwordResetToken: { // Keep fields added for password reset
+  passwordResetToken: {
     type: DataTypes.STRING,
     allowNull: true,
     field: 'password_reset_token',
   },
-  passwordResetExpires: { // Keep fields added for password reset
+  passwordResetExpires: {
     type: DataTypes.DATE,
     allowNull: true,
     field: 'password_reset_expires',
@@ -56,33 +56,29 @@ const User = sequelize.define('User', {
   },
   status: {
     type: DataTypes.STRING,
-    defaultValue: 'active', // Default for customers or already approved users
     allowNull: false,
     validate: {
-      isIn: [['active', 'pending_verification', 'rejected']], // Possible statuses
+      isIn: [['active', 'pending_verification', 'rejected']],
     },
+    defaultValue: 'active', // Default is active, will be overridden by controller for owners
   },
-  // --- ADDITIONS START ---
-  // Explicitly define createdAt to ensure it's NOT NULL and uses DB default
   createdAt: {
     type: DataTypes.DATE,
-    allowNull: false, // Keep this false for new records
+    allowNull: false, // Keep false for new records
     defaultValue: DataTypes.NOW, // Rely on DB default
-    field: 'created_at' // Explicitly map to the snake_case column name
+    field: 'created_at'
   },
-  // Explicitly define updatedAt and ALLOW NULLs for existing rows
   updatedAt: {
     type: DataTypes.DATE,
-    allowNull: true, // <<<< This allows NULLs for existing rows
-    field: 'updated_at' // Explicitly map to the snake_case column name
+    allowNull: true, // Allow NULLs for existing rows that might not have it
+    field: 'updated_at'
   }
-  // --- ADDITIONS END ---
 },
 {
   tableName: 'users',
-  timestamps: true, // Keep this true so Sequelize manages updates going forward
-  createdAt: 'created_at', // Keep specifying the exact column name
-  updatedAt: 'updated_at', // Keep specifying the exact column name
+  timestamps: true, // Sequelize manages updates
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
 });
 
 module.exports = User;

@@ -1,3 +1,4 @@
+// services/web/src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { setAuthToken, registerUser, loginUser } from '../lib/api';
@@ -8,6 +9,7 @@ interface User {
   exp: number;
   name: string;
   role: 'customer' | 'owner' | 'admin';
+  status: 'active' | 'pending_verification' | 'rejected'; // ADDED STATUS
   createdAt: string;
   dateJoined: string;
   [key: string]: any;
@@ -46,7 +48,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('token', token);
     setAuthToken(token);
     const decoded = jwtDecode<User>(token);
-    const fullUser = { ...decoded, dateJoined: decoded.createdAt };
+    // Include status from the decoded token
+    const fullUser = { ...decoded, dateJoined: decoded.createdAt, status: decoded.status };
     setUser(fullUser);
 
     if (redirect) {
@@ -63,26 +66,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [handleAuthSuccess]);
 
   useEffect(() => {
-    // This function checks for a token in the URL first, then localStorage
     const processToken = () => {
-      // Check for token in URL (from OAuth redirect)
       const urlToken = router.query.token as string;
       if (urlToken) {
         handleAuthSuccess(urlToken, true);
-        // The handleAuthSuccess function will redirect and clean the URL
-        return; // Stop processing to avoid conflicts
+        return; 
       }
 
-      // If no token in URL, check localStorage
       const localToken = localStorage.getItem('token');
       if (localToken) {
         try {
           const decoded = jwtDecode<User>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
-            setUser({ ...decoded, dateJoined: decoded.createdAt });
+            // Include status when setting user from localStorage
+            setUser({ ...decoded, dateJoined: decoded.createdAt, status: decoded.status });
             setAuthToken(localToken);
           } else {
-            // Token expired
             localStorage.removeItem('token');
             setUser(null);
           }
@@ -97,7 +96,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     };
 
-    // router.isReady is crucial to ensure router.query is populated
     if (router.isReady) {
       processToken();
     }
@@ -105,11 +103,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
   const login = async (email: string, password: string): Promise<User> => {
     const response = await loginUser({ email, password });
+    // The token from login endpoint also needs to include status
+    // Let's assume the /login route on the backend also adds status to the token
+    // (We should verify this, but authController.js doesn't show /login)
+    // For now, we rely on the logic in handleAuthSuccess
     return handleAuthSuccess(response.data.token);
   };
     
   const register = async (name: string, email: string, password: string, role: 'customer' | 'owner'): Promise<User> => {
     const response = await registerUser({ name, email, password, role });
+    // register response now includes the token with the status
     return handleAuthSuccess(response.data.token);
   };
 

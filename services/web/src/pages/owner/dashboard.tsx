@@ -1,3 +1,4 @@
+// services/web/src/pages/owner/dashboard.tsx
 import { useRouter } from 'next/router';
 import { useEffect, useState, useCallback, useMemo } from 'react';
 import { useAuth } from '../../context/AuthContext';
@@ -9,9 +10,45 @@ import { StudyPlace } from '../../types';
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger, DialogDescription } from '../../components/ui/dialog';
-import { PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, Sparkles, MapPin } from 'lucide-react';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
+import { PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, Sparkles, MapPin, Loader2, Mail } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+
+// NEW Component for Pending Status
+const PendingVerification = () => (
+  <div className="min-h-screen bg-brand-cream">
+     <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
+        <div className="p-4 flex justify-between items-center max-w-screen-xl mx-auto">
+            <div className="flex items-center gap-3">
+              <Sparkles className="h-8 w-8 text-brand-yellow" />
+              <div>
+                <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
+              </div>
+            </div>
+        </div>
+      </header>
+      <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
+        <Card className="text-center p-12 border-2 border-dashed border-brand-yellow bg-white shadow-lg">
+            <CardHeader>
+                <div className="mx-auto bg-brand-yellow rounded-full h-16 w-16 flex items-center justify-center">
+                    <Mail className="h-10 w-10 text-brand-burgundy" />
+                </div>
+                <CardTitle className="text-2xl font-bold text-brand-burgundy mt-4">
+                    Account Pending Verification
+                </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <p className="text-brand-orange text-lg">
+                    Thank you for registering! Your account is currently under review by our admin team.
+                </p>
+                <p className="text-brand-burgundy">
+                    You will receive an email as soon as your account is approved. After approval, you will be able to add and manage your study spots here.
+                </p>
+            </CardContent>
+        </Card>
+      </main>
+  </div>
+);
 
 export default function OwnerDashboard() {
   const router = useRouter();
@@ -23,7 +60,7 @@ export default function OwnerDashboard() {
   const [editingPlace, setEditingPlace] = useState<StudyPlace | null>(null);
 
   const fetchPlaces = useCallback(async () => {
-    if (!isAuthenticated || user?.role !== 'owner') return;
+    if (!isAuthenticated || user?.role !== 'owner' || user?.status !== 'active') return;
     try {
       const response = await getOwnerPlaces();
       setPlaces(response.data);
@@ -33,10 +70,13 @@ export default function OwnerDashboard() {
   }, [isAuthenticated, user]);
 
   useEffect(() => {
-    if (!loading && (!isAuthenticated || user?.role !== 'owner')) {
-      router.replace('/');
-    } else if (isAuthenticated) {
-      fetchPlaces();
+    if (!loading) {
+      if (!isAuthenticated || user?.role !== 'owner') {
+        router.replace('/');
+      } else if (user.status === 'active') {
+        fetchPlaces();
+      }
+      // If status is 'pending_verification' or 'rejected', the component will render the appropriate message
     }
   }, [isAuthenticated, loading, user, router, fetchPlaces]);
 
@@ -51,7 +91,7 @@ export default function OwnerDashboard() {
   
   const handleOpenEditModal = (place: StudyPlace) => {
     setEditingPlace(place);
-    setIsAddPlaceOpen(true); // Reuse the same dialog for editing
+    setIsAddPlaceOpen(true);
   };
   
   const handleSuccess = () => {
@@ -86,10 +126,22 @@ export default function OwnerDashboard() {
     }
   };
 
-  if (loading || !isAuthenticated) {
-    return <div className="min-h-screen flex items-center justify-center bg-brand-cream">Loading...</div>;
+  if (loading || !user) {
+    return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 
+  // --- NEW VERIFICATION GATES ---
+  if (user.status === 'pending_verification') {
+    return <PendingVerification />;
+  }
+
+  if (user.status === 'rejected') {
+    // You can create a 'RejectedVerification' component similar to the pending one
+    return <div className="min-h-screen flex items-center justify-center bg-brand-cream">Your account application was rejected. Please contact support.</div>;
+  }
+  // --- END GATES ---
+
+  // User is 'active' owner, show dashboard:
   return (
     <div className="min-h-screen bg-brand-cream">
       <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">

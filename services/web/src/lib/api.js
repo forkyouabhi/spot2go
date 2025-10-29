@@ -34,11 +34,8 @@ export const setAuthToken = (token) => {
 // --- Auth Endpoints ---
 export const registerUser = (userData) => api.post('/auth/register', userData);
 export const loginUser = (credentials) => api.post('/auth/login', credentials);
-// --- Password Reset ---
 export const requestPasswordReset = (emailData) => api.post('/auth/request-password-reset', emailData);
 export const resetPassword = (resetData) => api.post('/auth/reset-password', resetData);
-// --- END Password Reset ---
-
 
 // --- User Endpoints ---
 export const updateUser = (userId, profileData) => api.put(`/users/${userId}`, profileData);
@@ -53,15 +50,15 @@ export const createBooking = (bookingData) => api.post('/customers/bookings', bo
 
 // --- Owner Endpoints ---
 export const addPlace = (placeData) => api.post('/owners/places', placeData, {
-    headers: { 'Content-Type': 'multipart/form-data' } // Ensure correct header for file uploads
+    headers: { 'Content-Type': 'multipart/form-data' }
 });
 export const getOwnerPlaces = () => api.get('/owners/places');
 export const getOwnerPlaceById = (placeId) => api.get(`/owners/places/${placeId}`);
 export const updateOwnerPlace = (placeId, placeData) => api.put(`/owners/places/${placeId}`, placeData, {
-    headers: { 'Content-Type': 'multipart/form-data' } // Ensure correct header for file uploads
+    headers: { 'Content-Type': 'multipart/form-data' }
 });
 export const addMenuItem = (placeId, menuItemData) => api.post(`/owners/places/${placeId}/menu`, menuItemData);
-export const addBundle = (placeId, bundleData) => api.post(`/owners/places/${placeId}/bundles`, bundleData); // Assuming addBundle exists
+export const addBundle = (placeId, bundleData) => api.post(`/owners/places/${placeId}/bundles`, bundleData);
 
 
 // --- Admin Endpoints ---
@@ -69,5 +66,10 @@ export const getPendingPlaces = () => api.get('/admin/places/pending');
 export const approvePlace = (placeId) => api.put(`/admin/places/${placeId}/status`, { status: 'approved' });
 export const rejectPlace = (placeId) => api.put(`/admin/places/${placeId}/status`, { status: 'rejected' });
 export const getAdminPlaceStats = () => api.get('/admin/places/stats');
+
+// NEW Admin Owner Management Endpoints
+export const getPendingOwners = () => api.get('/admin/owners/pending');
+export const updateOwnerStatus = (userId, status) => api.put(`/admin/owners/${userId}/status`, { status });
+
 
 export default api;
