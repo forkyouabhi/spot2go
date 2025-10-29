@@ -43,7 +43,7 @@ export default function App() {
   const [ticketId, setTicketId] = useState<string>('');
 
   const handleAuth = async (email: string, password: string, name?: string): Promise<void> => {
-    // In a real app, this would authenticate with a backend
+    
     const newUser = {
       ...mockUser,
       name: name || mockUser.name,
@@ -54,8 +54,6 @@ export default function App() {
   };
 
   const handleThirdPartyAuth = (provider: 'google' | 'apple'): void => {
-    // In a real app, this would authenticate with the third-party provider
-    // For now, we'll create a mock user based on the provider
     const newUser = {
       ...mockUser,
       name: `${provider === 'google' ? 'Google' : 'Apple'} User`,

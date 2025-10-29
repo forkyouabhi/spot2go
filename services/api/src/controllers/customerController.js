@@ -1,7 +1,7 @@
+const { Op } = require('sequelize');
 const { Place, Booking, MenuItem, User } = require('../models');
-const { Op } = require('sequelize'); // FIX: Import Sequelize operators
+const { sendEmail } = require('../utils/emailService');
 
-// Lists all approved places
 const listNearbyPlaces = async (req, res) => {
   try {
     const places = await Place.findAll({
@@ -15,19 +15,14 @@ const listNearbyPlaces = async (req, res) => {
   }
 };
 
-// Gets details for a single approved place, including menu items and generated time slots
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
     const placeData = await Place.findOne({
        where: { id: placeId, status: 'approved' },
        include: [
-        {
-          model: MenuItem,
-          as: 'menuItems',
-          attributes: ['id', 'name', 'price'],
-        },
-        { model: User, as: 'owner', attributes: ['name'] }
+        { model: MenuItem, as: 'menuItems', attributes: ['id', 'name', 'price'] },
+        { model: User, as: 'owner', attributes: ['name', 'email'] }
       ],
     });
 
@@ -37,32 +32,26 @@ const getPlaceById = async (req, res) => {
 
     const place = placeData.toJSON();
 
-    // Dynamically generate available slots if the place is reservable
     if (place.reservable && place.reservableHours?.start && place.reservableHours?.end) {
-      place.availableSlots = [];
       const today = new Date();
-      const sevenDaysFromNow = new Date();
-      sevenDaysFromNow.setDate(today.getDate() + 7);
+      const nextWeek = new Date(today);
+      nextWeek.setDate(today.getDate() + 7);
 
-      // Fetch all confirmed bookings for this place within the next 7 days to check against
       const bookings = await Booking.findAll({
         where: {
           placeId: place.id,
           status: 'confirmed',
           date: {
             [Op.gte]: today.toISOString().split('T')[0],
-            [Op.lt]: sevenDaysFromNow.toISOString().split('T')[0],
+            [Op.lt]: nextWeek.toISOString().split('T')[0],
           }
         },
-        attributes: ['date', 'startTime'],
+        attributes: ['date', 'startTime']
       });
 
-      // Create a lookup Set for efficient checking of booked slots
-      const bookedSlots = new Set(
-        bookings.map(b => `${b.date}T${b.startTime}`)
-      );
-
-      // Generate slots for the next 7 days
+      const bookedSlots = new Set(bookings.map(b => `${b.date}T${b.startTime}`));
+      
+      place.availableSlots = [];
       for (let i = 0; i < 7; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
@@ -74,19 +63,17 @@ const getPlaceById = async (req, res) => {
         while(currentHour < closingHour) {
             const nextHour = currentHour + 2;
             if (nextHour <= closingHour) {
-                const startTime = `${String(currentHour).padStart(2, '0')}:00:00`;
-                const slotIdentifier = `${dateString}T${startTime}`;
-
-                // Check against the lookup Set to determine real-time availability
+                const startTime = `${String(currentHour).padStart(2, '0')}:00`;
+                const slotId = `${dateString}T${startTime}`;
                 place.availableSlots.push({
-                    id: `${place.id}-${dateString}-${currentHour}`,
+                    id: `${place.id}-${slotId}`,
                     date: dateString,
-                    startTime: `${String(currentHour).padStart(2, '0')}:00`,
+                    startTime: startTime,
                     endTime: `${String(nextHour).padStart(2, '0')}:00`,
-                    available: !bookedSlots.has(slotIdentifier), 
+                    available: !bookedSlots.has(slotId),
                 });
             }
-            currentHour += 2; // Move to the next 2-hour block
+            currentHour += 2;
         }
       }
     }
@@ -97,16 +84,25 @@ const getPlaceById = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch place details' });
   }
 };
-
-// Create a booking
 const createBooking = async (req, res) => {
   try {
     const { placeId, amount, date, startTime, endTime } = req.body;
-    const userId = req.user.id;
+    const userId = req.user.id; // Get user ID from authenticated request
 
-    const place = await Place.findByPk(placeId);
+    // --- Find User and Place ---
+    const [user, place] = await Promise.all([
+       User.findByPk(userId),
+       Place.findByPk(placeId)
+    ]);
+
+    if (!user) {
+       return res.status(404).json({ error: 'User not found.' }); // Should not happen if authenticated
+    }
     if (!place) {
       return res.status(404).json({ error: 'Place not found' });
+    }
+    if (place.status !== 'approved' || !place.reservable) {
+        return res.status(400).json({ error: 'This place is not available for booking.' });
     }
 
     // Check if the slot is already booked
@@ -115,7 +111,7 @@ const createBooking = async (req, res) => {
         placeId,
         date,
         startTime,
-        status: 'confirmed'
+        status: { [Op.in]: ['confirmed', 'pending'] } // Check pending too
       }
     });
 
@@ -123,25 +119,40 @@ const createBooking = async (req, res) => {
       return res.status(409).json({ error: 'This time slot is no longer available.' });
     }
 
+    // --- Create Booking ---
     const booking = await Booking.create({
       userId,
       placeId,
-      amount,
+      amount, // You might want to calculate this server-side based on place.pricePerHour
       date,
       startTime,
       endTime,
-      status: 'confirmed', 
+      status: 'confirmed', // Assuming direct confirmation for now
       ticketId: `SPOT2GO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     });
 
+    // --- Send Confirmation Email ---
+    try {
+      await sendEmail(user.email, 'bookingConfirmation', {
+        name: user.name,
+        placeName: place.name,
+        date: booking.date,
+        startTime: booking.startTime.slice(0, 5), // Format HH:MM
+        endTime: booking.endTime.slice(0, 5),     // Format HH:MM
+        ticketId: booking.ticketId,
+      });
+    } catch (emailError) {
+      // Log the error but don't fail the booking if email fails
+      console.error(`Failed to send booking confirmation email to ${user.email}:`, emailError);
+    }
+    // -----------------------------
+
     res.status(201).json({ message: 'Booking created successfully!', booking });
   } catch (err) {
-    console.error(err);
+    console.error('Error creating booking:', err); // Log the specific error
     res.status(500).json({ error: 'Failed to create booking' });
   }
 };
-
-// List bookings for current user
 const listBookings = async (req, res) => {
   try {
     const userBookings = await Booking.findAll({
@@ -149,17 +160,7 @@ const listBookings = async (req, res) => {
       include: [{ model: Place, as: 'place', attributes: ['name', 'location'] }],
       order: [['created_at', 'DESC']],
     });
-    // Format the response to match what the frontend expects
-    res.json(userBookings.map(b => ({
-        id: b.id,
-        placeId: b.placeId,
-        placeName: b.place.name,
-        date: b.date,
-        startTime: b.startTime.slice(0, 5), // Format time to HH:MM
-        endTime: b.endTime.slice(0, 5),
-        status: b.status,
-        ticketId: b.ticketId
-    })));
+    res.json(userBookings);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Failed to fetch bookings' });

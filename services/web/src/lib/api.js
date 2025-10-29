@@ -1,3 +1,4 @@
+// services/web/src/lib/api.js
 import axios from 'axios';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
@@ -33,6 +34,11 @@ export const setAuthToken = (token) => {
 // --- Auth Endpoints ---
 export const registerUser = (userData) => api.post('/auth/register', userData);
 export const loginUser = (credentials) => api.post('/auth/login', credentials);
+// --- Password Reset ---
+export const requestPasswordReset = (emailData) => api.post('/auth/request-password-reset', emailData);
+export const resetPassword = (resetData) => api.post('/auth/reset-password', resetData);
+// --- END Password Reset ---
+
 
 // --- User Endpoints ---
 export const updateUser = (userId, profileData) => api.put(`/users/${userId}`, profileData);
@@ -46,11 +52,17 @@ export const getUserBookings = () => api.get('/customers/bookings');
 export const createBooking = (bookingData) => api.post('/customers/bookings', bookingData);
 
 // --- Owner Endpoints ---
-export const addPlace = (placeData) => api.post('/owners/places', placeData);
+export const addPlace = (placeData) => api.post('/owners/places', placeData, {
+    headers: { 'Content-Type': 'multipart/form-data' } // Ensure correct header for file uploads
+});
 export const getOwnerPlaces = () => api.get('/owners/places');
 export const getOwnerPlaceById = (placeId) => api.get(`/owners/places/${placeId}`);
-export const updateOwnerPlace = (placeId, placeData) => api.put(`/owners/places/${placeId}`, placeData);
+export const updateOwnerPlace = (placeId, placeData) => api.put(`/owners/places/${placeId}`, placeData, {
+    headers: { 'Content-Type': 'multipart/form-data' } // Ensure correct header for file uploads
+});
 export const addMenuItem = (placeId, menuItemData) => api.post(`/owners/places/${placeId}/menu`, menuItemData);
+export const addBundle = (placeId, bundleData) => api.post(`/owners/places/${placeId}/bundles`, bundleData); // Assuming addBundle exists
+
 
 // --- Admin Endpoints ---
 export const getPendingPlaces = () => api.get('/admin/places/pending');
