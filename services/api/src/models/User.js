@@ -56,32 +56,29 @@ const User = sequelize.define('User', {
   },
   status: {
     type: DataTypes.STRING,
-    defaultValue: 'active', // Default for customers or already approved users
     allowNull: false,
     validate: {
-      isIn: [['active', 'pending_verification', 'rejected']], // Possible statuses
+      isIn: [['active', 'pending_verification', 'rejected']],
     },
+    defaultValue: 'active', // Default is active, will be overridden by controller for owners
   },
-  // REMOVED explicit createdAt and updatedAt definitions from here
-},
-{
-  tableName: 'users',
-  timestamps: true, // Keep this true so Sequelize manages updates
-  
-  // --- MODIFICATION ---
-  // Define the timestamp columns here to override defaults
   createdAt: {
     type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
+    allowNull: false, // Keep false for new records
+    defaultValue: DataTypes.NOW, // Rely on DB default
     field: 'created_at'
   },
   updatedAt: {
     type: DataTypes.DATE,
-    allowNull: true, // 
+    allowNull: true, // Allow NULLs for existing rows that might not have it
     field: 'updated_at'
   }
-  // --- END MODIFICATION ---
+},
+{
+  tableName: 'users',
+  timestamps: true, // Sequelize manages updates
+  createdAt: 'created_at',
+  updatedAt: 'updated_at',
 });
 
 module.exports = User;
