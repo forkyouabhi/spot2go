@@ -7,15 +7,15 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../co
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ArrowLeft, Sparkles, CheckCircle, Loader2, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
+import { ArrowLeft, CheckCircle, Loader2, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import Head from 'next/head';
+import Image from 'next/image'; // Import the Next.js Image component
 
 export default function BusinessSignupPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   const [signupSuccess, setSignupSuccess] = useState(false);
   
-  // --- NEW: State for the detailed form ---
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -40,7 +40,6 @@ export default function BusinessSignupPage() {
     }
 
     try {
-      // Pass all the new details to the register function
       await register(name, email, password, 'owner', phone, businessLocation);
       toast.success('Account created successfully!');
       toast.info('Your account is now pending verification by an admin.');
@@ -61,15 +60,21 @@ export default function BusinessSignupPage() {
         <Head>
           <title>Spot2Go | Verification Pending</title>
         </Head>
-        <div className="min-h-screen relative overflow-hidden" style={{ background: 'linear-gradient(135deg, #6C0345 0%, #DC6B19 100%)' }}>
+        <div className="min-h-screen relative overflow-hidden auth-background">
           <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
             <div className="max-w-md w-full space-y-8">
+              {/* --- MODIFIED: Use Logo Image --- */}
               <div className="flex items-center justify-center space-x-3">
-                 <div className="p-4 rounded-2xl border-2" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
-                    <Sparkles className="h-8 w-8" style={{ color: '#6C0345' }} />
-                </div>
-                <h1 className="text-4xl font-bold" style={{ color: '#FFF8DC' }}>Spot2Go</h1>
+                <Image 
+                  src="/logo-full.png" // Assumes you saved the transparent logo here
+                  alt="Spot2Go Logo"
+                  width={250}
+                  height={67}
+                  className="object-contain mx-auto"
+                  style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                />
               </div>
+              {/* --- END MODIFICATION --- */}
               <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
                 <CardHeader className="text-center space-y-4 pb-6">
                    <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
@@ -96,22 +101,14 @@ export default function BusinessSignupPage() {
     );
   }
 
-  // The new detailed signup form
+  // The signup form
   return (
     <>
       <Head>
         <title>Spot2Go | Business Signup</title>
       </Head>
-      <div className="min-h-screen relative overflow-hidden">
-        <div 
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, #6C0345 0%, #DC6B19 100%)' }}
-        />
-        <div className="absolute inset-0 overflow-hidden pointer-events-none">
-          <div className="absolute top-20 left-10 w-16 h-16 rounded-full opacity-20 animate-pulse" style={{ backgroundColor: '#F7C566' }} />
-          <div className="absolute top-40 right-20 w-24 h-24 rounded-full opacity-15 animate-pulse" style={{ backgroundColor: '#FFF8DC', animationDelay: '2s' }} />
-        </div>
-
+      <div className="min-h-screen relative overflow-hidden auth-background">
+        
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
             <Button 
@@ -124,14 +121,18 @@ export default function BusinessSignupPage() {
               Back
             </Button>
 
+            {/* --- MODIFIED: Use Logo Image --- */}
             <div className="text-center space-y-4 mb-8 animate-fade-in-up">
-              <div className="flex items-center justify-center space-x-3">
-                <div className="p-4 rounded-2xl border-2" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
-                  <Sparkles className="h-8 w-8" style={{ color: '#6C0345' }} />
-                </div>
-                <h1 className="text-4xl font-bold" style={{ color: '#FFF8DC' }}>Partner With Us</h1>
-              </div>
+              <Image 
+                src="/logo-full.png" // Assumes you saved the transparent logo here
+                alt="Spot2Go Logo"
+                width={250}
+                height={67}
+                className="object-contain mx-auto"
+                style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+              />
             </div>
+            {/* --- END MODIFICATION --- */}
 
             <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
               <CardHeader className="text-center space-y-4 pb-6">

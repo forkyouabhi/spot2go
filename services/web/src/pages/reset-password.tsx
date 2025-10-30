@@ -6,23 +6,22 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from 'sonner';
-import { resetPassword } from '../lib/api'; // Import the API function
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { resetPassword } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
 import { Lock, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
 import Head from 'next/head';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const { handleTokenUpdate } = useAuth(); // Get function to update auth state
+  const { handleTokenUpdate } = useAuth();
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-   const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
-    // Extract token from URL query parameters when router is ready
     if (router.isReady) {
       const queryToken = router.query.token as string;
       if (queryToken) {
@@ -30,15 +29,13 @@ export default function ResetPasswordPage() {
       } else {
         setError("Invalid or missing reset token. Please request a new one.");
         toast.error("Invalid or missing reset token.");
-        // Optional: Redirect back after a delay
-        // setTimeout(() => router.push('/forgot-password'), 3000);
       }
     }
   }, [router.isReady, router.query]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError(null); // Clear previous errors
+    setError(null); 
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -50,7 +47,6 @@ export default function ResetPasswordPage() {
         toast.error("Password must be at least 8 characters long.");
         return;
     }
-
     if (!token) {
       setError("No reset token found.");
       toast.error("No reset token found.");
@@ -62,12 +58,10 @@ export default function ResetPasswordPage() {
       const response = await resetPassword({ token, password });
       toast.success('Password reset successfully! You are now logged in.');
 
-      // Update auth state with the new token and redirect
       if (response.data.token) {
-        handleTokenUpdate(response.data.token); // Use context function
-        router.push('/'); // Redirect to home page after successful login
+        handleTokenUpdate(response.data.token);
+        router.push('/');
       } else {
-         // Should not happen based on backend code, but handle defensively
          toast.info('Password reset, please log in.');
          router.push('/login');
       }
@@ -87,12 +81,8 @@ export default function ResetPasswordPage() {
       <Head>
         <title>Spot2Go | Reset Password</title>
       </Head>
-     <div className="min-h-screen relative overflow-hidden">
-        {/* Background Gradient */}
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, #6C0345 0%, #DC6B19 100%)' }}
-        />
+     {/* --- MODIFIED: Using new background class --- */}
+     <div className="min-h-screen relative overflow-hidden auth-background">
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
@@ -108,7 +98,7 @@ export default function ResetPasswordPage() {
             <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
               <CardHeader className="text-center space-y-4 pb-6">
                 <CardTitle className="text-2xl" style={{ color: '#6C0345' }}>
-                  Reset Your Password
+                  Set Your New Password
                 </CardTitle>
                 <CardDescription className="text-base" style={{ color: '#6C0345' }}>
                   Enter and confirm your new password below.
@@ -116,7 +106,7 @@ export default function ResetPasswordPage() {
               </CardHeader>
 
               <CardContent>
-                {error && !token ? ( // Show only token error if token is missing/invalid
+                {error && !token ? (
                      <div className="text-center p-4 rounded-lg bg-red-100 border border-red-300">
                         <p className="font-medium text-red-700">{error}</p>
                         <Button variant="link" onClick={() => router.push('/forgot-password')} className="mt-2 text-brand-orange">Request a new link</Button>
@@ -169,7 +159,6 @@ export default function ResetPasswordPage() {
                         aria-invalid={!!error && password !== confirmPassword}
                       />
                     </div>
-                    {/* Display general form errors (like password mismatch) */}
                     {error && token && (
                          <p className="text-sm text-red-600 text-center">{error}</p>
                     )}

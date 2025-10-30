@@ -1,3 +1,4 @@
+// services/web/src/pages/index.tsx
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { getPlaces } from '../lib/api';
@@ -7,12 +8,13 @@ import { Input } from '../components/ui/input';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent, CardDescription, CardFooter, CardTitle } from '../components/ui/card';
-import { MapPin, Search, Building2 } from 'lucide-react';
+import { MapPin, Search, Building2, Loader2 } from 'lucide-react';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
-import { SplashScreen } from '../components/SplashScreen';
-import Head from 'next/head'; // Import Head
+// --- MODIFIED: Import LandingPage instead of SplashScreen ---
+import { LandingPage } from '../components/LandingPage';
+import Head from 'next/head';
 
 const PLACE_TYPES = ['All', 'cafe', 'library', 'coworking', 'university'];
 
@@ -59,13 +61,20 @@ export default function HomePage() {
   }, [allPlaces, selectedType, searchTerm]);
   
   if (authLoading) {
-    return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><p>Loading...</p></div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-cream">
+        {/* Use a consistent loader */}
+        <Loader2 className="h-12 w-12 animate-spin text-brand-orange"/>
+      </div>
+    );
   }
 
   if (!isAuthenticated) {
-    return <SplashScreen onNavigate={(screen) => router.push(`/${screen}`)} />;
+    // --- MODIFIED: Show the new LandingPage for logged-out users ---
+    return <LandingPage />;
   }
   
+  // This is the authenticated user's dashboard
   return (
     <>
       <Head>
@@ -100,7 +109,13 @@ export default function HomePage() {
             <h2 className="text-2xl font-semibold text-brand-burgundy mb-4">Available Spaces ({filteredPlaces.length})</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {dataLoading ? (
-                    <p className="col-span-full">Loading places...</p>
+                    <div className="col-span-full flex justify-center items-center h-40">
+                      <Loader2 className="h-8 w-8 animate-spin text-brand-orange"/>
+                    </div>
+                ) : filteredPlaces.length === 0 ? (
+                  <p className="col-span-full text-center text-brand-orange">
+                    No spots found matching your criteria.
+                  </p>
                 ) : filteredPlaces.map(place => (
                   <Link href={`/places/${place.id}`} key={place.id} passHref>
                     <Card className="border-2 border-brand-yellow bg-white overflow-hidden flex flex-col h-full cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1">

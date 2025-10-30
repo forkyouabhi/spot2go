@@ -147,7 +147,8 @@ export default function OwnerDashboard() {
       <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
         <div className="p-4 flex justify-between items-center max-w-screen-xl mx-auto">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-8 w-8 text-brand-yellow" />
+              {/* --- MODIFIED: Replaced Sparkles with MapPin --- */}
+              <MapPin className="h-8 w-8 text-brand-orange" />
               <div>
                 <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
                 <p className="text-sm text-brand-yellow">Welcome, {user?.name}!</p>

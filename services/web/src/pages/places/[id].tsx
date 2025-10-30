@@ -256,10 +256,10 @@ export default function PlaceDetailPage() {
 
       <div className="min-h-screen bg-brand-cream">
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">
-           {/* ... (Header remains the same) ... */}
             <div className="max-w-screen-xl mx-auto flex justify-between items-center">
               <div className="flex items-center gap-3">
-                <Sparkles className="h-8 w-8 text-brand-yellow" />
+                {/* --- MODIFIED: Replaced Sparkles with MapPin --- */}
+                <MapPin className="h-8 w-8 text-brand-orange" />
                 <h1 className="text-xl font-bold text-brand-cream hidden sm:block">Spot2Go</h1>
               </div>
               <Button variant="ghost" onClick={() => router.push('/')} className="text-brand-cream hover:bg-brand-cream/10 border-brand-orange border">

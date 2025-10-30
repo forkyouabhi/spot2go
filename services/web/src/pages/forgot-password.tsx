@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "../co
 import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from 'sonner';
-import { requestPasswordReset } from '../lib/api'; // Import the API function
+import { requestPasswordReset } from '../lib/api';
 import { ArrowLeft, Mail, Loader2, Sparkles } from "lucide-react";
 import Head from 'next/head';
 
@@ -19,12 +19,11 @@ export default function ForgotPasswordPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setMessageSent(false); // Reset message state on new submission
+    setMessageSent(false); 
     try {
       const response = await requestPasswordReset({ email });
-      toast.success(response.data.message || 'Password reset link sent.'); // Use message from API
-      setMessageSent(true); // Show confirmation message on the page
-      setEmail(''); // Clear email field
+      toast.success(response.data.message || 'Password reset link sent.');
+      setMessageSent(true); 
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || 'Failed to send reset link. Please try again.';
       toast.error(errorMessage);
@@ -39,18 +38,14 @@ export default function ForgotPasswordPage() {
       <Head>
         <title>Spot2Go | Forgot Password</title>
       </Head>
-      <div className="min-h-screen relative overflow-hidden">
-        {/* Background Gradient */}
-        <div
-          className="absolute inset-0"
-          style={{ background: 'linear-gradient(135deg, #6C0345 0%, #DC6B19 100%)' }}
-        />
+      {/* --- MODIFIED: Using new background class --- */}
+      <div className="min-h-screen relative overflow-hidden auth-background">
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
             <Button
               variant="ghost"
-              onClick={() => router.push('/login')} // Go back to login
+              onClick={() => router.push('/login')}
               className="self-start p-3 rounded-xl border-2 transition-button"
               style={{ color: '#FFF8DC', borderColor: '#F7C566', backgroundColor: 'rgba(255, 248, 220, 0.1)' }}
             >
@@ -81,8 +76,11 @@ export default function ForgotPasswordPage() {
                 {messageSent ? (
                     <div className="text-center p-4 rounded-lg bg-green-100 border border-green-300">
                         <p className="font-medium text-green-700">
-                            Check your email! If an account exists for {email || 'that address'}, you'll receive a password reset link shortly.
+                            Check your email! If an account exists, you'll receive a password reset link shortly.
                         </p>
+                        <Button variant="link" onClick={() => router.push('/login')} className="mt-2 text-brand-orange">
+                          Back to Login
+                        </Button>
                     </div>
                 ) : (
                   <form onSubmit={handleSubmit} className="space-y-5">

@@ -6,3 +6,22 @@ body {
   background-color: #FFF8DC; /* brand-cream */
 }
 
+
+@layer utilities {
+  .auth-background {
+    /* High-quality, professional image */
+    background-image: url('https://images.unsplash.com/photo-1511537190424-bbbab87ac5eb?auto=format&fit=crop&w=2070&q=80');
+    background-size: cover;
+    background-position: center;
+  }
+  
+  .auth-background::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    /* Dark, branded overlay with blur */
+    background-color: rgba(40, 0, 20, 0.6); /* Darker burgundy tint */
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+  }
+}
