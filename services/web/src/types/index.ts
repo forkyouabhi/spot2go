@@ -3,14 +3,15 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string;
+  phone?: string; // This already exists, but good to confirm
   dateJoined: string;
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
   role: 'customer' | 'owner' | 'admin';
-  status: 'active' | 'pending_verification' | 'rejected'; // ADDED STATUS
+  status: 'active' | 'pending_verification' | 'rejected';
   createdAt: string;
-  created_at?: string; 
+  created_at?: string;
+  businessLocation?: string; // --- NEW FIELD ---
 }
 
 export interface UserSettings {
@@ -33,6 +34,7 @@ export interface UserSettings {
   };
 }
 
+// ... (MenuItem, StudyPlace, TimeSlot, Review, Booking, Screen types remain the same) ...
 export interface MenuItem {
   id: number;
   name: string;

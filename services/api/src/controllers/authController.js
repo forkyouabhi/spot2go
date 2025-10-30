@@ -8,8 +8,8 @@ const { Op } = require('sequelize');
 
 // Handles user registration, setting status based on role.
 async function register(req, res) {
-  // role defaults to 'customer' unless explicitly provided
-  const { name, email, password, role = 'customer' } = req.body;
+  // --- MODIFIED: Accept new fields ---
+  const { name, email, password, role = 'customer', phone, businessLocation } = req.body;
 
   if (!email || !password || !name) {
     return res.status(400).json({ error: 'Name, email, and password are required.' });
@@ -20,12 +20,16 @@ async function register(req, res) {
 
   try {
     const hashedPassword = await bcrypt.hash(password, 10);
+    
+    // --- MODIFIED: Save new fields ---
     const user = await User.create({
         name,
         email,
         password: hashedPassword,
         role,
-        status: initialStatus, // Set status here
+        status: initialStatus,
+        phone, // Save phone
+        businessLocation, // Save business location
         provider: 'local'
     });
 
@@ -37,6 +41,8 @@ async function register(req, res) {
           await sendEmail(adminEmail, 'newOwnerForVerification', {
             name: user.name,
             email: user.email,
+            phone: user.phone || 'Not provided', // Pass new fields
+            businessLocation: user.businessLocation || 'Not provided', // Pass new fields
             adminDashboardLink: `${process.env.FRONTEND_URL || 'http://localhost:3000'}/admin/dashboard`
           });
         } else {
@@ -47,20 +53,17 @@ async function register(req, res) {
       }
     }
 
-    // Always issue a token, but the frontend will check the status
+    // Always issue a token
     const tokenPayload = {
         id: user.id,
         email: user.email,
         role: user.role,
         name: user.name,
-        status: user.status, // Include status in the token payload
+        status: user.status,
         createdAt: user.createdAt
     };
     const token = jwt.sign(tokenPayload, process.env.JWT_SECRET, { expiresIn: '1d' });
 
-    // Send back the token.
-    // If pending, the frontend (AuthContext) will still log them in,
-    // but the owner/dashboard will show a "pending" message.
     res.status(201).json({ token });
 
   } catch (err) {
@@ -146,7 +149,6 @@ async function resetPassword(req, res) {
          console.error(`Failed to send password change confirmation email to ${user.email}:`, emailError);
     }
 
-    // Also include status in the new token
     const jwtToken = jwt.sign(
       { id: user.id, email: user.email, role: user.role, name: user.name, status: user.status, createdAt: user.createdAt },
       process.env.JWT_SECRET,
@@ -160,7 +162,6 @@ async function resetPassword(req, res) {
     res.status(500).json({ error: 'Failed to reset password.' });
   }
 }
-
 
 module.exports = {
   register,

@@ -2,7 +2,7 @@
 import { User } from '../types';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from './ui/card';
 import { Button } from './ui/button';
-import { User as UserIcon, Calendar, Check, X, Mail } from 'lucide-react';
+import { User as UserIcon, Calendar, Check, X, Mail, Phone, MapPin } from 'lucide-react';
 
 interface PendingOwnerCardProps {
   owner: Partial<User>;
@@ -30,11 +30,22 @@ export function PendingOwnerCard({ owner, onApprove, onReject }: PendingOwnerCar
           </div>
         </div>
       </CardHeader>
-      <CardContent className="p-4">
-        <p className="text-sm text-gray-700">
-          This user has registered as a business owner and is awaiting verification to be able to add places to the platform.
-        </p>
+      
+      {/* --- NEW: Display extra info --- */}
+      <CardContent className="p-4 space-y-2">
+        <div className="flex items-center gap-2 text-sm text-brand-burgundy">
+          <Phone className="h-4 w-4 text-brand-orange" />
+          <strong>Phone:</strong>
+          <span>{owner.phone || 'Not Provided'}</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-brand-burgundy">
+          <MapPin className="h-4 w-4 text-brand-orange" />
+          <strong>Address:</strong>
+          <span>{owner.businessLocation || 'Not Provided'}</span>
+        </div>
       </CardContent>
+      {/* --- END NEW --- */}
+
       <CardFooter className="bg-brand-cream border-t-2 border-brand-yellow p-4 flex justify-end gap-2">
         <Button size="sm" className="bg-red-600 hover:bg-red-700 text-white" onClick={onReject}>
           <X className="h-4 w-4 mr-2" />

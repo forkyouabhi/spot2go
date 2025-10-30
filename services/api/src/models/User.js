@@ -19,11 +19,11 @@ const User = sequelize.define('User', {
   email: {
     type: DataTypes.TEXT,
     unique: true,
-    allowNull: true, // For social logins that might not provide an email
+    allowNull: true,
   },
   password: {
     type: DataTypes.TEXT,
-    allowNull: true, // For social logins
+    allowNull: true,
   },
   passwordResetToken: {
     type: DataTypes.STRING,
@@ -56,27 +56,36 @@ const User = sequelize.define('User', {
   },
   status: {
     type: DataTypes.STRING,
+    defaultValue: 'active',
     allowNull: false,
     validate: {
       isIn: [['active', 'pending_verification', 'rejected']],
     },
-    defaultValue: 'active', // Default is active, will be overridden by controller for owners
   },
+  
+  // --- NEW FIELD ---
+  businessLocation: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    field: 'business_location',
+  },
+  // --- END NEW FIELD ---
+
   createdAt: {
     type: DataTypes.DATE,
-    allowNull: false, // Keep false for new records
-    defaultValue: DataTypes.NOW, // Rely on DB default
+    allowNull: false,
+    defaultValue: DataTypes.NOW,
     field: 'created_at'
   },
   updatedAt: {
     type: DataTypes.DATE,
-    allowNull: true, // Allow NULLs for existing rows that might not have it
+    allowNull: true,
     field: 'updated_at'
   }
 },
 {
   tableName: 'users',
-  timestamps: true, // Sequelize manages updates
+  timestamps: true,
   createdAt: 'created_at',
   updatedAt: 'updated_at',
 });

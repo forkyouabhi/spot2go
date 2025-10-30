@@ -1,15 +1,13 @@
 // services/api/src/controllers/adminController.js
 const { Place, User, MenuItem } = require('../models');
-const { sendEmail } = require('../utils/emailService'); // Import email service
+const { sendEmail } = require('../utils/emailService');
 
-// Get statistics about all places
+// ... (getPlaceStats, getPendingPlaces, updatePlaceStatus are unchanged) ...
 const getPlaceStats = async (req, res) => {
   try {
     const totalPlaces = await Place.count();
     const approvedPlaces = await Place.count({ where: { status: 'approved' } });
     const pendingPlaces = await Place.count({ where: { status: 'pending' } });
-    
-    // NEW: Add pending owner stats
     const pendingOwners = await User.count({ where: { role: 'owner', status: 'pending_verification' } });
 
     res.json({
@@ -28,7 +26,6 @@ const getPlaceStats = async (req, res) => {
   }
 };
 
-// Fetch all places with a 'pending' status for review
 const getPendingPlaces = async (req, res) => {
   try {
     const places = await Place.findAll({
@@ -46,7 +43,6 @@ const getPendingPlaces = async (req, res) => {
   }
 };
 
-// Update a place's status
 const updatePlaceStatus = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -67,8 +63,7 @@ const updatePlaceStatus = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTIONS FOR OWNER VERIFICATION ---
-
+// --- MODIFIED FUNCTION ---
 // Get users pending verification
 const getPendingOwners = async (req, res) => {
   try {
@@ -77,7 +72,8 @@ const getPendingOwners = async (req, res) => {
         role: 'owner',
         status: 'pending_verification'
       },
-      attributes: ['id', 'name', 'email', 'createdAt'], // Don't send password hash
+      // Include the new fields
+      attributes: ['id', 'name', 'email', 'createdAt', 'phone', 'businessLocation'],
       order: [['createdAt', 'ASC']],
     });
     res.json(pendingUsers);
@@ -87,7 +83,7 @@ const getPendingOwners = async (req, res) => {
   }
 };
 
-// Update owner's status (approve/reject)
+// ... (updateOwnerStatus is unchanged) ...
 const updateOwnerStatus = async (req, res) => {
   const { userId } = req.params;
   const { status } = req.body; // Expecting 'active' or 'rejected'
@@ -100,7 +96,7 @@ const updateOwnerStatus = async (req, res) => {
     const user = await User.findOne({
       where: {
         id: userId,
-        role: 'owner' // Ensure we only target owners
+        role: 'owner'
       }
     });
 
@@ -115,7 +111,6 @@ const updateOwnerStatus = async (req, res) => {
     user.status = status;
     await user.save();
 
-    // Send notification email to the owner
     const emailTemplate = status === 'active' ? 'ownerAccountApproved' : 'ownerAccountRejected';
     try {
         await sendEmail(user.email, emailTemplate, {
@@ -133,10 +128,11 @@ const updateOwnerStatus = async (req, res) => {
   }
 };
 
+
 module.exports = {
   getPlaceStats,
   getPendingPlaces,
   updatePlaceStatus,
-  getPendingOwners,    // Export new function
-  updateOwnerStatus,   // Export new function
+  getPendingOwners,
+  updateOwnerStatus,
 };

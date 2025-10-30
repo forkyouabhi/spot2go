@@ -9,7 +9,7 @@ interface User {
   exp: number;
   name: string;
   role: 'customer' | 'owner' | 'admin';
-  status: 'active' | 'pending_verification' | 'rejected'; // ADDED STATUS
+  status: 'active' | 'pending_verification' | 'rejected';
   createdAt: string;
   dateJoined: string;
   [key: string]: any;
@@ -20,7 +20,15 @@ interface AuthContextType {
   isAuthenticated: boolean;
   loading: boolean;
   login: (email: string, password: string) => Promise<User>;
-  register: (name: string, email: string, password: string, role: 'customer' | 'owner') => Promise<User>;
+  // --- MODIFIED: Added new fields to register function type ---
+  register: (
+    name: string, 
+    email: string, 
+    password: string, 
+    role: 'customer' | 'owner',
+    phone?: string,
+    businessLocation?: string
+  ) => Promise<User>;
   logout: () => void;
   handleTokenUpdate: (token: string) => void;
 }
@@ -48,12 +56,10 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('token', token);
     setAuthToken(token);
     const decoded = jwtDecode<User>(token);
-    // Include status from the decoded token
     const fullUser = { ...decoded, dateJoined: decoded.createdAt, status: decoded.status };
     setUser(fullUser);
 
     if (redirect) {
-      // Clean the URL of the token after processing
       const targetPath = decoded.role === 'owner' ? '/owner/dashboard' : decoded.role === 'admin' ? '/admin/dashboard' : '/';
       router.replace(targetPath);
     }
@@ -61,7 +67,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [router]);
 
   const handleTokenUpdate = useCallback((token: string) => {
-    // This is for profile updates, no redirect needed
     handleAuthSuccess(token, false);
   }, [handleAuthSuccess]);
 
@@ -78,7 +83,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const decoded = jwtDecode<User>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
-            // Include status when setting user from localStorage
             setUser({ ...decoded, dateJoined: decoded.createdAt, status: decoded.status });
             setAuthToken(localToken);
           } else {
@@ -103,16 +107,19 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   
   const login = async (email: string, password: string): Promise<User> => {
     const response = await loginUser({ email, password });
-    // The token from login endpoint also needs to include status
-    // Let's assume the /login route on the backend also adds status to the token
-    // (We should verify this, but authController.js doesn't show /login)
-    // For now, we rely on the logic in handleAuthSuccess
     return handleAuthSuccess(response.data.token);
   };
     
-  const register = async (name: string, email: string, password: string, role: 'customer' | 'owner'): Promise<User> => {
-    const response = await registerUser({ name, email, password, role });
-    // register response now includes the token with the status
+  // --- MODIFIED: Pass new fields to registerUser API call ---
+  const register = async (
+    name: string, 
+    email: string, 
+    password: string, 
+    role: 'customer' | 'owner',
+    phone?: string,
+    businessLocation?: string
+  ): Promise<User> => {
+    const response = await registerUser({ name, email, password, role, phone, businessLocation });
     return handleAuthSuccess(response.data.token);
   };
 

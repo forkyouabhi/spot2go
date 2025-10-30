@@ -1,21 +1,19 @@
 // services/api/src/utils/emailService.js
 const nodemailer = require('nodemailer');
-require('dotenv').config(); // Ensure environment variables are loaded
+require('dotenv').config();
 
-// Configure the transporter using environment variables
 const transporter = nodemailer.createTransport({
-  host: process.env.EMAIL_HOST, // e.g., 'smtp.example.com'
-  port: process.env.EMAIL_PORT || 587, // e.g., 587 for TLS
-  secure: process.env.EMAIL_PORT === '465', // true for 465, false for other ports
+  host: process.env.EMAIL_HOST,
+  port: process.env.EMAIL_PORT || 587,
+  secure: process.env.EMAIL_PORT === '465',
   auth: {
-    user: process.env.EMAIL_USER, // your email address
-    pass: process.env.EMAIL_PASS, // your email password or app-specific password
+    user: process.env.EMAIL_USER,
+    pass: process.env.EMAIL_PASS,
   },
 });
 
-// --- Email Templates ---
 const emailTemplates = {
-  // --- Existing Templates ---
+  // ... (other templates: bookingConfirmation, passwordResetRequest, passwordResetConfirmation) ...
   bookingConfirmation: ({ name, placeName, date, startTime, endTime, ticketId }) => ({
     subject: `Booking Confirmed for ${placeName}!`,
     text: `Hi ${name},\n\nYour booking for ${placeName} is confirmed!\n\nDate: ${date}\nTime: ${startTime} - ${endTime}\nTicket ID: ${ticketId}\n\nSee you there!\nSpot2Go Team`,
@@ -32,12 +30,21 @@ const emailTemplates = {
     html: `<p>Hi ${name},</p><p>Your password for Spot2Go has been successfully changed.</p><p>If you did not make this change, please contact support immediately.</p><p>Spot2Go Team</p>`,
   }),
   
-  // --- NEW TEMPLATES FOR OWNER VERIFICATION ---
-  newOwnerForVerification: ({ name, email, adminDashboardLink }) => ({
+  // --- MODIFIED TEMPLATE ---
+  newOwnerForVerification: ({ name, email, phone, businessLocation, adminDashboardLink }) => ({
     subject: 'New Owner Signup - Verification Required',
-    text: `A new business owner has signed up for Spot2Go.\n\nName: ${name}\nEmail: ${email}\n\nPlease review their account and approve or reject it in the admin dashboard:\n${adminDashboardLink}\n\nSpot2Go Admin Team`,
-    html: `<p>A new business owner has signed up for Spot2Go.</p><ul><li><strong>Name:</strong> ${name}</li><li><strong>Email:</strong> ${email}</li></ul><p>Please review their account and approve or reject it in the <a href="${adminDashboardLink}">admin dashboard</a>.</p><p>Spot2Go Admin Team</p>`,
+    text: `A new business owner has signed up for Spot2Go.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nBusiness Location: ${businessLocation}\n\nPlease review their account and approve or reject it in the admin dashboard:\n${adminDashboardLink}\n\nSpot2Go Admin Team`,
+    html: `<p>A new business owner has signed up for Spot2Go.</p>
+           <ul>
+             <li><strong>Name:</strong> ${name}</li>
+             <li><strong>Email:</strong> ${email}</li>
+             <li><strong>Phone:</strong> ${phone}</li>
+             <li><strong>Business Location:</strong> ${businessLocation}</li>
+           </ul>
+           <p>Please review their account and approve or reject it in the <a href="${adminDashboardLink}">admin dashboard</a>.</p>
+           <p>Spot2Go Admin Team</p>`,
   }),
+  // ... (other templates: ownerAccountApproved, ownerAccountRejected) ...
   ownerAccountApproved: ({ name }) => ({
     subject: 'Your Spot2Go Owner Account is Approved!',
     text: `Hi ${name},\n\nCongratulations! Your business owner account for Spot2Go has been approved.\n\nYou can now log in and start adding your places to our platform:\n${process.env.FRONTEND_URL || 'http://localhost:3000'}/login\n\nWelcome aboard,\nSpot2Go Team`,
@@ -50,40 +57,30 @@ const emailTemplates = {
   }),
 };
 
-/**
- * Sends an email.
- * @param {string} to - Recipient email address.
- * @param {string} templateName - Name of the template to use.
- * @param {object} data - Data to inject into the template.
- */
 async function sendEmail(to, templateName, data) {
   if (!process.env.EMAIL_USER || !process.env.EMAIL_PASS || !process.env.EMAIL_HOST) {
     console.error('Email credentials not configured in .env file. Skipping email.');
     return;
   }
-
   if (!emailTemplates[templateName]) {
     console.error(`Email template "${templateName}" not found.`);
     throw new Error(`Email template "${templateName}" not found.`);
   }
-
   const { subject, text, html } = emailTemplates[templateName](data);
-
   const mailOptions = {
-    from: `"Spot2Go" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`, // sender address
-    to: to, // list of receivers
-    subject: subject, // Subject line
-    text: text, // plain text body
-    html: html, // html body
+    from: `"Spot2Go" <${process.env.EMAIL_FROM || process.env.EMAIL_USER}>`,
+    to: to,
+    subject: subject,
+    text: text,
+    html: html,
   };
-
   try {
     let info = await transporter.sendMail(mailOptions);
     console.log('Message sent: %s', info.messageId);
     return info;
   } catch (error) {
     console.error('Error sending email:', error);
-    throw new Error('Failed to send email.'); // Re-throw for controller to handle
+    throw new Error('Failed to send email.');
   }
 }
 
