@@ -232,7 +232,7 @@ export default function PlaceDetailPage() {
               {/* --- MODIFIED: Use Logo Mark --- */}
               <div className="flex items-center gap-3">
                 <Image 
-                  src="/logo-mark.png" // Assumes 'logo-mark.png' is in /public
+                  src="/logo-full.png" 
                   alt="Spot2Go Logo"
                   width={40}
                   height={40}
