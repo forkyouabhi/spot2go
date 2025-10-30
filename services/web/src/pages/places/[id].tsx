@@ -230,13 +230,17 @@ export default function PlaceDetailPage() {
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">
             <div className="max-w-screen-xl mx-auto flex justify-between items-center">
               {/* --- MODIFIED: Use Logo Mark --- */}
-              <div className="flex items-center gap-3">
+              <div onClick={() => router.push('/')} className="flex items-center gap-3">
                 <Image 
-                  src="/logo-full.png" 
+                  src="/logo-mark.png" 
                   alt="Spot2Go Logo"
-                  width={40}
-                  height={40}
+                  width={50}
+                  height={50}
                   className="object-contain"
+                  onClick={() => router.push('/')}
+                  
+            //       style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+            // priority
                 />
                 <h1 className="text-xl font-bold text-brand-cream hidden sm:block">Spot2Go</h1>
               </div>

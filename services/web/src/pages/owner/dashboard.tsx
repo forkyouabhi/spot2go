@@ -154,6 +154,7 @@ export default function OwnerDashboard() {
                 width={40}
                 height={40}
                 className="object-contain"
+                // style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
               />
               <div>
                 <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
