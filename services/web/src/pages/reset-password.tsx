@@ -8,8 +8,9 @@ import { Label } from "../components/ui/label";
 import { toast } from 'sonner';
 import { resetPassword } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
-import { Lock, Loader2, Sparkles, Eye, EyeOff } from "lucide-react";
+import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import Head from 'next/head';
+import Image from 'next/image'; // Import Image
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -19,7 +20,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showPassword, setShowPassword] = useState(false);
+   const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (router.isReady) {
@@ -81,19 +82,23 @@ export default function ResetPasswordPage() {
       <Head>
         <title>Spot2Go | Reset Password</title>
       </Head>
-     {/* --- MODIFIED: Using new background class --- */}
      <div className="min-h-screen relative overflow-hidden auth-background">
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
+             {/* --- MODIFIED: Use Logo Image --- */}
              <div className="text-center space-y-4 mb-8">
-              <div className="flex items-center justify-center space-x-3">
-                 <div className="p-4 rounded-2xl border-2" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
-                    <Sparkles className="h-8 w-8" style={{ color: '#6C0345' }} />
-                </div>
-                <h1 className="text-4xl font-bold" style={{ color: '#FFF8DC' }}>Spot2Go</h1>
-              </div>
+              <Image 
+                src="/logo-full.png" // Assumes 'logo-full.png' is in /public
+                alt="Spot2Go Logo"
+                width={250}
+                height={67}
+                className="object-contain mx-auto"
+                style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                priority
+              />
             </div>
+            {/* --- END MODIFICATION --- */}
 
             <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
               <CardHeader className="text-center space-y-4 pb-6">

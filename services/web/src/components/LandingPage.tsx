@@ -28,9 +28,10 @@ export function LandingPage() {
               <Image 
                 src="/logo-full.png" // Assumes you saved the transparent logo here
                 alt="Spot2Go Logo"
-                width={150} // Adjust width as needed
-                height={40}
+                width={150} // You can adjust this
+                height={40} // Adjust height to maintain aspect ratio
                 className="object-contain"
+                priority // Load the logo quickly
               />
             </div>
             {/* --- END MODIFICATION --- */}

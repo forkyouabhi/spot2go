@@ -1,3 +1,4 @@
+// services/web/src/App.tsx
 import { useState, lazy, Suspense } from 'react';
 import { Toaster } from './components/ui/sonner';
 import { SplashScreen } from './components/SplashScreen';
@@ -110,8 +111,6 @@ export default function App() {
         break;
       case "owner/dashboard":
       case "admin/dashboard":
-        // For now, these dashboard screens aren't implemented, so we'll stay on home
-        // In a real app, you'd add these to your Screen type and implement them
         console.log(`Navigation to ${screen} not yet implemented`);
         break;
       default:
@@ -132,7 +131,7 @@ export default function App() {
             type="login" 
             onSubmit={handleAuth}
             onThirdPartyAuth={handleThirdPartyAuth}
-            onBack={() => setCurrentScreen('splash')}
+            // --- FIX: 'onBack' prop removed ---
             {...commonProps}
           />
         );
@@ -143,7 +142,7 @@ export default function App() {
             type="signup" 
             onSubmit={handleAuth}
             onThirdPartyAuth={handleThirdPartyAuth}
-            onBack={() => setCurrentScreen('splash')}
+            // --- FIX: 'onBack' prop removed ---
             {...commonProps}
           />
         );

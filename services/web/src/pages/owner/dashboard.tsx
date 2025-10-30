@@ -11,16 +11,24 @@ import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../../components/ui/dialog';
-import { PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, Sparkles, MapPin, Loader2, Mail } from 'lucide-react';
+import { PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, MapPin, Loader2, Mail } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
+import Image from 'next/image'; // Import Image
 
-// NEW Component for Pending Status
+// ... (PendingVerification component is unchanged)
 const PendingVerification = () => (
   <div className="min-h-screen bg-brand-cream">
      <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
         <div className="p-4 flex justify-between items-center max-w-screen-xl mx-auto">
             <div className="flex items-center gap-3">
-              <Sparkles className="h-8 w-8 text-brand-yellow" />
+              {/* --- MODIFIED: Use Logo Mark --- */}
+              <Image 
+                src="/logo-mark.png" // Assumes 'logo-mark.png' is in /public
+                alt="Spot2Go Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
               </div>
@@ -50,6 +58,7 @@ const PendingVerification = () => (
   </div>
 );
 
+
 export default function OwnerDashboard() {
   const router = useRouter();
   const { user, isAuthenticated, loading, logout } = useAuth();
@@ -76,10 +85,10 @@ export default function OwnerDashboard() {
       } else if (user.status === 'active') {
         fetchPlaces();
       }
-      // If status is 'pending_verification' or 'rejected', the component will render the appropriate message
     }
   }, [isAuthenticated, loading, user, router, fetchPlaces]);
 
+  // ... (all other handlers remain the same)
   const handleOpenManageModal = async (place: StudyPlace) => {
     try {
       const response = await getOwnerPlaceById(place.id);
@@ -88,31 +97,26 @@ export default function OwnerDashboard() {
       toast.error("Could not load place data.");
     }
   };
-  
   const handleOpenEditModal = (place: StudyPlace) => {
     setEditingPlace(place);
     setIsAddPlaceOpen(true);
   };
-  
   const handleSuccess = () => {
     fetchPlaces();
     setIsAddPlaceOpen(false);
     setEditingPlace(null);
   };
-  
   const handleMenuItemAdded = () => {
     if (managingPlace) {
       handleOpenManageModal(managingPlace);
     }
     fetchPlaces();
   };
-
   const placeStats = useMemo(() => ({
     total: places.length,
     approved: places.filter(p => p.status === 'approved').length,
     pending: places.filter(p => p.status === 'pending').length,
   }), [places]);
-
   const getStatusBadge = (status: string) => {
     switch (status) {
       case 'approved':
@@ -130,30 +134,33 @@ export default function OwnerDashboard() {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 
-  // --- NEW VERIFICATION GATES ---
   if (user.status === 'pending_verification') {
     return <PendingVerification />;
   }
 
   if (user.status === 'rejected') {
-    // You can create a 'RejectedVerification' component similar to the pending one
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream">Your account application was rejected. Please contact support.</div>;
   }
-  // --- END GATES ---
 
-  // User is 'active' owner, show dashboard:
   return (
     <div className="min-h-screen bg-brand-cream">
       <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
         <div className="p-4 flex justify-between items-center max-w-screen-xl mx-auto">
+            {/* --- MODIFIED: Use Logo Mark --- */}
             <div className="flex items-center gap-3">
-              {/* --- MODIFIED: Replaced Sparkles with MapPin --- */}
-              <MapPin className="h-8 w-8 text-brand-orange" />
+              <Image 
+                src="/logo-mark.png" // Assumes 'logo-mark.png' is in /public
+                alt="Spot2Go Logo"
+                width={40}
+                height={40}
+                className="object-contain"
+              />
               <div>
                 <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
                 <p className="text-sm text-brand-yellow">Welcome, {user?.name}!</p>
               </div>
             </div>
+            {/* --- END MODIFICATION --- */}
             <div className="flex items-center gap-4">
               <Button 
                 onClick={() => { setEditingPlace(null); setIsAddPlaceOpen(true); }}
@@ -170,6 +177,7 @@ export default function OwnerDashboard() {
         </div>
       </header>
 
+      {/* ... (rest of the dashboard page) ... */}
       <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="border-2 border-brand-orange bg-white shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-brand-burgundy">Total Places</CardTitle><Building2 className="h-5 w-5 text-brand-orange" /></CardHeader><CardContent><div className="text-2xl font-bold text-brand-burgundy">{placeStats.total}</div></CardContent></Card>

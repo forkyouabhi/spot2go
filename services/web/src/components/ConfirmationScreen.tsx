@@ -1,7 +1,7 @@
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
-import { CheckCircle, Calendar, Clock, MapPin, Sparkles } from "lucide-react";
+import { CheckCircle, Calendar, Clock, MapPin } from "lucide-react"; // Replaced Sparkles with MapPin
 import { StudyPlace, TimeSlot } from '../types';
 import { toast } from "sonner";
 
@@ -44,7 +44,8 @@ export function ConfirmationScreen({ place, slot, ticketId, onGoHome }: Confirma
         <Card className="text-left border-2 border-brand-orange shadow-lg w-full">
           <CardHeader className="text-center bg-brand-cream rounded-t-lg p-4">
             <div className="flex items-center justify-center gap-2">
-                <Sparkles className="h-6 w-6 text-brand-yellow"/>
+                {/* --- ICON FIX: Replaced Sparkles with MapPin --- */}
+                <MapPin className="h-6 w-6 text-brand-orange"/>
                 <CardTitle className="text-brand-burgundy">Spot2Go E-Ticket</CardTitle>
             </div>
           </CardHeader>
@@ -90,4 +91,3 @@ export function ConfirmationScreen({ place, slot, ticketId, onGoHome }: Confirma
     </div>
   );
 }
-

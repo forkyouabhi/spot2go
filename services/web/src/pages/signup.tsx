@@ -8,7 +8,7 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { Button } from '../components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import Image from 'next/image'; // Import the Next.js Image component
+import Image from 'next/image'; // Import Image
 
 export default function SignupPage() {
   const router = useRouter();
@@ -52,12 +52,13 @@ export default function SignupPage() {
           {/* --- MODIFIED: Use Logo Image --- */}
           <div className="text-center space-y-4 mb-8 animate-fade-in-up">
             <Image 
-              src="/logo-full.png" // Assumes you saved the transparent logo here
+              src="/logo-full.png" // Assumes 'logo-full.png' is in /public
               alt="Spot2Go Logo"
-              width={250} // Larger size for auth pages
+              width={250}
               height={67}
               className="object-contain mx-auto"
-              style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white to stand out
+              style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+              priority
             />
           </div>
           {/* --- END MODIFICATION --- */}
@@ -70,11 +71,12 @@ export default function SignupPage() {
             }}
           />
 
+          {/* --- FIX: Link is now in its own div below the card --- */}
           <div className="relative z-10 text-center p-4">
-            <Link href="/business" className="text-sm font-medium text-brand-yellow hover:text-white underline">
-              
+            <Link href="/business" legacyBehavior>
+              <a className="text-sm font-medium text-brand-yellow hover:text-white underline">
                 Are you a business owner? Partner with us
-              
+              </a>
             </Link>
           </div>
         </div>

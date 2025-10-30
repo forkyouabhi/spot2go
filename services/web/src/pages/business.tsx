@@ -9,7 +9,7 @@ import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { ArrowLeft, CheckCircle, Loader2, Mail, Lock, User, Phone, MapPin } from 'lucide-react';
 import Head from 'next/head';
-import Image from 'next/image'; // Import the Next.js Image component
+import Image from 'next/image'; // Import Image
 
 export default function BusinessSignupPage() {
   const router = useRouter();
@@ -66,12 +66,13 @@ export default function BusinessSignupPage() {
               {/* --- MODIFIED: Use Logo Image --- */}
               <div className="flex items-center justify-center space-x-3">
                 <Image 
-                  src="/logo-full.png" // Assumes you saved the transparent logo here
+                  src="/logo-full.png" // Assumes 'logo-full.png' is in /public
                   alt="Spot2Go Logo"
                   width={250}
                   height={67}
                   className="object-contain mx-auto"
                   style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                  priority
                 />
               </div>
               {/* --- END MODIFICATION --- */}
@@ -124,12 +125,13 @@ export default function BusinessSignupPage() {
             {/* --- MODIFIED: Use Logo Image --- */}
             <div className="text-center space-y-4 mb-8 animate-fade-in-up">
               <Image 
-                src="/logo-full.png" // Assumes you saved the transparent logo here
+                src="/logo-full.png" // Assumes 'logo-full.png' is in /public
                 alt="Spot2Go Logo"
                 width={250}
                 height={67}
                 className="object-contain mx-auto"
                 style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                priority
               />
             </div>
             {/* --- END MODIFICATION --- */}
