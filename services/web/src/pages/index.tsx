@@ -117,7 +117,7 @@ export default function HomePage() {
                     No spots found matching your criteria.
                   </p>
                 ) : filteredPlaces.map(place => (
-                  <Link href={`/places/${place.id}`} key={place.id} passHref>
+                  <Link href={`/places/${place.id}`} key={place.id}>
                     <Card className="border-2 border-brand-yellow bg-white overflow-hidden flex flex-col h-full cursor-pointer transition-all hover:shadow-xl hover:-translate-y-1">
                       <ImageWithFallback src={place.images?.[0] || ''} alt={place.name} className="w-full h-48 object-cover" />
                       <CardContent className="p-4 flex-grow">

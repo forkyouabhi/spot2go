@@ -71,10 +71,10 @@ export default function SignupPage() {
           />
 
           <div className="relative z-10 text-center p-4">
-            <Link href="/business" legacyBehavior>
-              <a className="text-sm font-medium text-brand-yellow hover:text-white underline">
+            <Link href="/business" className="text-sm font-medium text-brand-yellow hover:text-white underline">
+              
                 Are you a business owner? Partner with us
-              </a>
+              
             </Link>
           </div>
         </div>
