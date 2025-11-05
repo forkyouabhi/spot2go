@@ -1,5 +1,6 @@
 const { Op } = require('sequelize');
-const { Place, Booking, MenuItem, User, Bookmark, Review } = require('../models'); // <-- Added Review
+
+const { Place, Booking, MenuItem, User, Bookmark, Review } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
 const listNearbyPlaces = async (req, res) => {
@@ -7,7 +8,6 @@ const listNearbyPlaces = async (req, res) => {
     const places = await Place.findAll({
       where: { status: 'approved' },
       order: [['created_at', 'DESC']],
-      // Note: You would add location-based querying here in production
     });
     res.json(places);
   } catch (err) {
@@ -15,7 +15,99 @@ const listNearbyPlaces = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch places' });
   }
 };
+const createReview = async (req, res) => {
+  const t = await sequelize.transaction();
+  try {
+    const { bookingId, rating, comment } = req.body;
+    const userId = req.user.id;
 
+    if (!bookingId || !rating) {
+      return res.status(400).json({ error: 'Booking ID and rating are required.' });
+    }
+
+    // 1. Find the booking and check ownership/status
+    const booking = await Booking.findOne({
+      where: {
+        id: bookingId,
+        userId: userId
+      },
+      transaction: t
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found or you are not the owner.' });
+    }
+    if (booking.reviewed) {
+      return res.status(409).json({ error: 'This booking has already been reviewed.' });
+    }
+    // Optional: Check if the booking date is in the past
+    if (new Date(booking.date) > new Date()) {
+       return res.status(400).json({ error: 'You can only review past bookings.' });
+    }
+    
+    // 2. Create the review
+    const review = await Review.create({
+      userId,
+      placeId: booking.placeId,
+      bookingId,
+      rating,
+      comment
+    }, { transaction: t });
+
+    // 3. Update the booking to mark it as reviewed
+    await booking.update({ reviewed: true }, { transaction: t });
+
+    // 4. Update the Place's average rating and review count
+    const place = await Place.findByPk(booking.placeId, { transaction: t, lock: true });
+    
+    const [results] = await Review.findAll({
+      where: { placeId: booking.placeId },
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        [sequelize.fn('AVG', sequelize.col('rating')), 'avg']
+      ],
+      raw: true,
+      transaction: t
+    });
+
+    const newReviewCount = parseInt(results.count, 10);
+    const newRating = parseFloat(results.avg).toFixed(1);
+
+    await place.update({
+      rating: newRating,
+      reviewCount: newReviewCount
+    }, { transaction: t });
+
+    // 5. Commit the transaction
+    await t.commit();
+
+    res.status(201).json({ message: 'Review created successfully!', review });
+
+  } catch (err) {
+    await t.rollback();
+    console.error('Error creating review:', err);
+    if (err.name === 'SequelizeUniqueConstraintError') {
+       return res.status(409).json({ error: 'This booking has already been reviewed.' });
+    }
+    res.status(500).json({ error: 'Failed to create review' });
+  }
+};
+
+const getUserReviews = async (req, res) => {
+  try {
+    const reviews = await Review.findAll({
+      where: { userId: req.user.id },
+      include: [
+        { model: Place, as: 'place', attributes: ['id', 'name'] }
+      ],
+      order: [['created_at', 'DESC']],
+    });
+    res.json(reviews);
+  } catch (err) {
+    console.error('Error fetching user reviews:', err);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+};
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -23,17 +115,7 @@ const getPlaceById = async (req, res) => {
        where: { id: placeId, status: 'approved' },
        include: [
         { model: MenuItem, as: 'menuItems', attributes: ['id', 'name', 'price'] },
-        { model: User, as: 'owner', attributes: ['name', 'email'] },
-        // --- ADDED REVIEW LOADING ---
-        {
-          model: Review,
-          as: 'reviews',
-          include: [
-            { model: User, as: 'user', attributes: ['id', 'name'] }
-          ],
-          order: [['created_at', 'DESC']]
-        }
-        // --- END REVIEW LOADING ---
+        { model: User, as: 'owner', attributes: ['name', 'email'] }
       ],
     });
 
@@ -43,18 +125,6 @@ const getPlaceById = async (req, res) => {
 
     const place = placeData.toJSON();
 
-    // Recalculate rating/reviewCount on the fly from the included data
-    // This is more accurate than a potentially stale column
-    if (place.reviews && place.reviews.length > 0) {
-      const sum = place.reviews.reduce((acc, review) => acc + review.rating, 0);
-      place.rating = parseFloat((sum / place.reviews.length).toFixed(1));
-      place.reviewCount = place.reviews.length;
-    } else {
-      place.rating = 0;
-      place.reviewCount = 0;
-    }
-
-    // (Your existing slot generation logic)
     if (place.reservable && place.reservableHours?.start && place.reservableHours?.end) {
       const today = new Date();
       const nextWeek = new Date(today);
@@ -107,20 +177,19 @@ const getPlaceById = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch place details' });
   }
 };
-
 const createBooking = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const { placeId, amount, date, startTime, endTime } = req.body;
-    const userId = req.user.id; 
+    const userId = req.user.id; // Get user ID from authenticated request
 
+    // --- Find User and Place ---
     const [user, place] = await Promise.all([
        User.findByPk(userId),
        Place.findByPk(placeId)
     ]);
 
     if (!user) {
-       return res.status(404).json({ error: 'User not found.' }); 
+       return res.status(404).json({ error: 'User not found.' }); // Should not happen if authenticated
     }
     if (!place) {
       return res.status(404).json({ error: 'Place not found' });
@@ -129,12 +198,13 @@ const createBooking = async (req, res) => {
         return res.status(400).json({ error: 'This place is not available for booking.' });
     }
 
+    // Check if the slot is already booked
     const existingBooking = await Booking.findOne({
       where: {
         placeId,
         date,
         startTime,
-        status: { [Op.in]: ['confirmed', 'pending'] } 
+        status: { [Op.in]: ['confirmed', 'pending'] } // Check pending too
       }
     });
 
@@ -142,39 +212,41 @@ const createBooking = async (req, res) => {
       return res.status(409).json({ error: 'This time slot is no longer available.' });
     }
 
+    // --- Create Booking ---
     const booking = await Booking.create({
       userId,
       placeId,
-      amount, 
+      amount, // You might want to calculate this server-side based on place.pricePerHour
       date,
       startTime,
       endTime,
-      status: 'confirmed', 
+      status: 'confirmed', // Assuming direct confirmation for now
       ticketId: `SPOT2GO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     });
 
+    // --- Send Confirmation Email ---
     try {
       await sendEmail(user.email, 'bookingConfirmation', {
         name: user.name,
         placeName: place.name,
         date: booking.date,
-        startTime: booking.startTime.slice(0, 5), 
-        endTime: booking.endTime.slice(0, 5),     
+        startTime: booking.startTime.slice(0, 5), // Format HH:MM
+        endTime: booking.endTime.slice(0, 5),     // Format HH:MM
         ticketId: booking.ticketId,
       });
     } catch (emailError) {
+      // Log the error but don't fail the booking if email fails
       console.error(`Failed to send booking confirmation email to ${user.email}:`, emailError);
     }
-    
+    // -----------------------------
+
     res.status(201).json({ message: 'Booking created successfully!', booking });
   } catch (err) {
-    console.error('Error creating booking:', err); 
+    console.error('Error creating booking:', err); // Log the specific error
     res.status(500).json({ error: 'Failed to create booking' });
   }
 };
-
 const listBookings = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const userBookings = await Booking.findAll({
       where: { userId: req.user.id },
@@ -188,8 +260,8 @@ const listBookings = async (req, res) => {
   }
 };
 
+// --- NEW FUNCTION: GET BOOKING BY TICKET ID ---
 const getBookingByTicketId = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const { ticketId } = req.params;
     const userId = req.user.id; 
@@ -224,98 +296,8 @@ const getBookingByTicketId = async (req, res) => {
   }
 };
 
-// --- NEW REVIEW FUNCTION ---
-const createReview = async (req, res) => {
-  try {
-    const { placeId, rating, comment } = req.body;
-    const userId = req.user.id;
-
-    // Check if user has already reviewed this place
-    const existingReview = await Review.findOne({
-      where: { userId, placeId }
-    });
-
-    if (existingReview) {
-      return res.status(409).json({ error: 'You have already submitted a review for this place.' });
-    }
-
-    // Create the new review
-    const review = await Review.create({
-      userId,
-      placeId,
-      rating: parseInt(rating, 10),
-      comment
-    });
-
-    // Fetch the newly created review with the user's name
-    const newReview = await Review.findByPk(review.id, {
-      include: [{
-        model: User,
-        as: 'user',
-        attributes: ['id', 'name']
-      }]
-    });
-
-    // We can also trigger an update for the place's average rating here (omitted for brevity)
-
-    res.status(201).json(newReview);
-  } catch (err) {
-    console.error('Error creating review:', err);
-    res.status(500).json({ error: 'Failed to submit review.' });
-  }
-};
-
-// --- NEW EFFICIENT BOOKMARK FUNCTION ---
-const getUserBookmarkedPlaces = async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id, {
-      include: [{
-        model: Bookmark,
-        as: 'bookmarks',
-        attributes: ['placeId'] // Only need the placeId from the join table
-      }]
-    });
-
-    if (!user || !user.bookmarks) {
-      return res.json([]);
-    }
-
-    const placeIds = user.bookmarks.map(b => b.placeId);
-
-    if (placeIds.length === 0) {
-      return res.json([]);
-    }
-
-    // Now fetch all places matching those IDs
-    const bookmarkedPlaces = await Place.findAll({
-      where: {
-        id: { [Op.in]: placeIds },
-        status: 'approved' // Only show approved places
-      },
-      // Optionally include reviews/ratings here too if needed on account page
-      // For now, keeping it simple as per the BookmarkCard component
-    });
-    
-    // Simple mapping to add rating/reviewCount stubs if they don't exist
-    const placesWithRatings = await Promise.all(bookmarkedPlaces.map(async (place) => {
-        const placeJSON = place.toJSON();
-        const reviewCount = await Review.count({ where: { placeId: place.id } });
-        const reviewSum = await Review.sum('rating', { where: { placeId: place.id } });
-        
-        placeJSON.reviewCount = reviewCount;
-        placeJSON.rating = reviewCount > 0 ? (reviewSum / reviewCount).toFixed(1) : '0.0';
-        return placeJSON;
-    }));
-
-    res.json(bookmarkedPlaces);
-  } catch (err) {
-    console.error('Error fetching bookmarked places:', err);
-    res.status(500).json({ error: 'Failed to fetch bookmarked places' });
-  }
-};
-
+// --- NEW FUNCTION: GET USER BOOKMARKS ---
 const getUserBookmarks = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const bookmarks = await Bookmark.findAll({
       where: { userId: req.user.id },
@@ -328,8 +310,8 @@ const getUserBookmarks = async (req, res) => {
   }
 };
 
+// --- NEW FUNCTION: ADD BOOKMARK ---
 const addBookmark = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const { placeId } = req.body;
     if (!placeId) {
@@ -349,8 +331,8 @@ const addBookmark = async (req, res) => {
   }
 };
 
+// --- NEW FUNCTION: REMOVE BOOKMARK ---
 const removeBookmark = async (req, res) => {
-  // (This function remains unchanged from your file)
   try {
     const { placeId } = req.params;
     const result = await Bookmark.destroy({
@@ -378,6 +360,6 @@ module.exports = {
     getUserBookmarks,
     addBookmark,
     removeBookmark,
-    createReview, // <-- ADDED
-    getUserBookmarkedPlaces, // <-- ADDED
+    createReview,
+    getUserReviews
 };

@@ -7,8 +7,9 @@ const Bundle = require('./Bundle');
 const BundleItem = require('./BundleItem');
 const Booking = require('./Booking');
 const UserDevice = require('./UserDevice');
+const UserBookmark = require('./UserBookmark');
 const Bookmark = require('./Bookmark');
-const Review = require('./Review'); // <-- ADDED
+const Review = require('./Review');
 
 // Define associations
 
@@ -40,20 +41,31 @@ Booking.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 Bundle.belongsToMany(MenuItem, { through: BundleItem, foreignKey: 'bundleId', as: 'items' });
 MenuItem.belongsToMany(Bundle, { through: BundleItem, foreignKey: 'menuItemId', as: 'bundles' });
 
-// --- BOOKMARK ASSOCIATIONS ---
-User.hasMany(Bookmark, { foreignKey: 'userId', as: 'bookmarks' });
-Bookmark.belongsTo(User, { foreignKey: 'userId' });
+// --- 3. ADD NEW ASSOCIATIONS ---
 
-Place.hasMany(Bookmark, { foreignKey: 'placeId', as: 'bookmarkedBy' });
-Bookmark.belongsTo(Place, { foreignKey: 'placeId' });
+// User <-> Place (Many-to-Many for Bookmarks)
+User.belongsToMany(Place, {
+  through: UserBookmark,
+  foreignKey: 'userId',
+  otherKey: 'placeId',
+  as: 'bookmarkedPlaces'
+});
+Place.belongsToMany(User, {
+  through: UserBookmark,
+  foreignKey: 'placeId',
+  otherKey: 'userId',
+  as: 'bookmarkedBy'
+});
 
-// --- ADDED REVIEW ASSOCIATIONS ---
+// User -> Review (One-to-Many)
 User.hasMany(Review, { foreignKey: 'userId', as: 'reviews' });
 Review.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// Place -> Review (One-to-Many)
 Place.hasMany(Review, { foreignKey: 'placeId', as: 'reviews' });
 Review.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
-// --- END REVIEW ASSOCIATIONS ---
+
+// --- END ADDITIONS ---
 
 const db = {
   sequelize,
@@ -64,8 +76,9 @@ const db = {
   BundleItem,
   Booking,
   UserDevice,
+  UserBookmark,
   Bookmark,
-  Review, // <-- ADDED
+  Review,       
 };
 
 // Sync all models with the database

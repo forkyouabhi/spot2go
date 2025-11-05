@@ -1,3 +1,4 @@
+// services/api/src/models/Bookmark.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
 
