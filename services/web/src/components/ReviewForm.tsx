@@ -1,8 +1,8 @@
 // services/web/src/components/ReviewForm.tsx
 import { useState } from 'react';
-import { Button } from './ui/button';
-import { Textarea } from './ui/textarea';
-import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
+import { Button } from '../components/ui/button';
+import { Textarea } from '../components/ui/textarea';
+import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
 import { Star, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { createReview } from '../lib/api';

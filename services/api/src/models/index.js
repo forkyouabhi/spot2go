@@ -1,5 +1,4 @@
-// Replace the entire contents of this file
-
+// services/api/src/models/index.js
 const sequelize = require('../config/sequelize');
 const User = require('./User');
 const Place = require('./Place');
@@ -8,7 +7,9 @@ const Bundle = require('./Bundle');
 const BundleItem = require('./BundleItem');
 const Booking = require('./Booking');
 const UserDevice = require('./UserDevice');
-const Bookmark = require('./Bookmark'); // <-- ADDED
+const UserBookmark = require('./UserBookmark');
+const Bookmark = require('./Bookmark');
+const Review = require('./Review');
 
 // Define associations
 
@@ -40,13 +41,31 @@ Booking.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 Bundle.belongsToMany(MenuItem, { through: BundleItem, foreignKey: 'bundleId', as: 'items' });
 MenuItem.belongsToMany(Bundle, { through: BundleItem, foreignKey: 'menuItemId', as: 'bundles' });
 
-// --- ADDED BOOKMARK ASSOCIATIONS ---
-User.hasMany(Bookmark, { foreignKey: 'userId', as: 'bookmarks' });
-Bookmark.belongsTo(User, { foreignKey: 'userId' });
+// --- 3. ADD NEW ASSOCIATIONS ---
 
-Place.hasMany(Bookmark, { foreignKey: 'placeId', as: 'bookmarkedBy' });
-Bookmark.belongsTo(Place, { foreignKey: 'placeId' });
-// --- END BOOKMARK ASSOCIATIONS ---
+// User <-> Place (Many-to-Many for Bookmarks)
+User.belongsToMany(Place, {
+  through: UserBookmark,
+  foreignKey: 'userId',
+  otherKey: 'placeId',
+  as: 'bookmarkedPlaces'
+});
+Place.belongsToMany(User, {
+  through: UserBookmark,
+  foreignKey: 'placeId',
+  otherKey: 'userId',
+  as: 'bookmarkedBy'
+});
+
+// User -> Review (One-to-Many)
+User.hasMany(Review, { foreignKey: 'userId', as: 'reviews' });
+Review.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// Place -> Review (One-to-Many)
+Place.hasMany(Review, { foreignKey: 'placeId', as: 'reviews' });
+Review.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
+
+// --- END ADDITIONS ---
 
 const db = {
   sequelize,
@@ -57,11 +76,12 @@ const db = {
   BundleItem,
   Booking,
   UserDevice,
-  Bookmark, // <-- ADDED
+  UserBookmark,
+  Bookmark,
+  Review,       
 };
 
 // Sync all models with the database
-// In a real production app, you might use migrations instead of sync()
 sequelize.sync({ alter: true }).then(() => {
   console.log('All models were synchronized successfully.');
 });

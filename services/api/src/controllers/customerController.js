@@ -17,7 +17,7 @@ const listNearbyPlaces = async (req, res) => {
   }
 };
 const createReview = async (req, res) => {
-  const t = await sequelize.transaction(); // <-- This now works
+  const t = await sequelize.transaction();
   try {
     const { bookingId, rating, comment } = req.body;
     const userId = req.user.id;

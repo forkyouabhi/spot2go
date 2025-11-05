@@ -1,10 +1,8 @@
-// services/web/src/data/mockData.ts
 import {
   StudyPlace,
   User,
   Booking,
   UserSettings,
-  Review,
 } from "../types";
 
 export const mockUser: User = {
@@ -69,9 +67,8 @@ export const mockPlaces: StudyPlace[] = [
       { id: "3", date: "2025-09-24", startTime: "10:00", endTime: "12:00", available: true },
     ],
     reviews: [
-      // --- FIX: Added placeId ---
-      { id: "1", placeId: "1", userId: "2", userName: "Sarah M.", rating: 5, comment: "Perfect spot for studying! Great coffee and very quiet.", date: "2025-09-20" },
-      { id: "2", placeId: "1", userId: "3", userName: "Mike T.", rating: 4, comment: "Good atmosphere, but can get busy during exam season.", date: "2025-09-18" },
+      { id: "1", userId: "2", userName: "Sarah M.", rating: 5, comment: "Perfect spot for studying! Great coffee and very quiet.", date: "2025-09-20" },
+      { id: "2", userId: "3", userName: "Mike T.", rating: 4, comment: "Good atmosphere, but can get busy during exam season.", date: "2025-09-18" },
     ],
   },
   {
@@ -95,8 +92,7 @@ export const mockPlaces: StudyPlace[] = [
       { id: "5", date: "2025-09-24", startTime: "08:00", endTime: "20:00", available: true },
     ],
     reviews: [
-      // --- FIX: Added placeId ---
-      { id: "3", placeId: "2", userId: "4", userName: "Emma L.", rating: 5, comment: "Excellent facilities and always quiet. Perfect for serious studying.", date: "2025-09-19" },
+      { id: "3", userId: "4", userName: "Emma L.", rating: 5, comment: "Excellent facilities and always quiet. Perfect for serious studying.", date: "2025-09-19" },
     ],
   },
   {
@@ -108,7 +104,7 @@ export const mockPlaces: StudyPlace[] = [
     distance: "1.2 km",
     rating: 4.3,
     images: [
-      "https://images.unsplash.com/photo-1626187777040-ffb7cb2c_5450?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3dvcmtpbmclMjBzcGFjZSUyMG1vZGVybnxlbnwxfHx8fDE3NTg1NzMwMTJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
+      "https://images.unsplash.com/photo-1626187777040-ffb7cb2c5450?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3Nzg4Nzd8MHwxfHNlYXJjaHwxfHxjb3dvcmtpbmclMjBzcGFjZSUyMG1vZGVybnxlbnwxfHx8fDE3NTg1NzMwMTJ8MA&ixlib=rb-4.1.0&q=80&w=1080&utm_source=figma&utm_medium=referral",
     ],
     amenities: [ "Wi-Fi", "Power Outlets", "Meeting Rooms", "Coffee", "Printing" ],
     description: "Modern co-working space with flexible seating and professional atmosphere.",
@@ -121,8 +117,7 @@ export const mockPlaces: StudyPlace[] = [
       { id: "7", date: "2025-09-24", startTime: "09:00", endTime: "17:00", available: true },
     ],
     reviews: [
-      // --- FIX: Added placeId ---
-      { id: "4", placeId: "3", userId: "5", userName: "David R.", rating: 4, comment: "Great for professional work. A bit pricey but worth it.", date: "2025-09-17" },
+      { id: "4", userId: "5", userName: "David R.", rating: 4, comment: "Great for professional work. A bit pricey but worth it.", date: "2025-09-17" },
     ],
   },
   {
@@ -146,8 +141,7 @@ export const mockPlaces: StudyPlace[] = [
       { id: "9", date: "2025-09-24", startTime: "07:00", endTime: "23:00", available: true },
     ],
     reviews: [
-      // --- FIX: Added placeId ---
-      { id: "5", placeId: "4", userId: "6", userName: "Jessica K.", rating: 4, comment: "Good facilities, but can get crowded during exam periods.", date: "2025-09-16" },
+      { id: "5", userId: "6", userName: "Jessica K.", rating: 4, comment: "Good facilities, but can get crowded during exam periods.", date: "2025-09-16" },
     ],
   },
 ];

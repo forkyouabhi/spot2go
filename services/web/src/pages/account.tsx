@@ -1,4 +1,3 @@
-// services/web/src/pages/account.tsx
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
@@ -6,7 +5,6 @@ import { getUserBookings } from '../lib/api';
 import { AccountScreen } from '../components/AccountScreen';
 import { toast } from 'sonner';
 import { Booking } from '../types';
-import { Loader2 } from 'lucide-react'; // Import Loader
 
 export default function AccountPage() {
   const router = useRouter();
@@ -40,8 +38,7 @@ export default function AccountPage() {
   if (authLoading || (isAuthenticated && loadingData)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8DC' }}>
-        {/* Use the branded loader */}
-        <Loader2 className="h-12 w-12 animate-spin text-brand-orange" />
+        <p className="font-semibold" style={{ color: '#6C0345' }}>Loading Your Account...</p>
       </div>
     );
   }
@@ -50,11 +47,9 @@ export default function AccountPage() {
       return null;
   }
 
-  // --- THIS IS THE FIX ---
-  // We pass user.createdAt (from the JWT) as the createdAt prop.
   return (
     <AccountScreen
-      user={{...user, createdAt: user.createdAt, email: user.email}}
+      user={{...user, createdAt: user.created_at, email: user.email}}
       bookings={bookings}
       onBack={() => router.push('/')}
       onNavigateToSettings={() => router.push('/settings')}

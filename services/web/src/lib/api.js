@@ -43,21 +43,21 @@ export const updateUser = (userId, profileData) => api.put(`/users/${userId}`, p
 export const updateUserPassword = (userId, passwordData) => api.put(`/users/${userId}/password`, passwordData);
 export const updateUserSettings = (userId, settings) => api.put(`/users/${userId}/settings`, { settings });
 
-// Update getPlaces to accept lat and lng and send them as params
+// --- Customer Endpoints ---
 export const getPlaces = (lat, lng) => {
   const params = (lat && lng) ? { lat, lng } : {};
   return api.get('/customers/places', { params });
 };
-// --- END FIX ---
-
 export const getPlaceById = (placeId) => api.get(`/customers/places/${placeId}`);
 export const getUserBookings = () => api.get('/customers/bookings');
 export const createBooking = (bookingData) => api.post('/customers/bookings', bookingData);
-export const getUserBookmarks = () => api.get('/customers/bookmarks');
+export const getUserBookmarks = () => api.get('/customers/bookmarks'); // Gets list of IDs
+export const getBoookmarkedPlaces = () => api.get('/customers/bookmarks/places'); // <-- NEW: Gets full place data
 export const addBookmark = (placeId) => api.post('/customers/bookmarks', { placeId });
 export const removeBookmark = (placeId) => api.delete(`/customers/bookmarks/${placeId}`);
-export const createReview = (reviewData) => api.post('/customers/reviews', reviewData);
+export const createReview = (reviewData) => api.post('/customers/reviews', reviewData); // <-- Unchanged, but now works
 export const getBookingByTicketId = (ticketId) => api.get(`/customers/bookings/ticket/${ticketId}`);
+
 // --- Owner Endpoints ---
 export const addPlace = (placeData) => api.post('/owners/places', placeData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -69,9 +69,10 @@ export const updateOwnerPlace = (placeId, placeData) => api.put(`/owners/places/
 });
 export const addMenuItem = (placeId, menuItemData) => api.post(`/owners/places/${placeId}/menu`, menuItemData);
 export const addBundle = (placeId, bundleData) => api.post(`/owners/places/${placeId}/bundles`, bundleData);
-export const getOwnerBookings = () => api.get('/owners/bookings'); // 
+export const getOwnerBookings = () => api.get('/owners/bookings'); 
 export const updateBookingStatus = (bookingId, status) => api.put(`/owners/bookings/${bookingId}/status`, { status });
 export const checkInByTicket = (ticketId) => api.post('/owners/bookings/check-in', { ticketId });
+
 // --- Admin Endpoints ---
 export const getPendingPlaces = () => api.get('/admin/places/pending');
 export const approvePlace = (placeId) => api.put(`/admin/places/${placeId}/status`, { status: 'approved' });
