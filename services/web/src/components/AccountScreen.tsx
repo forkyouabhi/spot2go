@@ -504,7 +504,7 @@ export function AccountScreen({
                   <div className="space-y-3">
                     {pastBookings.map((booking, index) => (
                       <div
-                        key={booking.id}
+                        key={booking.ticketId}
                         className="border-2 rounded-xl p-3 opacity-80 transition-smooth hover:opacity-100 animate-fade-in-up"
                         style={{
                           borderColor: "#F7C566",
@@ -518,7 +518,7 @@ export function AccountScreen({
                               className="font-medium"
                               style={{ color: "#6C0345" }}
                             >
-                              {booking.placeName}
+                              {booking.place.name}
                             </h4>
                             <Badge
                               className="mt-1 px-2 py-1 rounded-full border"
