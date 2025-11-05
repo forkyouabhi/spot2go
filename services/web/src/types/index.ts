@@ -115,7 +115,8 @@ export interface Booking {
   user?: {
     name: string;
     email: string;
-    phone?: string; // <-- ADD THIS FIELD
+    phone?: string; 
+    // <-- ADD THIS FIELD
   };
 }
 // --- END MODIFICATION ---
