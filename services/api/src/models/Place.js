@@ -22,6 +22,15 @@ const Place = sequelize.define('Place', {
   type: {
     type: DataTypes.TEXT, // e.g., cafe, library, coworking
   },
+  rating: {
+    type: DataTypes.DECIMAL(2, 1), // e.g., 4.5
+    defaultValue: 0.0
+  },
+  reviewCount: {
+    type: DataTypes.INTEGER,
+    field: 'review_count',
+    defaultValue: 0
+  },
   description: {
     type: DataTypes.TEXT,
     allowNull: true,

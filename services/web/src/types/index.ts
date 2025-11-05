@@ -3,7 +3,7 @@ export interface User {
   id: string;
   name: string;
   email: string;
-  phone?: string; 
+  phone?: string; // This already exists, but good to confirm
   dateJoined: string;
   avatar?: string;
   provider?: 'google' | 'apple' | 'email';
@@ -11,7 +11,7 @@ export interface User {
   status: 'active' | 'pending_verification' | 'rejected';
   createdAt: string;
   created_at?: string;
-  businessLocation?: string;
+  businessLocation?: string; // --- NEW FIELD ---
 }
 
 export interface UserSettings {
@@ -34,6 +34,7 @@ export interface UserSettings {
   };
 }
 
+// ... (MenuItem, StudyPlace, TimeSlot, Review, Booking, Screen types remain the same) ...
 export interface MenuItem {
   id: number;
   name: string;
@@ -60,8 +61,7 @@ export interface StudyPlace {
     end: string;
   };
   distance?: string;
-  rating?: number | string;
-  reviewCount?: number | string;
+  rating?: number;
   pricePerHour?: number;
   availableSlots?: TimeSlot[];
   reviews?: Review[];
@@ -80,45 +80,21 @@ export interface TimeSlot {
 export interface Review {
   id: string;
   userId: string;
-  placeId: string;
-  userName?: string; 
-  user?: {
-    id: string;
-    name: string;
-  };
+  userName: string;
   rating: number;
   comment: string;
-  date: string; 
-  created_at?: string;
+  date: string;
 }
 
-// --- MODIFIED BOOKING TYPE ---
 export interface Booking {
   id: string;
   placeId: string;
-  placeName?: string; 
+  placeName: string;
   date: string;
   startTime: string;
   endTime: string;
-  status: 'confirmed' | 'completed' | 'cancelled' | 'no-show'; // Updated status
+  status: 'confirmed' | 'pending' | 'cancelled';
   ticketId: string;
-  
-  // New fields from the API
-  place?: {
-    
-    name: string;
-    location: {  // <-- Add this
-      address: string; 
-    };
-    images?: string[];
-  };
-  user?: {
-    name: string;
-    email: string;
-    phone?: string; 
-    // <-- ADD THIS FIELD
-  };
 }
-// --- END MODIFICATION ---
 
 export type Screen = 'splash' | 'login' | 'signup' | 'home' | 'place-details' | 'booking' | 'account' | 'confirmation' | 'settings';

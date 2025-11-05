@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { getBookingByTicketId } from '../lib/api';
 import { Booking } from '../types';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
-import { toast } from 'sonner';
+import toast from 'react-hot-toast';
 
 export default function ConfirmationPage() {
   const router = useRouter();
@@ -57,7 +57,7 @@ export default function ConfirmationPage() {
     if (booking) {
       // Use the API URL from environment variables
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      // This links directly to the API endpoint
+      // This links directly to the API endpoint we already built
       window.open(`${apiUrl}/bookings/${booking.id}/calendar?token=${localStorage.getItem('token')}`);
     }
   };
@@ -107,7 +107,6 @@ export default function ConfirmationPage() {
             {/* Information Card */}
             <Card className="bg-brand-cream/50 border-brand-yellow">
               <CardHeader className="flex flex-row items-center gap-4">
-                {/* THIS IS THE FIX FOR THE BUILD ERROR */}
                 <ImageWithFallback
                   src={place?.images?.[0] || ''}
                   alt={place?.name || 'Study Spot'}

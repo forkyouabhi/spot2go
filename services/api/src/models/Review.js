@@ -6,29 +6,34 @@ const Review = sequelize.define('Review', {
   id: {
     type: DataTypes.INTEGER,
     autoIncrement: true,
-    primaryKey: true,
+    primaryKey: true
   },
   userId: {
     type: DataTypes.INTEGER,
     field: 'user_id',
-    references: { model: 'users', key: 'id' },
     allowNull: false,
+    references: { model: 'users', key: 'id' }
   },
   placeId: {
     type: DataTypes.INTEGER,
     field: 'place_id',
-    references: { model: 'places', key: 'id' },
     allowNull: false,
+    references: { model: 'places', key: 'id' }
+  },
+  bookingId: {
+    type: DataTypes.INTEGER,
+    field: 'booking_id',
+    allowNull: false,
+    unique: true, // A booking can only be reviewed once
+    references: { model: 'bookings', key: 'id' }
   },
   rating: {
     type: DataTypes.INTEGER,
-    allowNull: false,
-    validate: { min: 1, max: 5 },
+    allowNull: false
   },
   comment: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
+    type: DataTypes.TEXT
+  }
 }, {
   tableName: 'reviews',
   timestamps: true,

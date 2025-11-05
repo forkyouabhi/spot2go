@@ -51,7 +51,11 @@ const Booking = sequelize.define('Booking', {
     type: DataTypes.TEXT,
     unique: true,
     field: 'ticketId'
-  }
+  },
+  reviewed: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
+  },
 }, {
   tableName: 'bookings',
   timestamps: true,

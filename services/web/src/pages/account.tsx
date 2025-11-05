@@ -1,18 +1,15 @@
-// services/web/src/pages/account.tsx
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { getUserBookings, getPlaces } from '../lib/api';
+import { getUserBookings } from '../lib/api';
 import { AccountScreen } from '../components/AccountScreen';
 import { toast } from 'sonner';
-import { Booking, StudyPlace } from '../types';
-import { Loader2 } from 'lucide-react'; 
+import { Booking } from '../types';
 
 export default function AccountPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading: authLoading, logout, bookmarks } = useAuth();
+  const { user, isAuthenticated, loading: authLoading, logout } = useAuth();
   const [bookings, setBookings] = useState<Booking[]>([]);
-  const [bookmarkedPlaces, setBookmarkedPlaces] = useState<StudyPlace[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
   useEffect(() => {
@@ -22,40 +19,26 @@ export default function AccountPage() {
       return;
     }
 
-    const fetchPageData = async () => {
+    const fetchUserBookings = async () => {
       try {
         setLoadingData(true);
-        // Fetch bookings and places in parallel
-        const [bookingsRes, placesRes] = await Promise.all([
-          getUserBookings(),
-          getPlaces(null, null) // Fetch all places
-        ]);
-        
-        setBookings(bookingsRes.data);
-
-        // Filter all places to find the bookmarked ones
-        const allPlaces: StudyPlace[] = placesRes.data;
-        const filteredBookmarks = allPlaces.filter(place => 
-          bookmarks.includes(place.id.toString())
-        );
-        setBookmarkedPlaces(filteredBookmarks);
-
+        const response = await getUserBookings();
+        setBookings(response.data);
       } catch (error) {
-        toast.error('Could not fetch your account data.');
-        console.error('Failed to fetch account data:', error);
+        toast.error('Could not fetch your bookings.');
+        console.error('Failed to fetch bookings:', error);
       } finally {
         setLoadingData(false);
       }
     };
 
-    fetchPageData();
-  }, [isAuthenticated, authLoading, router, bookmarks]); // Add bookmarks as a dependency
+    fetchUserBookings();
+  }, [isAuthenticated, authLoading, router]);
 
   if (authLoading || (isAuthenticated && loadingData)) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8DC' }}>
-        {/* Use the branded loader */}
-        <Loader2 className="h-12 w-12 animate-spin text-brand-orange" />
+        <p className="font-semibold" style={{ color: '#6C0345' }}>Loading Your Account...</p>
       </div>
     );
   }
@@ -64,12 +47,10 @@ export default function AccountPage() {
       return null;
   }
 
-  // Pass the user's email and createdAt from the token
   return (
     <AccountScreen
-      user={{...user, createdAt: user.createdAt, email: user.email}}
-      bookings={bookings}      
-      bookmarkedPlaces={bookmarkedPlaces}
+      user={{...user, createdAt: user.created_at, email: user.email}}
+      bookings={bookings}
       onBack={() => router.push('/')}
       onNavigateToSettings={() => router.push('/settings')}
       onLogout={logout}

@@ -1,5 +1,4 @@
-// Replace the entire contents of this file
-
+// services/api/src/models/index.js
 const sequelize = require('../config/sequelize');
 const User = require('./User');
 const Place = require('./Place');
@@ -8,7 +7,8 @@ const Bundle = require('./Bundle');
 const BundleItem = require('./BundleItem');
 const Booking = require('./Booking');
 const UserDevice = require('./UserDevice');
-const Bookmark = require('./Bookmark'); // <-- ADDED
+const Bookmark = require('./Bookmark');
+const Review = require('./Review'); // <-- ADDED
 
 // Define associations
 
@@ -40,13 +40,20 @@ Booking.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 Bundle.belongsToMany(MenuItem, { through: BundleItem, foreignKey: 'bundleId', as: 'items' });
 MenuItem.belongsToMany(Bundle, { through: BundleItem, foreignKey: 'menuItemId', as: 'bundles' });
 
-// --- ADDED BOOKMARK ASSOCIATIONS ---
+// --- BOOKMARK ASSOCIATIONS ---
 User.hasMany(Bookmark, { foreignKey: 'userId', as: 'bookmarks' });
 Bookmark.belongsTo(User, { foreignKey: 'userId' });
 
 Place.hasMany(Bookmark, { foreignKey: 'placeId', as: 'bookmarkedBy' });
 Bookmark.belongsTo(Place, { foreignKey: 'placeId' });
-// --- END BOOKMARK ASSOCIATIONS ---
+
+// --- ADDED REVIEW ASSOCIATIONS ---
+User.hasMany(Review, { foreignKey: 'userId', as: 'reviews' });
+Review.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+Place.hasMany(Review, { foreignKey: 'placeId', as: 'reviews' });
+Review.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
+// --- END REVIEW ASSOCIATIONS ---
 
 const db = {
   sequelize,
@@ -57,11 +64,11 @@ const db = {
   BundleItem,
   Booking,
   UserDevice,
-  Bookmark, // <-- ADDED
+  Bookmark,
+  Review, // <-- ADDED
 };
 
 // Sync all models with the database
-// In a real production app, you might use migrations instead of sync()
 sequelize.sync({ alter: true }).then(() => {
   console.log('All models were synchronized successfully.');
 });

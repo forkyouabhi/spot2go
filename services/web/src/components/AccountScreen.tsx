@@ -1,4 +1,3 @@
-// services/web/src/components/AccountScreen.tsx
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -17,64 +16,24 @@ import {
   Sparkles,
   User as UserIcon,
   LogOut,
-  ArrowRight,
 } from "lucide-react";
-import { User, Booking, StudyPlace } from "../types";
-import { ImageWithFallback } from "./figma/ImageWithFallback";
-import Link from 'next/link';
+import { User, Booking } from "../types";
 
 interface AccountScreenProps {
   user: User;
   bookings: Booking[];
-  bookmarkedPlaces: StudyPlace[]; // This prop receives the data
   onBack: () => void;
   onNavigateToSettings: () => void;
-  onLogout: () => void;
+  onLogout: () => void; // Added onLogout prop
 }
-
-// Card component for displaying a single bookmarked place
-const BookmarkCard = ({ place }: { place: StudyPlace }) => (
-  <Link href={`/places/${place.id}`} passHref>
-    <Card 
-      className="border-2 rounded-2xl shadow-lg transition-all hover:shadow-xl hover:-translate-y-0.5" 
-      style={{ borderColor: '#DC6B19', backgroundColor: 'white' }}
-    >
-      <CardContent className="p-3 flex gap-4 items-center">
-        <ImageWithFallback
-          src={place.images?.[0] || ''}
-          alt={place.name}
-          className="w-20 h-20 object-cover rounded-lg border-2 border-brand-yellow"
-        />
-        <div className="flex-1">
-          <h4 className="font-semibold text-brand-burgundy">{place.name}</h4>
-          <p className="text-sm text-brand-orange flex items-center gap-1 truncate">
-            <MapPin className="h-4 w-4 flex-shrink-0" />
-            {place.location.address}
-          </p>
-          <div className="flex items-center gap-2 mt-1 text-sm text-amber-600 font-semibold">
-            <Star className="h-4 w-4 fill-amber-500" />
-            {parseFloat(place.rating as string).toFixed(1)}
-            <span className="text-gray-500 font-normal">({place.reviewCount} reviews)</span>
-          </div>
-        </div>
-        <div className="flex items-center justify-center pl-2">
-           <ArrowRight className="h-5 w-5 text-brand-orange" />
-        </div>
-      </CardContent>
-    </Card>
-  </Link>
-);
-
 
 export function AccountScreen({
   user,
   bookings,
-  bookmarkedPlaces, // This prop is now used
   onBack,
   onNavigateToSettings,
   onLogout,
 }: AccountScreenProps) {
-  
   const upcomingBookings = bookings.filter(
     (booking) =>
       booking.status === "confirmed" && new Date(booking.date) >= new Date()
@@ -112,7 +71,7 @@ export function AccountScreen({
         };
     }
   };
-  
+
   return (
     <div className="min-h-screen" style={{ backgroundColor: "#FFF8DC" }}>
       {/* Header */}
@@ -153,17 +112,17 @@ export function AccountScreen({
         </Button>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
-        {/* Profile Card */}
+      <div className="p-4 space-y-6">
+        {/* Enhanced Profile Card */}
         <Card
           className="border-2 rounded-2xl shadow-lg animate-fade-in-up"
           style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
         >
           <CardContent className="p-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
-              <div className="flex items-center space-x-4 mb-4 sm:mb-0">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center space-x-4">
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2 flex-shrink-0"
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2"
                   style={{
                     backgroundColor: "#6C0345",
                     borderColor: "#DC6B19",
@@ -192,7 +151,7 @@ export function AccountScreen({
                     {user.name}
                   </h3>
                   <p
-                    className="text-sm font-medium break-all"
+                    className="text-sm font-medium"
                     style={{ color: "#DC6B19" }}
                   >
                     {user.email}
@@ -237,7 +196,7 @@ export function AccountScreen({
                 variant="outline"
                 size="sm"
                 onClick={onNavigateToSettings}
-                className="rounded-xl border-2 transition-button flex-shrink-0"
+                className="rounded-xl border-2 transition-button"
                 style={{
                   backgroundColor: "#F7C566",
                   borderColor: "#DC6B19",
@@ -280,10 +239,10 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  {bookmarkedPlaces.length}
+                  0
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
-                  Bookmarks
+                  Reviews
                 </div>
               </div>
             </div>
@@ -391,7 +350,6 @@ export function AccountScreen({
             </TabsTrigger>
           </TabsList>
 
-          {/* Bookings Tab */}
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -626,49 +584,39 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
-          {/* Bookmarks Tab */}
           <TabsContent value="bookmarks" className="space-y-4 mt-6">
-            {bookmarkedPlaces.length > 0 ? (
-              <div className="space-y-4">
-                {bookmarkedPlaces.map(place => (
-                  <BookmarkCard key={place.id} place={place} />
-                ))}
-              </div>
-            ) : (
-              <Card
-                className="border-2 rounded-2xl shadow-lg"
-                style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
-              >
-                <CardContent className="p-8">
-                  <div className="text-center py-12">
-                    <div
-                      className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
-                      style={{
-                        backgroundColor: "#F7C566",
-                        borderColor: "#DC6B19",
-                      }}
-                    >
-                      <Bookmark
-                        className="h-8 w-8"
-                        style={{ color: "#6C0345" }}
-                      />
-                    </div>
-                    <p
-                      className="font-semibold"
+            <Card
+              className="border-2 rounded-2xl shadow-lg"
+              style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
+            >
+              <CardContent className="p-8">
+                <div className="text-center py-12">
+                  <div
+                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
+                    style={{
+                      backgroundColor: "#F7C566",
+                      borderColor: "#DC6B19",
+                    }}
+                  >
+                    <Bookmark
+                      className="h-8 w-8"
                       style={{ color: "#6C0345" }}
-                    >
-                      No bookmarked places yet
-                    </p>
-                    <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
-                      Bookmark places to find them easily later
-                    </p>
+                    />
                   </div>
-                </CardContent>
-              </Card>
-            )}
+                  <p
+                    className="font-semibold"
+                    style={{ color: "#6C0345" }}
+                  >
+                    No bookmarked places yet
+                  </p>
+                  <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
+                    Bookmark places to find them easily later
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
 
-          {/* Reviews Tab */}
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
