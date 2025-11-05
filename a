@@ -1,0 +1,269 @@
+[33mcommit 466be177fa6b370b1106a87b1b3f7f16c029ab6a[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmain[m[33m)[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 23:07:20 2025 -0500
+
+    fixing
+
+[33mcommit 203698c62c052016717007c4b1637e0976b30dbe[m[33m ([m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m)[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 22:26:32 2025 -0500
+
+    client side issue fix
+
+[33mcommit 337d1bf2e83fc8ce5b10db43d89b8db48f51c2a5[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 22:13:44 2025 -0500
+
+    FEAT: Add API routes for bookmarks and ticket-by-ID
+
+[33mcommit dd560cc66b65aff88e444f130877b780b9f75f1b[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 22:06:41 2025 -0500
+
+    FEAT: Add API routes for bookmarks and ticket ID
+
+[33mcommit 7d85bccdc801e1bbcf419661bee884e52c4c1bfe[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 21:39:11 2025 -0500
+
+    fixed
+
+[33mcommit b9dd3efbf4ae4ccf228668a5d4a382d73313a181[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 19:59:36 2025 -0500
+
+    route fix
+
+[33mcommit ee252ce172d658c91a74a64c222dbedb15fd05dc[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Tue Nov 4 19:30:07 2025 -0500
+
+    overhaul and booking system changes
+
+[33mcommit ce29575d3f7689ef5e056c8d1654064698c159de[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 18:16:27 2025 -0400
+
+    visual changes
+
+[33mcommit 0279983093e05a8052268b190db64ff0c413a8ab[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 17:06:37 2025 -0400
+
+    logo fix
+
+[33mcommit 14b77c090bdac2704288dc41e03bbfb119025dae[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 01:26:02 2025 -0400
+
+    visual changes
+
+[33mcommit d81af5d1278d758d26ebb772b1c943489e320034[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 01:18:42 2025 -0400
+
+    visual changes
+
+[33mcommit 8387fe9c5b6988ceba07b67f5b93312430809e05[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 01:17:51 2025 -0400
+
+    visual changes
+
+[33mcommit 24a69f96f9a91677514523e58b0785ca597569f8[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 30 00:48:14 2025 -0400
+
+    business form changes
+
+[33mcommit 98d0d9aa5b84a2b80922637d90acfd8f1289f353[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 18:30:17 2025 -0400
+
+    route fix
+
+[33mcommit 7ed33050b4ddad3c92e1ee49a20ba12e85199148[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 17:37:00 2025 -0400
+
+    sign up fix
+
+[33mcommit 4144f6f04a4f08cc77dde208430b281fb498592a[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 17:28:46 2025 -0400
+
+    user-model-fix
+
+[33mcommit 4935939e6dcf8a96c379e1e55334515ac3cd6d82[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 17:19:37 2025 -0400
+
+    user-model-fix
+
+[33mcommit fa8de0a5b35302a4522b6dfcd9c7ccb42b57cfe5[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 17:15:24 2025 -0400
+
+    model fixes
+
+[33mcommit 091ba24c05830f3f96b553cdf25a0a5509e8a51e[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 17:07:53 2025 -0400
+
+    fixes
+
+[33mcommit 14498fa949019c28c45236355a9f4d40d3513b47[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 29 16:28:29 2025 -0400
+
+    business form
+
+[33mcommit 0f60f523c7927d48a33ea0a73e23a85a8957259e[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 16 18:02:37 2025 -0400
+
+    booking system fixes
+
+[33mcommit fb8cf0dc19a8394b041f7fb18b64055cb6c38c71[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Thu Oct 16 17:17:32 2025 -0400
+
+    UI fixes and booking system
+
+[33mcommit 44fb8d5762e7bdb99f931b0da5f3cf68f31db0fd[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 17:19:05 2025 -0400
+
+    minor UI Changes
+
+[33mcommit 03fa1f5751bc1e413c434801372dfac50d69be63[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 16:51:59 2025 -0400
+
+    routes changes
+
+[33mcommit 1763c6a5fc05497c147e6bb6a58ca3e6487491dc[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 16:47:36 2025 -0400
+
+    add place fix
+
+[33mcommit 67ff17544b5fc4676c437cb1f9025363d22d780e[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 16:11:56 2025 -0400
+
+    Token, User account, OAuth fix, CSS and more
+
+[33mcommit a18e3af504e767f6d29716ba22425c15771e9373[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 15:40:20 2025 -0400
+
+    Apple Auth removed
+
+[33mcommit 8145e7c1bb174a081c8ea3faf7866106eb645f36[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Wed Oct 8 13:45:45 2025 -0400
+
+    Authentication fixes
+
+[33mcommit 8049a9b56a154c0c48febe531f88ed7ac03eed48[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Mon Oct 6 23:29:25 2025 -0400
+
+    deployement issues fixes
+
+[33mcommit ac1bffb4d06af610c5dc5ac44bc40067ceb2fbff[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Mon Oct 6 23:06:33 2025 -0400
+
+    backend server fixes
+
+[33mcommit c423fc2c7e5ab1a4924ea72ebbf6ef3fd17f8aea[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Mon Oct 6 22:28:07 2025 -0400
+
+    build fixed
+
+[33mcommit 0d57a4e0dc0732a84ca8c27d7dc2c7eccc6e22e4[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Mon Oct 6 21:58:17 2025 -0400
+
+    dashboard fix
+
+[33mcommit 14e9a3d1ea355b1769663983e5acc7785b6cb2c0[m
+Author: forkyouabhi <forkyouabhi@gmail.com>
+Date:   Mon Oct 6 21:55:09 2025 -0400
+
+    user interface and dashboards overhaul
+
+[33mcommit 5aacb622597594e679bfa1364dc048488ebd4255[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Wed Sep 24 18:00:22 2025 -0400
+
+    app fixes
+
+[33mcommit 6675c816935b0849f37e9320d489080c8e3bf4c0[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Wed Sep 24 17:57:09 2025 -0400
+
+    app fixes
+
+[33mcommit 5e44ad8207177080bd5e2284ef9422a573ec3942[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Wed Sep 24 17:49:13 2025 -0400
+
+    app fixes
+
+[33mcommit 4495136a45b0c0ba425d507124fab2857eaa6219[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Wed Sep 24 02:46:03 2025 -0400
+
+    multiple role dashbaprd and approval system
+
+[33mcommit 23f35621e29bb47fce3db86cf05fb86771275ce5[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 21:50:41 2025 -0400
+
+    fixes of dashboard
+
+[33mcommit c698b3d04a15c78b353a68c283392ca8b7706d9a[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 20:37:58 2025 -0400
+
+    fixed
+
+[33mcommit e21692b49a6c4a6e003695a6d76ebd00c1c7194c[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 17:17:52 2025 -0400
+
+    gitignore fixes
+
+[33mcommit c6c60f4db5e15b26699f33d922e94e67c9d5cb35[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 17:15:58 2025 -0400
+
+    updated framework and connection with backend
+
+[33mcommit dcd25b1ef7d142cf2e30ebc565d6eb25143fe210[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 15:30:16 2025 -0400
+
+    added frontend
+
+[33mcommit baf18fe2a2a71839fe10ba88095b8bb0fd54a67a[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 14:43:36 2025 -0400
+
+    shifted to ORM
+
+[33mcommit 41a5b76f17bb894274ab347ba3a4d22400aec519[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Tue Sep 23 14:10:36 2025 -0400
+
+    Backend Services Changes
+
+[33mcommit 6c6949cd4fb93e52d7d8fe77cf86ab318abeecc6[m
+Author: Forkyouabhi <forkyouabhi@proton.me>
+Date:   Mon Sep 22 17:04:33 2025 -0400
+
+    first commit
