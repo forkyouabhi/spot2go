@@ -1,6 +1,62 @@
+/* services/web/src/styles/globals.css */
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* --- ADDED FROM INDEX.CSS --- */
+:root {
+  --font-size: 16px;
+  --background: 255 248 220; /* brand-cream */
+  --foreground: 108 3 69; /* brand-burgundy */
+  --card: 255 248 220; /* brand-cream */
+  --card-foreground: 108 3 69; /* brand-burgundy */
+  --popover: 255 248 220; /* brand-cream */
+  --popover-foreground: 108 3 69; /* brand-burgundy */
+  --primary: 108 3 69; /* brand-burgundy */
+  --primary-foreground: 255 248 220; /* brand-cream */
+  --secondary: 247 197 102; /* brand-yellow */
+  --secondary-foreground: 108 3 69; /* brand-burgundy */
+  --muted: 247 197 102 / 0.5;
+  --muted-foreground: 108 3 69 / 0.7;
+  --accent: 220 107 25 / 0.2; /* brand-orange at 20% opacity */
+  --accent-foreground: 220 107 25; /* brand-orange */
+  --destructive: 220 50 25;
+  --destructive-foreground: 255 248 220; /* brand-cream */
+  --border: 220 107 25 / 0.3;
+  --input: 220 107 25;
+  --input-background: 255 248 220;
+  --ring: 220 107 25;
+  --radius: 0.75rem;
+  --brand-burgundy: #6c0345;
+  --brand-orange: #dc6b19;
+  --brand-yellow: #f7c566;
+  --brand-cream: #fff8dc;
+}
+
+.dark {
+  --background: 20 20 20; /* A dark neutral background */
+  --foreground: 255 248 220; /* brand-cream */
+  --card: 28 28 28;
+  --card-foreground: 255 248 220;
+  --popover: 35 35 35;
+  --popover-foreground: 255 248 220;
+  --primary: 247 197 102; /* brand-yellow */
+  --primary-foreground: 108 3 69; /* brand-burgundy */
+  --secondary: 220 107 25; /* brand-orange */
+  --secondary-foreground: 255 248 220;
+  --muted: 255 255 255 / 0.1;
+  --muted-foreground: 255 255 255 / 0.6;
+  --accent: 255 255 255 / 0.15;
+  --accent-foreground: 255 255 255;
+  --destructive: 220 50 25;
+  --destructive-foreground: 255 248 220;
+  --border: 255 255 255 / 0.2;
+  --input: 255 255 255 / 0.2;
+  --input-background: 28 28 28;
+  --ring: 220 107 25; /* brand-orange */
+}
+/* --- END OF MOVED CODE --- */
+
 
 body {
   background-color: #FFF8DC; /* brand-cream */

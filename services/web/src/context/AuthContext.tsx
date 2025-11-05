@@ -1,8 +1,9 @@
 // services/web/src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { setAuthToken, registerUser, loginUser } from '../lib/api';
+import { setAuthToken, registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
 import { jwtDecode } from 'jwt-decode';
+import { toast } from "sonner"; // Import toast
 
 interface User {
   id: any;
@@ -19,8 +20,8 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   loading: boolean;
+  bookmarks: string[];
   login: (email: string, password: string) => Promise<User>;
-  // --- MODIFIED: Added new fields to register function type ---
   register: (
     name: string, 
     email: string, 
@@ -28,9 +29,11 @@ interface AuthContextType {
     role: 'customer' | 'owner',
     phone?: string,
     businessLocation?: string
-  ) => Promise<User>;
+  ) => Promise<any>; // Changed from Promise<User>
   logout: () => void;
   handleTokenUpdate: (token: string) => void;
+  addBookmark: (placeId: string) => Promise<void>;
+  removeBookmark: (placeId: string) => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -49,8 +52,20 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [bookmarks, setBookmarks] = useState<string[]>([]); // <-- 3. ADD BOOKMARKS STATE
   const [loading, setLoading] = useState(true);
   const router = useRouter();
+
+  // 4. Create a function to fetch bookmarks
+  const fetchBookmarks = useCallback(async () => {
+    try {
+      const response = await getUserBookmarks();
+      setBookmarks(response.data || []); // API returns string[]
+    } catch (error) {
+      console.error("Failed to fetch bookmarks", error);
+      // Don't toast here, it's a background task
+    }
+  }, []);
 
   const handleAuthSuccess = useCallback((token: string, redirect: boolean = true) => {
     localStorage.setItem('token', token);
@@ -59,12 +74,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const fullUser = { ...decoded, dateJoined: decoded.createdAt, status: decoded.status };
     setUser(fullUser);
 
+    if (fullUser.role === 'customer') { // Fetch bookmarks only for customers
+      fetchBookmarks();
+    }
+
     if (redirect) {
       const targetPath = decoded.role === 'owner' ? '/owner/dashboard' : decoded.role === 'admin' ? '/admin/dashboard' : '/';
       router.replace(targetPath);
     }
     return fullUser;
-  }, [router]);
+  }, [router, fetchBookmarks]); // <-- 5. Add dependency
 
   const handleTokenUpdate = useCallback((token: string) => {
     handleAuthSuccess(token, false);
@@ -83,8 +102,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
         try {
           const decoded = jwtDecode<User>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
-            setUser({ ...decoded, dateJoined: decoded.createdAt, status: decoded.status });
-            setAuthToken(localToken);
+            // Use handleAuthSuccess to set user AND fetch bookmarks
+            handleAuthSuccess(localToken, false); 
           } else {
             localStorage.removeItem('token');
             setUser(null);
@@ -106,11 +125,20 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }, [router.isReady, router.query.token, handleAuthSuccess]);
   
   const login = async (email: string, password: string): Promise<User> => {
-    const response = await loginUser({ email, password });
-    return handleAuthSuccess(response.data.token);
+    try {
+      const response = await loginUser({ email, password });
+      return handleAuthSuccess(response.data.token);
+    } catch (error: any) {
+      // --- MODIFIED: Handle the new "needsVerification" error ---
+      if (error.response?.data?.needsVerification) {
+        toast.error(error.response.data.error);
+        router.push(`/verify-email?email=${email}`);
+      }
+      throw error; // Re-throw for the form to handle
+    }
   };
     
-  // --- MODIFIED: Pass new fields to registerUser API call ---
+  // --- MODIFIED: register function no longer logs in ---
   const register = async (
     name: string, 
     email: string, 
@@ -118,26 +146,52 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     role: 'customer' | 'owner',
     phone?: string,
     businessLocation?: string
-  ): Promise<User> => {
+  ): Promise<any> => {
+    // It just calls the API and returns the response (e.g., { message, email })
     const response = await registerUser({ name, email, password, role, phone, businessLocation });
-    return handleAuthSuccess(response.data.token);
+    return response.data;
   };
-
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
+    setBookmarks([]); // <-- 6. CLEAR BOOKMARKS ON LOGOUT
     setAuthToken(null);
     router.push('/login');
+  };
+
+  // --- 7. IMPLEMENT BOOKMARK HANDLERS ---
+  const addBookmark = async (placeId: string) => {
+    try {
+      const response = await apiAddBookmark(placeId);
+      // Ensure we're using strings for comparison
+      setBookmarks((prev) => [...prev, response.data.placeId.toString()]);
+      toast.success("Bookmarked!");
+    } catch (error) {
+      toast.error("Failed to add bookmark.");
+    }
+  };
+
+  const removeBookmark = async (placeId: string) => {
+    try {
+      const response = await apiRemoveBookmark(placeId);
+      setBookmarks((prev) => prev.filter((id) => id !== response.data.placeId.toString()));
+      toast.success("Bookmark removed.");
+    } catch (error) {
+      toast.error("Failed to remove bookmark.");
+    }
   };
 
   const authContextValue: AuthContextType = {
     user,
     isAuthenticated: !!user,
     loading,
+    bookmarks,
     login,
     register,
     logout,
     handleTokenUpdate,
+    addBookmark, 
+    removeBookmark,
   };
 
   return (

@@ -1,3 +1,4 @@
+// services/web/src/components/SettingsScreen.tsx
 import { useState, useCallback, useMemo, useEffect } from "react";
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
@@ -99,8 +100,7 @@ export function SettingsScreen({
       toast.error("New password must be at least 8 characters long");
       return;
     }
-
-    // CORRECTED: Pass the entire formData object up to the parent page.
+    
     onUpdateUser(formData);
 
     setIsEditing(false);
@@ -310,7 +310,9 @@ export function SettingsScreen({
                     color: "#6C0345",
                   }}
                 >
-                  {new Date(user.created_at).toLocaleDateString("en-US", {
+                  {/* --- THIS IS THE FIX --- */}
+                  {/* Changed user.created_at to user.createdAt */}
+                  {new Date(user.createdAt).toLocaleDateString("en-US", {
                     year: "numeric",
                     month: "long",
                     day: "numeric",
@@ -460,11 +462,29 @@ export function SettingsScreen({
   );
 
   const renderSection = () => {
-    // ... other cases
     switch (activeSection) {
       case "profile":
         return renderProfileSection();
       // ... other cases
+      default:
+        return (
+          <Card
+            className="border-2 rounded-2xl shadow-lg text-center p-12"
+            style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
+          >
+            <CardTitle
+              className="text-xl font-bold"
+              style={{ color: "#6C0345" }}
+            >
+              Coming Soon
+            </CardTitle>
+            <CardContent className="p-0 pt-4">
+              <p className="text-brand-orange">
+                This settings section is under construction.
+              </p>
+            </CardContent>
+          </Card>
+        );
     }
   };
 
@@ -492,7 +512,6 @@ export function SettingsScreen({
             Settings
           </h1>
         </div>
-        {/* NEW LOGOUT BUTTON IN HEADER */}
         <Button
           variant="ghost"
           size="sm"
@@ -508,49 +527,54 @@ export function SettingsScreen({
           Logout
         </Button>
       </div>
-      <div className="flex flex-col lg:flex-row">
-        <div
-          className="w-full lg:w-80 shadow-xl border-r-2"
-          style={{
-            backgroundColor: "#FFF8DC",
-            borderColor: "#DC6B19",
-          }}
-        >
-          <div className="p-6 space-y-3">
-            {sections.map((section, index) => {
-              const isActive = activeSection === section.id;
+      
+      {/* --- RESPONSIVENESS FIX --- */}
+      {/* This outer div centers the content and adds a max-width */}
+      <div className="max-w-7xl mx-auto">
+        <div className="flex flex-col lg:flex-row">
+          <div
+            className="w-full lg:w-80 shadow-xl lg:border-r-2" // Add border only on desktop
+            style={{
+              backgroundColor: "#FFF8DC",
+              borderColor: "#DC6B19",
+            }}
+          >
+            <div className="p-6 space-y-3">
+              {sections.map((section, index) => {
+                const isActive = activeSection === section.id;
 
-              return (
-                <button
-                  key={section.id}
-                  onClick={() => setActiveSection(section.id as any)}
-                  className={`w-full flex items-center space-x-4 px-4 py-4 rounded-2xl text-left transition-button shadow-md hover:shadow-lg transform hover:scale-[1.02] animate-fade-in-up`}
-                  style={{
-                    backgroundColor: isActive ? "#DC6B19" : "#F7C566",
-                    borderWidth: "2px",
-                    borderColor: "#DC6B19",
-                    color: isActive ? "#FFF8DC" : "#6C0345",
-                    animationDelay: `${index * 0.1}s`,
-                  }}
-                >
-                  <div
-                    className="p-2 rounded-xl border-2"
+                return (
+                  <button
+                    key={section.id}
+                    onClick={() => setActiveSection(section.id as any)}
+                    className={`w-full flex items-center space-x-4 px-4 py-4 rounded-2xl text-left transition-button shadow-md hover:shadow-lg transform hover:scale-[1.02] animate-fade-in-up`}
                     style={{
-                      backgroundColor: isActive ? "#FFF8DC" : "#6C0345",
-                      borderColor: isActive ? "#F7C566" : "#DC6B19",
+                      backgroundColor: isActive ? "#DC6B19" : "#F7C566",
+                      borderWidth: "2px",
+                      borderColor: "#DC6B19",
+                      color: isActive ? "#FFF8DC" : "#6C0345",
+                      animationDelay: `${index * 0.1}s`,
                     }}
                   >
-                    <span className="text-lg">{section.emoji}</span>
-                  </div>
-                  <span className="font-semibold">{section.label}</span>
-                </button>
-              );
-            })}
+                    <div
+                      className="p-2 rounded-xl border-2"
+                      style={{
+                        backgroundColor: isActive ? "#FFF8DC" : "#6C0345",
+                        borderColor: isActive ? "#F7C566" : "#DC6B19",
+                      }}
+                    >
+                      <span className="text-lg">{section.emoji}</span>
+                    </div>
+                    <span className="font-semibold">{section.label}</span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
-        </div>
 
-        <div className="flex-1 p-6 lg:p-8">
-          <div className="max-w-4xl mx-auto">{renderSection()}</div>
+          <div className="flex-1 p-6 lg:p-8">
+            <div className="max-w-4xl mx-auto">{renderSection()}</div>
+          </div>
         </div>
       </div>
     </div>

@@ -1,3 +1,4 @@
+// services/web/src/components/AccountScreen.tsx
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -24,7 +25,7 @@ interface AccountScreenProps {
   bookings: Booking[];
   onBack: () => void;
   onNavigateToSettings: () => void;
-  onLogout: () => void; // Added onLogout prop
+  onLogout: () => void;
 }
 
 export function AccountScreen({
@@ -112,17 +113,19 @@ export function AccountScreen({
         </Button>
       </div>
 
-      <div className="p-4 space-y-6">
+      {/* --- THIS IS THE FIX --- */}
+      {/* Added max-w-7xl, mx-auto, and md:p-8 to create a centered container */}
+      <div className="max-w-7xl mx-auto p-4 md:p-8 space-y-6">
         {/* Enhanced Profile Card */}
         <Card
           className="border-2 rounded-2xl shadow-lg animate-fade-in-up"
           style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
         >
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center space-x-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6">
+              <div className="flex items-center space-x-4 mb-4 sm:mb-0">
                 <div
-                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2"
+                  className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2 flex-shrink-0"
                   style={{
                     backgroundColor: "#6C0345",
                     borderColor: "#DC6B19",
@@ -151,7 +154,7 @@ export function AccountScreen({
                     {user.name}
                   </h3>
                   <p
-                    className="text-sm font-medium"
+                    className="text-sm font-medium break-all"
                     style={{ color: "#DC6B19" }}
                   >
                     {user.email}
@@ -196,7 +199,7 @@ export function AccountScreen({
                 variant="outline"
                 size="sm"
                 onClick={onNavigateToSettings}
-                className="rounded-xl border-2 transition-button"
+                className="rounded-xl border-2 transition-button flex-shrink-0"
                 style={{
                   backgroundColor: "#F7C566",
                   borderColor: "#DC6B19",

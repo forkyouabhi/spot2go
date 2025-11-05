@@ -1,6 +1,6 @@
 // services/web/src/pages/places/[id].tsx
 import { useRouter } from 'next/router';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import Head from 'next/head';
 import { useAuth } from '../../context/AuthContext';
 import { getPlaceById, createBooking } from '../../lib/api';
@@ -17,9 +17,9 @@ import { ImageCarouselModal } from '../../components/ImageCarouselModal';
 import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image';
+import { ReviewForm } from '../../components/ReviewForm';
 
-// ... (DynamicMap import, ReviewCard, BookingWidget components are unchanged) ...
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
@@ -29,10 +29,12 @@ const ReviewCard = ({ review }: { review: Review }) => (
     <Card className="bg-white border-brand-yellow">
     <CardHeader className="flex flex-row items-center justify-between pb-2">
       <div className="flex items-center gap-3">
-        <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">{review.userName.charAt(0)}</div>
+        <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">
+          {review.user?.name?.charAt(0) || 'A'}
+        </div>
         <div>
-          <CardTitle className="text-sm font-semibold text-brand-burgundy">{review.userName}</CardTitle>
-          <p className="text-xs text-brand-orange">{new Date(review.date).toLocaleDateString()}</p>
+          <CardTitle className="text-sm font-semibold text-brand-burgundy">{review.user?.name || 'Anonymous'}</CardTitle>
+          <p className="text-xs text-brand-orange">{new Date(review.created_at || review.date).toLocaleDateString()}</p>
         </div>
       </div>
       <div className="flex items-center gap-1 text-amber-500">
@@ -91,8 +93,9 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
                                 : { backgroundColor: '#F7C566', color: '#6C0345', borderColor: '#DC6B19' }}
                                 onClick={() => setSelectedSlot(slot)}
                             >
-                                <span className="font-semibold text-sm">{slot.startTime}</span>
-                                <span className="text-xs opacity-80">to {slot.endTime}</span>
+                                {/* --- BUG FIX: Added optional chaining --- */}
+                                <span className="font-semibold text-sm">{slot.startTime?.slice(0, 5) || 'N/A'}</span>
+                                <span className="text-xs opacity-80">to {slot.endTime?.slice(0, 5) || 'N/A'}</span>
                             </Button>
                             ))}
                         </div>
@@ -133,12 +136,10 @@ export default function PlaceDetailPage() {
         threshold: 0.1,
       }
     );
-
     const currentRef = mobileBookingSectionRef.current;
     if (currentRef) {
       observer.observe(currentRef);
     }
-
     return () => {
       if (currentRef) {
         observer.unobserve(currentRef);
@@ -146,29 +147,51 @@ export default function PlaceDetailPage() {
     };
   }, []);
 
+  const fetchPlace = useCallback(async () => {
+    if (id) {
+      try {
+        const response = await getPlaceById(id as string);
+        setPlace(response.data);
+      } catch (error) {
+        toast.error("Could not load place details.");
+        router.push('/');
+      }
+    }
+  }, [id, router]);
+
   useEffect(() => {
     if (id && isAuthenticated) {
-      const fetchPlace = async () => {
-        try {
-          const response = await getPlaceById(id as string);
-          setPlace(response.data);
-        } catch (error) {
-          toast.error("Could not load place details.");
-          router.push('/');
-        }
-      };
       fetchPlace();
     } else if (!authLoading && !isAuthenticated) {
         router.push('/login');
     }
-  }, [id, isAuthenticated, authLoading, router]);
+  }, [id, isAuthenticated, authLoading, router, fetchPlace]);
 
+  const handleReviewSubmitted = (newReview: Review) => {
+    setPlace(prevPlace => {
+      if (!prevPlace) return null;
+      const updatedReviews = [newReview, ...(prevPlace.reviews || [])];
+      // Recalculate rating
+      const sum = updatedReviews.reduce((acc, review) => acc + review.rating, 0);
+      const newRating = parseFloat((sum / updatedReviews.length).toFixed(1));
+      // Recalculate review count
+      const newReviewCount = updatedReviews.length;
+
+      return {
+        ...prevPlace,
+        reviews: updatedReviews,
+        rating: newRating,
+        reviewCount: newReviewCount,
+      };
+    });
+  };
+  
   const handleGetDirections = () => {
     if (!place?.location?.lat || !place?.location?.lng) {
       toast.error("Location data is not available for directions.");
       return;
     }
-    const url = `http://googleusercontent.com/maps.google.com/2{place.location.lat},${place.location.lng}`;
+    const url = `https://maps.google.com/?q=${place.location.lat},${place.location.lng}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -182,28 +205,24 @@ export default function PlaceDetailPage() {
             date: slot.date,
             startTime: slot.startTime,
             endTime: slot.endTime,
-            amount: place.pricePerHour ? place.pricePerHour * 2 : 0,
+            amount: place.pricePerHour ? place.pricePerHour * 2 : 0, // Assuming 2hr slots
         };
 
         const response = await createBooking(bookingData);
         const { booking } = response.data;
-
         toast.success("Booking confirmed!");
 
+        // --- THIS IS THE FIX ---
+        // Only send the ticketId. The confirmation page will fetch the rest.
         router.push({
             pathname: '/confirmation',
-            query: {
-                placeName: place.name,
-                placeAddress: place.location.address,
-                date: booking.date,
-                startTime: booking.startTime,
-                endTime: booking.endTime,
-                ticketId: booking.ticketId,
-            },
+            query: { ticketId: booking.ticketId },
         });
+        // --- END FIX ---
     } catch (error: any) {
         const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
         toast.error(errorMessage);
+        // Refetch place data to reset available slots if booking failed
         if (id) {
            const updatedResponse = await getPlaceById(id as string);
            setPlace(updatedResponse.data);
@@ -214,8 +233,10 @@ export default function PlaceDetailPage() {
   };
 
   const hasReservations = place?.reservable && place?.availableSlots && place.availableSlots.length > 0;
+  // Check if the current user has already left a review
+  const hasUserReviewed = place?.reviews?.some(review => review.user?.id.toString() === user?.id.toString());
 
-  if (authLoading || !place) {
+  if (authLoading || !place || !user) {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 
@@ -229,22 +250,16 @@ export default function PlaceDetailPage() {
       <div className="min-h-screen bg-brand-cream">
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">
             <div className="max-w-screen-xl mx-auto flex justify-between items-center">
-              {/* --- MODIFIED: Use Logo Mark --- */}
-              <div onClick={() => router.push('/')} className="flex items-center gap-3">
+              <div onClick={() => router.push('/')} className="flex items-center gap-3 cursor-pointer">
                 <Image 
                   src="/logo-mark.png" 
                   alt="Spot2Go Logo"
-                  width={50}
-                  height={50}
+                  width={40}
+                  height={40}
                   className="object-contain"
-                  onClick={() => router.push('/')}
-                  
-            //       style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
-            // priority
                 />
                 <h1 className="text-xl font-bold text-brand-cream hidden sm:block">Spot2Go</h1>
               </div>
-              {/* --- END MODIFICATION --- */}
               <Button variant="ghost" onClick={() => router.push('/')} className="text-brand-cream hover:bg-brand-cream/10 border-brand-orange border">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back to places
               </Button>
@@ -275,8 +290,11 @@ export default function PlaceDetailPage() {
                   <div className="mb-6 bg-white p-6 rounded-lg border-2 border-brand-yellow">
                       <h1 className="text-4xl font-bold text-brand-burgundy">{place.name}</h1>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-brand-orange mt-2">
-                          <Badge className="bg-brand-yellow text-brand-burgundy font-semibold">{place.type}</Badge>
-                          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'}</div>
+                          <Badge className="bg-brand-yellow text-brand-burgundy font-semibold capitalize">{place.type}</Badge>
+                          <div className="flex items-center gap-1">
+                            <Star className="h-4 w-4 fill-amber-500 text-amber-500" /> 
+                            {place.rating || 'New'} ({place.reviewCount || 0} reviews)
+                          </div>
                           {place.pricePerHour && place.pricePerHour > 0 && <span>${place.pricePerHour}.00 / hour (est.)</span>}
                       </div>
                       <div className="flex flex-wrap justify-between items-center mt-4">
@@ -289,7 +307,7 @@ export default function PlaceDetailPage() {
                   </div>
 
                   <Tabs defaultValue="about" className="w-full">
-                      <TabsList className="bg-white border"><TabsTrigger value="about">About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu">Menu</TabsTrigger>}<TabsTrigger value="reviews">Reviews</TabsTrigger></TabsList>
+                      <TabsList className="bg-white border"><TabsTrigger value="about">About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu">Menu</TabsTrigger>}<TabsTrigger value="reviews">Reviews ({place.reviewCount || 0})</TabsTrigger></TabsList>
                       <TabsContent value="about" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">
                           <div className="space-y-6">
                               <h3 className="font-semibold text-xl text-brand-burgundy flex items-center gap-2"><Info />Description</h3>
@@ -305,12 +323,33 @@ export default function PlaceDetailPage() {
                           </div>
                       </TabsContent>
                       <TabsContent value="menu" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">{place.menuItems && place.menuItems.length > 0 ? <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Price</TableHead></TableRow></TableHeader><TableBody>{place.menuItems.map((i,idx)=><TableRow key={idx}><TableCell>{i.name}</TableCell><TableCell className="text-right">${parseFloat(i.price).toFixed(2)}</TableCell></TableRow>)}</TableBody></Table> : <p>No menu available.</p>}</TabsContent>
-                      <TabsContent value="reviews" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">
-                        <div className="space-y-4">
+                      <TabsContent value="reviews" className="mt-4">
+                        <div className="space-y-6">
+                          {!hasUserReviewed ? (
+                            <ReviewForm 
+                              placeId={place.id} 
+                              user={{ ...user, email: user.email ?? '' }} 
+                              onReviewSubmitted={handleReviewSubmitted} 
+                            />
+                          ) : (
+                            <Card className="bg-white border-2 border-brand-yellow p-4 text-center">
+                              <p className="font-medium text-brand-burgundy">
+                                Thanks for your feedback!
+                              </p>
+                              <p className="text-sm text-brand-orange">
+                                You have already submitted a review for this place.
+                              </p>
+                            </Card>
+                          )}
+                          
                           {place.reviews && place.reviews.length > 0 ? (
                             place.reviews.map(review => <ReviewCard key={review.id} review={review} />)
                           ) : (
-                            <p className="text-center text-gray-500 py-8">No reviews yet. Be the first to leave one!</p>
+                            !hasUserReviewed && (
+                              <p className="text-center text-gray-500 py-8">
+                                No reviews yet. Be the first to leave one!
+                              </p>
+                            )
                           )}
                         </div>
                       </TabsContent>
@@ -343,7 +382,6 @@ export default function PlaceDetailPage() {
                 </Button>
             </div>
          )}
-
       </div>
     </>
   );
