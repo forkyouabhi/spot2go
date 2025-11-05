@@ -1,4 +1,5 @@
-const { Place, MenuItem, Bundle } = require('../models');
+// services/api/src/controllers/ownerController.js
+const { Place, MenuItem, Bundle, Booking, User } = require('../models');
 
 const createPlace = async (req, res) => {
   try {
@@ -36,7 +37,6 @@ const createPlace = async (req, res) => {
   }
 };
 
-// NEW FUNCTION: To update a place and re-submit it for approval
 const updateOwnerPlace = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -48,8 +48,6 @@ const updateOwnerPlace = async (req, res) => {
       return res.status(404).json({ error: 'Place not found or you do not have permission to edit it.' });
     }
 
-    // Handle new image uploads. If new images are sent, they replace the old ones.
-    // If no new images are sent, the existing ones are kept.
     const newImageUrls = req.files && req.files.length > 0 ? req.files.map(file => file.path) : place.images;
 
     let amenitiesArray = [];
@@ -66,7 +64,6 @@ const updateOwnerPlace = async (req, res) => {
         return res.status(400).json({ error: 'Invalid location format.' });
     }
 
-    // Update the place details and reset status to 'pending' for re-approval
     await place.update({
       name,
       type,
@@ -117,6 +114,138 @@ const getOwnerPlaceById = async (req, res) => {
   }
 };
 
+const getOwnerBookings = async (req, res) => {
+  try {
+    const ownerId = req.user.id;
+
+    const bookings = await Booking.findAll({
+      include: [
+        {
+          model: Place,
+          as: 'place',
+          where: { ownerId: ownerId }, 
+          attributes: ['name']
+        },
+        {
+          model: User,
+          as: 'user',
+          // --- THIS IS THE FIX ---
+          // Add 'phone' to the attributes
+          attributes: ['name', 'email', 'phone'] 
+        }
+      ],
+      order: [['date', 'DESC'], ['startTime', 'ASC']]
+    });
+
+    res.json(bookings);
+  } catch (err) {
+    console.error('Error fetching owner bookings:', err);
+    res.status(500).json({ error: 'Failed to fetch bookings' });
+  }
+};
+
+const updateBookingStatus = async (req, res) => {
+  try {
+    const { bookingId } = req.params;
+    const { status } = req.body;
+    const ownerId = req.user.id;
+
+    if (!['completed', 'no-show'].includes(status)) {
+      return res.status(400).json({ error: 'Invalid status. Must be "completed" or "no-show".' });
+    }
+
+    const booking = await Booking.findByPk(bookingId, {
+      include: {
+        model: Place,
+        as: 'place',
+        attributes: ['ownerId']
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found.' });
+    }
+
+    if (booking.place.ownerId !== ownerId) {
+      return res.status(403).json({ error: 'Forbidden. You do not own the place for this booking.' });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ error: `Cannot update booking with status "${booking.status}".` });
+    }
+
+    booking.status = status;
+    await booking.save();
+
+    const updatedBooking = await Booking.findByPk(bookingId, {
+      include: [
+        { model: Place, as: 'place', attributes: ['name'] },
+        // --- ALSO FIX IT HERE ---
+        // Make sure the returned object also has the phone
+        { model: User, as: 'user', attributes: ['name', 'email', 'phone'] } 
+      ]
+    });
+
+    res.json({ message: `Booking marked as ${status}.`, booking: updatedBooking });
+
+  } catch (err) {
+    console.error('Error updating booking status:', err);
+    res.status(500).json({ error: 'Failed to update booking status.' });
+  }
+};
+const checkInByTicketId = async (req, res) => {
+  try {
+    const { ticketId } = req.body;
+    const ownerId = req.user.id;
+
+    if (!ticketId) {
+      return res.status(400).json({ error: 'Ticket ID is required.' });
+    }
+
+    const booking = await Booking.findOne({
+      where: { ticketId },
+      include: {
+        model: Place,
+        as: 'place',
+        attributes: ['ownerId', 'name']
+      }
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Invalid Ticket: Booking not found.' });
+    }
+
+    // Security Check: Ensure the owner scanning this ticket actually owns the place
+    if (booking.place.ownerId !== ownerId) {
+      return res.status(403).json({ error: 'Forbidden. This booking is for a place you do not own.' });
+    }
+
+    if (booking.status === 'completed') {
+      return res.status(400).json({ error: `This customer has already been checked in.` });
+    }
+
+    if (booking.status !== 'confirmed') {
+      return res.status(400).json({ error: `Cannot check in a booking with status "${booking.status}".` });
+    }
+
+    // Success! Mark as completed.
+    booking.status = 'completed';
+    await booking.save();
+
+    res.json({ 
+      message: 'Check-in successful!',
+      booking: {
+        placeName: booking.place.name,
+        date: booking.date,
+        startTime: booking.startTime
+      }
+    });
+
+  } catch (err) {
+    console.error('Error checking in by ticket ID:', err);
+    res.status(500).json({ error: 'Failed to check in booking.' });
+  }
+};
 const addMenuItem = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -159,6 +288,9 @@ module.exports = {
   getOwnerPlaces,
   updateOwnerPlace,
   getOwnerPlaceById,
+  getOwnerBookings,
+  updateBookingStatus,
+  checkInByTicketId,
   addMenuItem,
   addBundle,
 };

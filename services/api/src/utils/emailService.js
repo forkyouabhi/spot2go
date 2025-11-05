@@ -13,7 +13,38 @@ const transporter = nodemailer.createTransport({
 });
 
 const emailTemplates = {
-  // ... (other templates: bookingConfirmation, passwordResetRequest, passwordResetConfirmation) ...
+  newBookingForOwner: ({ ownerName, customerName, customerPhone, customerEmail, placeName, date, startTime, endTime, ticketId }) => ({
+    subject: `🎉 New Booking at ${placeName}!`,
+    text: `Hi ${ownerName},\n\nYou have a new booking for ${placeName}!\n\nCustomer: ${customerName}\nEmail: ${customerEmail}\nPhone: ${customerPhone || 'Not provided'}\n\nDate: ${date}\nTime: ${startTime} - ${endTime}\nTicket ID: ${ticketId}\n\nThis spot is now reserved. You can view this on your dashboard.\n\nSpot2Go Team`,
+    html: `<p>Hi ${ownerName},</p>
+           <p>You have a new booking for <strong>${placeName}</strong>!</p>
+           <h3>Customer Details:</h3>
+           <ul>
+             <li><strong>Name:</strong> ${customerName}</li>
+             <li><strong>Email:</strong> ${customerEmail}</li>
+             <li><strong>Phone:</strong> ${customerPhone || 'Not provided'}</li>
+           </ul>
+           <h3>Booking Details:</h3>
+           <ul>
+             <li><strong>Date:</strong> ${date}</li>
+             <li><strong>Time:</strong> ${startTime} - ${endTime}</li>
+             <li><strong>Ticket ID:</strong> ${ticketId}</li>
+           </ul>
+           <p>This spot is now reserved. You can view this on your dashboard.</p>
+           <p>Spot2Go Team</p>`,
+  }),
+  // --- NEW TEMPLATE FOR OTP ---
+  emailVerificationOTP: ({ name, otp }) => ({
+    subject: 'Your Spot2Go Verification Code',
+    text: `Hi ${name},\n\nYour verification code is: ${otp}\n\nThis code will expire in 10 minutes.\n\nSpot2Go Team`,
+    html: `<p>Hi ${name},</p>
+           <p>Your 6-digit verification code is:</p>
+           <h2 style="font-size: 24px; tracking-letter: 2px;">${otp}</h2>
+           <p>This code will expire in 10 minutes. If you did not request this, please ignore this email.</p>
+           <p>Spot2Go Team</p>`,
+  }),
+  // --- END NEW TEMPLATE ---ND NEW TEMPLATE ---
+
   bookingConfirmation: ({ name, placeName, date, startTime, endTime, ticketId }) => ({
     subject: `Booking Confirmed for ${placeName}!`,
     text: `Hi ${name},\n\nYour booking for ${placeName} is confirmed!\n\nDate: ${date}\nTime: ${startTime} - ${endTime}\nTicket ID: ${ticketId}\n\nSee you there!\nSpot2Go Team`,
@@ -30,7 +61,6 @@ const emailTemplates = {
     html: `<p>Hi ${name},</p><p>Your password for Spot2Go has been successfully changed.</p><p>If you did not make this change, please contact support immediately.</p><p>Spot2Go Team</p>`,
   }),
   
-  // --- MODIFIED TEMPLATE ---
   newOwnerForVerification: ({ name, email, phone, businessLocation, adminDashboardLink }) => ({
     subject: 'New Owner Signup - Verification Required',
     text: `A new business owner has signed up for Spot2Go.\n\nName: ${name}\nEmail: ${email}\nPhone: ${phone}\nBusiness Location: ${businessLocation}\n\nPlease review their account and approve or reject it in the admin dashboard:\n${adminDashboardLink}\n\nSpot2Go Admin Team`,
@@ -44,7 +74,6 @@ const emailTemplates = {
            <p>Please review their account and approve or reject it in the <a href="${adminDashboardLink}">admin dashboard</a>.</p>
            <p>Spot2Go Admin Team</p>`,
   }),
-  // ... (other templates: ownerAccountApproved, ownerAccountRejected) ...
   ownerAccountApproved: ({ name }) => ({
     subject: 'Your Spot2Go Owner Account is Approved!',
     text: `Hi ${name},\n\nCongratulations! Your business owner account for Spot2Go has been approved.\n\nYou can now log in and start adding your places to our platform:\n${process.env.FRONTEND_URL || 'http://localhost:3000'}/login\n\nWelcome aboard,\nSpot2Go Team`,

@@ -28,6 +28,7 @@
     "stripe": "^18.5.0"
   },
   "dependencies": {
+    "bcryptjs": "^3.0.3",
     "cloudinary": "^1.41.3",
     "ics": "^3.8.1",
     "multer": "^2.0.2",

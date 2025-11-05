@@ -1,3 +1,4 @@
+// services/api/src/models/Booking.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
 
@@ -19,7 +20,11 @@ const Booking = sequelize.define('Booking', {
   },
   status: {
     type: DataTypes.TEXT,
-    defaultValue: 'pending', // pending, confirmed, cancelled
+    defaultValue: 'confirmed', // 'confirmed' (new), 'completed' (checked-in), 'cancelled'
+    allowNull: false,
+    validate: {
+      isIn: [['confirmed', 'completed', 'cancelled', 'no-show']],
+    },
   },
   amount: {
     type: DataTypes.DECIMAL,
@@ -55,4 +60,3 @@ const Booking = sequelize.define('Booking', {
 });
 
 module.exports = Booking;
-

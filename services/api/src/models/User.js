@@ -1,6 +1,7 @@
 // services/api/src/models/User.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
+const bcrypt = require('bcryptjs');
 
 const User = sequelize.define('User', {
   id: {
@@ -8,86 +9,95 @@ const User = sequelize.define('User', {
     autoIncrement: true,
     primaryKey: true,
   },
-  phone: {
-    type: DataTypes.TEXT,
-    allowNull: true,
-  },
   name: {
     type: DataTypes.TEXT,
     allowNull: false,
   },
   email: {
     type: DataTypes.TEXT,
+    allowNull: false,
     unique: true,
-    allowNull: true,
+    validate: {
+      isEmail: true,
+    },
   },
   password: {
     type: DataTypes.TEXT,
     allowNull: true,
   },
-  passwordResetToken: {
-    type: DataTypes.STRING,
-    allowNull: true,
-    field: 'password_reset_token',
-  },
-  passwordResetExpires: {
-    type: DataTypes.DATE,
-    allowNull: true,
-    field: 'password_reset_expires',
-  },
   role: {
     type: DataTypes.TEXT,
-    allowNull: false,
-    validate: {
-      isIn: [['customer', 'owner', 'admin']],
-    },
+    defaultValue: 'customer',
+  },
+  status: {
+    type: DataTypes.TEXT,
+    defaultValue: 'active',
   },
   provider: {
     type: DataTypes.TEXT,
-    defaultValue: 'local',
   },
   providerId: {
     type: DataTypes.TEXT,
     field: 'provider_id',
   },
-  settings: {
-    type: DataTypes.JSONB,
-    allowNull: true,
+  avatar: {
+    type: DataTypes.TEXT,
   },
-  status: {
-    type: DataTypes.STRING,
-    defaultValue: 'active',
-    allowNull: false,
-    validate: {
-      isIn: [['active', 'pending_verification', 'rejected']],
-    },
+  phone: {
+    type: DataTypes.TEXT,
   },
-  
-  // --- NEW FIELD ---
   businessLocation: {
     type: DataTypes.TEXT,
-    allowNull: true,
     field: 'business_location',
   },
-  // --- END NEW FIELD ---
-
-  createdAt: {
-    type: DataTypes.DATE,
-    allowNull: false,
-    defaultValue: DataTypes.NOW,
-    field: 'created_at'
+  passwordResetToken: {
+    type: DataTypes.TEXT,
+    field: 'password_reset_token',
   },
-  updatedAt: {
+  passwordResetExpires: {
     type: DataTypes.DATE,
-    allowNull: true,
-    field: 'updated_at'
-  }
-},
-{
+    field: 'password_reset_expires',
+  },
+  // --- NEW FIELDS FOR OTP VERIFICATION ---
+  emailVerified: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false,
+    allowNull: false,
+    field: 'email_verified',
+  },
+  emailVerificationToken: {
+    type: DataTypes.STRING,
+    field: 'email_verification_token',
+  },
+  emailVerificationExpires: {
+    type: DataTypes.DATE,
+    field: 'email_verification_expires',
+  },
+  // --- END NEW FIELDS ---
+}, {
   tableName: 'users',
   timestamps: true,
   createdAt: 'created_at',
-  updatedAt: 'updated_at',
+  updatedAt: false,
+  hooks: {
+    beforeCreate: async (user) => {
+      if (user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    },
+    beforeUpdate: async (user) => {
+      if (user.changed('password') && user.password) {
+        const salt = await bcrypt.genSalt(10);
+        user.password = await bcrypt.hash(user.password, salt);
+      }
+    },
+  },
 });
+
+User.prototype.comparePassword = function (candidatePassword) {
+  if (!this.password) return false;
+  return bcrypt.compare(candidatePassword, this.password);
+};
 
 module.exports = User;
