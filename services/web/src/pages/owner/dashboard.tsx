@@ -420,7 +420,7 @@ export default function OwnerDashboard() {
                         <div className="flex flex-col sm:flex-row justify-between sm:items-end gap-2 mt-2">
                           <div className="flex items-center gap-4 text-sm text-brand-burgundy">
                             <span className="flex items-center gap-1"><Calendar className="h-4 w-4"/> {b.date}</span>
-                            <span className="flex items-center gap-1"><Clock className="h-4 w-4"/> {bAttribution(this) || "N/A"} - {b.endTime?.slice(0, 5) || 'N/A'}</span>
+                           <span className="flex items-center gap-1"><Clock className="h-4 w-4"/> {bAttribution(b) || "N/A"} - {b.endTime?.slice(0, 5) || 'N/A'}</span>
                           </div>
                           <Button 
                             size="sm" 
