@@ -1,12 +1,7 @@
 // services/api/src/controllers/customerController.js
 const { Op } = require('sequelize');
-<<<<<<< HEAD
 
 const { Place, Booking, MenuItem, User, Bookmark, Review } = require('../models');
-=======
-// --- FIX: Added 'sequelize' to the import ---
-const { Place, Booking, MenuItem, User, Bookmark, Review, sequelize } = require('../models');
->>>>>>> ba87842 (security patch)
 const { sendEmail } = require('../utils/emailService');
 
 const listNearbyPlaces = async (req, res) => {
@@ -22,11 +17,7 @@ const listNearbyPlaces = async (req, res) => {
   }
 };
 const createReview = async (req, res) => {
-<<<<<<< HEAD
   const t = await sequelize.transaction();
-=======
-  const t = await sequelize.transaction(); // <-- This now works
->>>>>>> ba87842 (security patch)
   try {
     const { bookingId, rating, comment } = req.body;
     const userId = req.user.id;
@@ -73,13 +64,8 @@ const createReview = async (req, res) => {
     const [results] = await Review.findAll({
       where: { placeId: booking.placeId },
       attributes: [
-<<<<<<< HEAD
         [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
         [sequelize.fn('AVG', sequelize.col('rating')), 'avg']
-=======
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'], // <-- This now works
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avg'] // <-- This now works
->>>>>>> ba87842 (security patch)
       ],
       raw: true,
       transaction: t
