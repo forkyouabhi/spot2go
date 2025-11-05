@@ -1,6 +1,7 @@
+// services/api/src/controllers/customerController.js
 const { Op } = require('sequelize');
-
-const { Place, Booking, MenuItem, User, Bookmark, Review } = require('../models');
+// --- FIX: Added 'sequelize' to the import ---
+const { Place, Booking, MenuItem, User, Bookmark, Review, sequelize } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
 const listNearbyPlaces = async (req, res) => {
@@ -63,8 +64,8 @@ const createReview = async (req, res) => {
     const [results] = await Review.findAll({
       where: { placeId: booking.placeId },
       attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avg']
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'], // <-- This now works
+        [sequelize.fn('AVG', sequelize.col('rating')), 'avg'] // <-- This now works
       ],
       raw: true,
       transaction: t

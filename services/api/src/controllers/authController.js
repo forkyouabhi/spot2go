@@ -3,6 +3,7 @@ const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
 const crypto = require('crypto'); // We need this to generate the OTP
+const { Op } = require('sequelize'); // <-- FIX: IMPORTED Op
 
 // Helper function to generate a 6-digit OTP
 const generateOTP = () => {
@@ -137,53 +138,9 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-const login = async (req, res) => {
-  const { email, password } = req.body;
-  try {
-    const user = await User.findOne({ where: { email } });
-    
-    if (!user) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    // --- CHECK IF EMAIL IS VERIFIED ---
-    if (!user.emailVerified) {
-      // Resend OTP in case they lost it
-      const otp = generateOTP();
-      const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
-      user.emailVerificationToken = otp;
-      user.emailVerificationExpires = expires;
-      await user.save();
-      await sendEmail(user.email, 'emailVerificationOTP', { name: user.name, otp });
-      
-      return res.status(403).json({
-        error: 'Email not verified. We have sent you a new verification code.',
-        email: user.email, // Send email back to pre-fill the verify page
-        needsVerification: true, // Flag for the frontend
-      });
-    }
-    // --- END VERIFICATION CHECK ---
-
-    const isMatch = await user.comparePassword(password);
-    if (!isMatch) {
-      return res.status(401).json({ error: 'Invalid credentials' });
-    }
-
-    const token = jwt.sign(
-      { id: user.id, name: user.name, role: user.role, status: user.status, createdAt: user.created_at },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    res.json({
-      token,
-      user: { id: user.id, name: user.name, role: user.role, status: user.status, createdAt: user.created_at },
-    });
-  } catch (err) {
-    console.error('Login error:', err);
-    res.status(500).json({ error: 'An error occurred during login' });
-  }
-};
+// --- FIX: REMOVED UNUSED 'login' FUNCTION ---
+// The logic for this has been moved to the passport.js strategy,
+// as the /auth/login route does not call this controller.
 
 const requestPasswordReset = async (req, res) => {
   const { email } = req.body;
@@ -219,7 +176,7 @@ const resetPassword = async (req, res) => {
     const user = await User.findOne({
       where: {
         passwordResetToken: token,
-        passwordResetExpires: { [Op.gt]: Date.now() },
+        passwordResetExpires: { [Op.gt]: Date.now() }, // <-- This now works
       },
     });
 
@@ -246,8 +203,8 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   register,
-  login,
-  verifyEmail, // <-- The missing export
+  // 'login' removed from here
+  verifyEmail,
   requestPasswordReset,
   resetPassword,
 };
