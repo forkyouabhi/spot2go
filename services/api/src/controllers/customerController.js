@@ -1,6 +1,7 @@
+// services/api/src/controllers/customerController.js
 const { Op } = require('sequelize');
-
-const { Place, Booking, MenuItem, User, Bookmark } = require('../models');
+// --- FIX: Added 'sequelize' to the import ---
+const { Place, Booking, MenuItem, User, Bookmark, Review, sequelize } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
 const listNearbyPlaces = async (req, res) => {
@@ -15,7 +16,99 @@ const listNearbyPlaces = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch places' });
   }
 };
+const createReview = async (req, res) => {
+  const t = await sequelize.transaction(); // <-- This now works
+  try {
+    const { bookingId, rating, comment } = req.body;
+    const userId = req.user.id;
 
+    if (!bookingId || !rating) {
+      return res.status(400).json({ error: 'Booking ID and rating are required.' });
+    }
+
+    // 1. Find the booking and check ownership/status
+    const booking = await Booking.findOne({
+      where: {
+        id: bookingId,
+        userId: userId
+      },
+      transaction: t
+    });
+
+    if (!booking) {
+      return res.status(404).json({ error: 'Booking not found or you are not the owner.' });
+    }
+    if (booking.reviewed) {
+      return res.status(409).json({ error: 'This booking has already been reviewed.' });
+    }
+    // Optional: Check if the booking date is in the past
+    if (new Date(booking.date) > new Date()) {
+       return res.status(400).json({ error: 'You can only review past bookings.' });
+    }
+    
+    // 2. Create the review
+    const review = await Review.create({
+      userId,
+      placeId: booking.placeId,
+      bookingId,
+      rating,
+      comment
+    }, { transaction: t });
+
+    // 3. Update the booking to mark it as reviewed
+    await booking.update({ reviewed: true }, { transaction: t });
+
+    // 4. Update the Place's average rating and review count
+    const place = await Place.findByPk(booking.placeId, { transaction: t, lock: true });
+    
+    const [results] = await Review.findAll({
+      where: { placeId: booking.placeId },
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'], // <-- This now works
+        [sequelize.fn('AVG', sequelize.col('rating')), 'avg'] // <-- This now works
+      ],
+      raw: true,
+      transaction: t
+    });
+
+    const newReviewCount = parseInt(results.count, 10);
+    const newRating = parseFloat(results.avg).toFixed(1);
+
+    await place.update({
+      rating: newRating,
+      reviewCount: newReviewCount
+    }, { transaction: t });
+
+    // 5. Commit the transaction
+    await t.commit();
+
+    res.status(201).json({ message: 'Review created successfully!', review });
+
+  } catch (err) {
+    await t.rollback();
+    console.error('Error creating review:', err);
+    if (err.name === 'SequelizeUniqueConstraintError') {
+       return res.status(409).json({ error: 'This booking has already been reviewed.' });
+    }
+    res.status(500).json({ error: 'Failed to create review' });
+  }
+};
+
+const getUserReviews = async (req, res) => {
+  try {
+    const reviews = await Review.findAll({
+      where: { userId: req.user.id },
+      include: [
+        { model: Place, as: 'place', attributes: ['id', 'name'] }
+      ],
+      order: [['created_at', 'DESC']],
+    });
+    res.json(reviews);
+  } catch (err) {
+    console.error('Error fetching user reviews:', err);
+    res.status(500).json({ error: 'Failed to fetch reviews' });
+  }
+};
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -264,8 +357,10 @@ module.exports = {
     getPlaceById,
     createBooking,
     listBookings,
-    getBookingByTicketId, // <-- ADDED
-    getUserBookmarks,     // <-- ADDED
-    addBookmark,          // <-- ADDED
-    removeBookmark        // <-- ADDED
+    getBookingByTicketId,
+    getUserBookmarks,
+    addBookmark,
+    removeBookmark,
+    createReview,
+    getUserReviews
 };
