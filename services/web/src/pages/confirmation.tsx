@@ -70,8 +70,11 @@ export default function ConfirmationPage() {
     );
   }
   
-  // We now have the full booking object!
+  // --- THIS IS THE FIX ---
+  // The API returns a 'user' object, but the page uses 'customer'
+  // We alias 'user' to 'customer' here.
   const { place, user: customer, date, startTime, endTime } = booking;
+  // --- END FIX ---
 
   return (
     <>

@@ -94,7 +94,10 @@ export interface Booking {
   startTime: string;
   endTime: string;
   status: 'confirmed' | 'pending' | 'cancelled';
-  ticketId: string;
+  ticketId: string;  
+  place?: StudyPlace;
+  user?: User;
+  // --- END FIX ---
 }
 
 export type Screen = 'splash' | 'login' | 'signup' | 'home' | 'place-details' | 'booking' | 'account' | 'confirmation' | 'settings';
