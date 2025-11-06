@@ -1,3 +1,4 @@
+// services/web/src/components/AccountScreen.tsx
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -11,28 +12,32 @@ import {
   Bookmark,
   Settings,
   Edit,
-  Shield,
-  Bell,
-  Sparkles,
-  User as UserIcon,
   LogOut,
+  Image as ImageIcon,
 } from "lucide-react";
-import { User, Booking } from "../types";
+import { User, Booking, StudyPlace } from "../types"; // <-- IMPORT StudyPlace
+import { ImageWithFallback } from "./figma/ImageWithFallback"; // <-- IMPORT ImageWithFallback
 
 interface AccountScreenProps {
   user: User;
   bookings: Booking[];
+  bookmarkedPlaces: StudyPlace[]; // <-- PROP for bookmarks
   onBack: () => void;
   onNavigateToSettings: () => void;
-  onLogout: () => void; // Added onLogout prop
+  onLogout: () => void;
+  onReview: (booking: Booking) => void; // <-- PROP for review
+  onNavigateToPlace: (placeId: string) => void; // <-- PROP for place navigation
 }
 
 export function AccountScreen({
   user,
   bookings,
+  bookmarkedPlaces,
   onBack,
   onNavigateToSettings,
   onLogout,
+  onReview,
+  onNavigateToPlace,
 }: AccountScreenProps) {
   const upcomingBookings = bookings.filter(
     (booking) =>
@@ -40,7 +45,7 @@ export function AccountScreen({
   );
 
   const pastBookings = bookings.filter(
-    (booking) => new Date(booking.date) < new Date()
+    (booking) => new Date(booking.date) < new Date() || booking.status === 'completed' || booking.status === 'no-show'
   );
 
   const getStatusColor = (status: string) => {
@@ -58,10 +63,17 @@ export function AccountScreen({
           border: "#F7C566",
         };
       case "cancelled":
+      case "no-show":
         return {
           bg: "#DC6B19",
           text: "#FFF8DC",
           border: "#6C0345",
+        };
+      case "completed":
+         return {
+          bg: "#d1fae5", // green-100
+          text: "#065f46", // green-800
+          border: "#6ee7b7", // green-300
         };
       default:
         return {
@@ -76,7 +88,7 @@ export function AccountScreen({
     <div className="min-h-screen" style={{ backgroundColor: "#FFF8DC" }}>
       {/* Header */}
       <div
-        className="shadow-sm p-4 flex items-center justify-between"
+        className="shadow-sm p-4 flex items-center justify-between sticky top-0 z-20"
         style={{ backgroundColor: "#6C0345" }}
       >
         <div className="flex items-center space-x-3">
@@ -119,7 +131,8 @@ export function AccountScreen({
           style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
         >
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            {/* --- FIX: Made responsive --- */}
+            <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-6 gap-4 sm:gap-0">
               <div className="flex items-center space-x-4">
                 <div
                   className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2"
@@ -196,7 +209,7 @@ export function AccountScreen({
                 variant="outline"
                 size="sm"
                 onClick={onNavigateToSettings}
-                className="rounded-xl border-2 transition-button"
+                className="rounded-xl border-2 transition-button w-full sm:w-auto" // <-- Full width on mobile
                 style={{
                   backgroundColor: "#F7C566",
                   borderColor: "#DC6B19",
@@ -204,9 +217,11 @@ export function AccountScreen({
                 }}
               >
                 <Edit className="h-4 w-4 mr-2" />
-                Edit
+                Edit Profile
               </Button>
             </div>
+            {/* --- END RESPONSIVE FIX --- */}
+
 
             <div
               className="grid grid-cols-3 gap-4 pt-6 border-t-2"
@@ -228,10 +243,10 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  {bookings.filter((b) => b.status === "confirmed").length}
+                  {bookmarkedPlaces.length}
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
-                  Confirmed
+                  Bookmarks
                 </div>
               </div>
               <div className="text-center">
@@ -302,8 +317,9 @@ export function AccountScreen({
 
         {/* Enhanced Tabs */}
         <Tabs defaultValue="bookings" className="w-full animate-scale-in">
+          {/* --- FIX: Made responsive --- */}
           <TabsList
-            className="grid w-full grid-cols-3 h-12 rounded-2xl border-2 shadow-lg"
+            className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12 rounded-2xl border-2 shadow-lg"
             style={{
               backgroundColor: "#FFF8DC",
               borderColor: "#DC6B19",
@@ -311,7 +327,7 @@ export function AccountScreen({
           >
             <TabsTrigger
               value="bookings"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0" // Added padding for mobile
               style={{
                 color: "#6C0345",
               }}
@@ -324,7 +340,7 @@ export function AccountScreen({
             </TabsTrigger>
             <TabsTrigger
               value="bookmarks"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0"
               style={{
                 color: "#6C0345",
               }}
@@ -337,7 +353,7 @@ export function AccountScreen({
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0"
               style={{
                 color: "#6C0345",
               }}
@@ -349,6 +365,8 @@ export function AccountScreen({
               ⭐ Reviews
             </TabsTrigger>
           </TabsList>
+          {/* --- END RESPONSIVE FIX --- */}
+
 
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
@@ -520,14 +538,15 @@ export function AccountScreen({
                             <Badge
                               className="mt-1 px-2 py-1 rounded-full border"
                               style={{
-                                backgroundColor: "#F7C566",
-                                color: "#6C0345",
-                                borderColor: "#DC6B19",
+                                backgroundColor: getStatusColor(booking.status).bg,
+                                color: getStatusColor(booking.status).text,
+                                borderColor: getStatusColor(booking.status).border,
                               }}
                             >
-                              ✅ Completed
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </Badge>
                           </div>
+                          {/* --- FIX: Wire up Review Button --- */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -537,9 +556,12 @@ export function AccountScreen({
                               borderColor: "#6C0345",
                               color: "#FFF8DC",
                             }}
+                            disabled={booking.reviewed}
+                            onClick={() => onReview(booking)}
                           >
-                            ⭐ Review
+                            {booking.reviewed ? 'Reviewed' : '⭐ Review'}
                           </Button>
+                          {/* --- END FIX --- */}
                         </div>
 
                         <div
@@ -584,38 +606,67 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
+          {/* --- FIX: Bookmarks Tab --- */}
           <TabsContent value="bookmarks" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
             >
-              <CardContent className="p-8">
-                <div className="text-center py-12">
-                  <div
-                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
-                    style={{
-                      backgroundColor: "#F7C566",
-                      borderColor: "#DC6B19",
-                    }}
-                  >
-                    <Bookmark
-                      className="h-8 w-8"
+              <CardContent className={bookmarkedPlaces.length > 0 ? "p-4 space-y-3" : "p-8"}>
+                {bookmarkedPlaces.length > 0 ? (
+                  bookmarkedPlaces.map(place => (
+                    <div 
+                      key={place.id}
+                      className="flex items-center space-x-4 p-3 rounded-xl border-2 bg-white border-brand-yellow cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => onNavigateToPlace(place.id)}
+                    >
+                      <ImageWithFallback
+                        src={place.images?.[0] || ''}
+                        alt={place.name}
+                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-brand-burgundy truncate">{place.name}</h4>
+                        <p className="text-sm text-brand-orange flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {place.location.address}
+                        </p>
+                      </div>
+                      <Badge className="bg-brand-yellow text-brand-burgundy capitalize shadow-md border border-brand-orange/50">
+                        {place.type}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div
+                      className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
+                      style={{
+                        backgroundColor: "#F7C566",
+                        borderColor: "#DC6B19",
+                      }}
+                    >
+                      <Bookmark
+                        className="h-8 w-8"
+                        style={{ color: "#6C0345" }}
+                      />
+                    </div>
+                    <p
+                      className="font-semibold"
                       style={{ color: "#6C0345" }}
-                    />
+                    >
+                      No bookmarked places yet
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
+                      Bookmark places to find them easily later
+                    </p>
                   </div>
-                  <p
-                    className="font-semibold"
-                    style={{ color: "#6C0345" }}
-                  >
-                    No bookmarked places yet
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
-                    Bookmark places to find them easily later
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
+          {/* --- END FIX --- */}
+
 
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card

@@ -17,33 +17,42 @@ import { ImageCarouselModal } from '../../components/ImageCarouselModal';
 import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image'; 
 
-// ... (DynamicMap import, ReviewCard, BookingWidget components are unchanged) ...
+// ... (DynamicMap import) ...
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
 });
 
-const ReviewCard = ({ review }: { review: Review }) => (
+const ReviewCard = ({ review }: { review: Review }) => {
+  // --- FIX: Use review.user.name if available, fallback to review.userName
+  const userName = review.user?.name || review.userName;
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
+  
+  return (
     <Card className="bg-white border-brand-yellow">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <div className="flex items-center gap-3">
-        <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">{review.userName.charAt(0)}</div>
-        <div>
-          <CardTitle className="text-sm font-semibold text-brand-burgundy">{review.userName}</CardTitle>
-          <p className="text-xs text-brand-orange">{new Date(review.date).toLocaleDateString()}</p>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">
+            {userInitial}
+          </div>
+          <div>
+            <CardTitle className="text-sm font-semibold text-brand-burgundy">{userName}</CardTitle>
+            <p className="text-xs text-brand-orange">{new Date(review.date).toLocaleDateString()}</p>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1 text-amber-500">
-        {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
-      </div>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-gray-700">{review.comment}</p>
-    </CardContent>
-  </Card>
-);
+        <div className="flex items-center gap-1 text-amber-500">
+          {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-gray-700">{review.comment}</p>
+      </CardContent>
+    </Card>
+  );
+};
+// --- END FIX ---
 
 const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void, isBooking: boolean }) => {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
@@ -168,7 +177,7 @@ export default function PlaceDetailPage() {
       toast.error("Location data is not available for directions.");
       return;
     }
-    const url = `http://googleusercontent.com/maps.google.com/2{place.location.lat},${place.location.lng}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${place.location.lat},${place.location.lng}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
@@ -182,7 +191,7 @@ export default function PlaceDetailPage() {
             date: slot.date,
             startTime: slot.startTime,
             endTime: slot.endTime,
-            amount: place.pricePerHour ? place.pricePerHour * 2 : 0,
+            amount: place.pricePerHour ? place.pricePerHour * 2 : 0, // Assuming 2hr slots
         };
 
         const response = await createBooking(bookingData);
@@ -190,17 +199,8 @@ export default function PlaceDetailPage() {
 
         toast.success("Booking confirmed!");
 
-        router.push({
-            pathname: '/confirmation',
-            query: {
-                placeName: place.name,
-                placeAddress: place.location.address,
-                date: booking.date,
-                startTime: booking.startTime,
-                endTime: booking.endTime,
-                ticketId: booking.ticketId,
-            },
-        });
+        // Use ticketId from the API response for robustness
+        router.push(`/confirmation?ticketId=${booking.ticketId}`);
     } catch (error: any) {
         const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
         toast.error(errorMessage);
@@ -229,22 +229,16 @@ export default function PlaceDetailPage() {
       <div className="min-h-screen bg-brand-cream">
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">
             <div className="max-w-screen-xl mx-auto flex justify-between items-center">
-              {/* --- MODIFIED: Use Logo Mark --- */}
-              <div onClick={() => router.push('/')} className="flex items-center gap-3">
+              <div onClick={() => router.push('/')} className="flex items-center gap-3 cursor-pointer">
                 <Image 
                   src="/logo-mark.png" 
                   alt="Spot2Go Logo"
                   width={50}
                   height={50}
                   className="object-contain"
-                  onClick={() => router.push('/')}
-                  
-            //       style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
-            // priority
                 />
                 <h1 className="text-xl font-bold text-brand-cream hidden sm:block">Spot2Go</h1>
               </div>
-              {/* --- END MODIFICATION --- */}
               <Button variant="ghost" onClick={() => router.push('/')} className="text-brand-cream hover:bg-brand-cream/10 border-brand-orange border">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back to places
               </Button>
@@ -276,7 +270,7 @@ export default function PlaceDetailPage() {
                       <h1 className="text-4xl font-bold text-brand-burgundy">{place.name}</h1>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-brand-orange mt-2">
                           <Badge className="bg-brand-yellow text-brand-burgundy font-semibold">{place.type}</Badge>
-                          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'}</div>
+                          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'} ({place.reviews?.length || 0} reviews)</div>
                           {place.pricePerHour && place.pricePerHour > 0 && <span>${place.pricePerHour}.00 / hour (est.)</span>}
                       </div>
                       <div className="flex flex-wrap justify-between items-center mt-4">
@@ -289,7 +283,7 @@ export default function PlaceDetailPage() {
                   </div>
 
                   <Tabs defaultValue="about" className="w-full">
-                      <TabsList className="bg-white border"><TabsTrigger value="about">About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu">Menu</TabsTrigger>}<TabsTrigger value="reviews">Reviews</TabsTrigger></TabsList>
+                      <TabsList className="bg-white border"><TabsTrigger value="about"><Info className="h-4 w-4 mr-2"/>About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu"><Utensils className="h-4 w-4 mr-2"/>Menu</TabsTrigger>}<TabsTrigger value="reviews"><MessageSquare className="h-4 w-4 mr-2"/>Reviews ({place.reviews?.length || 0})</TabsTrigger></TabsList>
                       <TabsContent value="about" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">
                           <div className="space-y-6">
                               <h3 className="font-semibold text-xl text-brand-burgundy flex items-center gap-2"><Info />Description</h3>

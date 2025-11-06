@@ -3,10 +3,10 @@ const passport = require('passport');
 const LocalStrategy = require('passport-local').Strategy;
 const GoogleStrategy = require('passport-google-oauth20').Strategy;
 const AppleStrategy = require('passport-apple').Strategy;
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs'); // <-- FIX: Changed from 'bcrypt' to 'bcryptjs'
 const { User } = require('../models');
-const { sendEmail } = require('../utils/emailService'); // <-- IMPORTED
-const crypto = require('crypto'); // <-- IMPORTED
+const { sendEmail } = require('../utils/emailService');
+const crypto = require('crypto');
 
 // Helper function to generate a 6-digit OTP
 const generateOTP = () => {
@@ -22,7 +22,7 @@ passport.use(new LocalStrategy({ usernameField: 'email' },
         return done(null, false, { message: 'User not found' });
       }
 
-      // --- FIX: ADDED EMAIL VERIFICATION CHECK ---
+      // --- Email Verification Check ---
       if (!user.emailVerified) {
         // Resend OTP in case they lost it
         const otp = generateOTP();
@@ -38,21 +38,27 @@ passport.use(new LocalStrategy({ usernameField: 'email' },
           // Don't fail the login, just inform the user
         }
         
+        // This is not an error, but a specific flow
         return done(null, false, { 
           message: 'Email not verified. We have sent you a new verification code.',
           email: user.email,
           needsVerification: true,
         });
       }
-      // --- END FIX ---
+      // --- END Check ---
 
       if (!user.password) { // User signed up with OAuth
         return done(null, false, { message: 'Please log in with your social account.' });
       }
-      const ok = await bcrypt.compare(password, user.password);
+
+      // --- FIX: Use user.comparePassword which uses bcryptjs ---
+      // const ok = await bcrypt.compare(password, user.password); // <-- This was the BUG
+      const ok = await user.comparePassword(password); // <-- This is the FIX
+
       if (!ok) {
         return done(null, false, { message: 'Invalid password' });
       }
+
       // ADDED: Check for pending/rejected status on login
       if (user.status === 'pending_verification') {
          return done(null, false, { message: 'Your account is pending verification.' });
@@ -99,8 +105,8 @@ passport.use(new GoogleStrategy({
       role: 'customer',
       provider: 'google',
       providerId: googleId,
-      status: 'active', // <<< Explicitly set status to 'active' for new social users
-      emailVerified: true, // <-- Automatically verify social signups
+      status: 'active', 
+      emailVerified: true, // Automatically verify social signups
     });
     return done(null, newUser);
 
@@ -147,8 +153,8 @@ passport.use(new AppleStrategy({
         role: 'customer',
         provider: 'apple',
         providerId: appleId,
-        status: 'active', // <<< Explicitly set status to 'active' for new social users
-        emailVerified: true, // <-- Automatically verify social signups
+        status: 'active', 
+        emailVerified: true, // Automatically verify social signups
     });
     return done(null, newUser);
     

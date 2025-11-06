@@ -2,7 +2,7 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
-const crypto = require('crypto'); // We need this to generate the OTP
+const crypto = require('crypto'); 
 const { Op } = require('sequelize'); // <-- FIX: IMPORTED Op
 
 // Helper function to generate a 6-digit OTP
@@ -138,10 +138,6 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// --- FIX: REMOVED UNUSED 'login' FUNCTION ---
-// The logic for this has been moved to the passport.js strategy,
-// as the /auth/login route does not call this controller.
-
 const requestPasswordReset = async (req, res) => {
   const { email } = req.body;
   try {
@@ -203,7 +199,6 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   register,
-  // 'login' removed from here
   verifyEmail,
   requestPasswordReset,
   resetPassword,

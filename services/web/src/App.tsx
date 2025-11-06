@@ -2,10 +2,9 @@
 import { useState, lazy, Suspense } from 'react';
 import { Toaster } from './components/ui/sonner';
 import { SplashScreen } from './components/SplashScreen';
-import { mockUser, mockPlaces, mockBookings, mockUserSettings } from './data/mockData';
-import { Screen, StudyPlace, TimeSlot, User, UserSettings } from './types';
+import { Screen, StudyPlace, TimeSlot, User, UserSettings, Booking, Review } from './types'; // Import Booking and Review
 
-// Lazy load components to improve initial bundle size
+// Lazy load components
 const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })));
 const HomeScreen = lazy(() => import('./components/HomeScreen').then(module => ({ default: module.HomeScreen })));
 const PlaceDetails = lazy(() => import('./components/PlaceDetails').then(module => ({ default: module.PlaceDetails })));
@@ -35,35 +34,74 @@ const LoadingScreen = () => (
   </div>
 );
 
+// --- Default settings object ---
+const defaultUserSettings: UserSettings = {
+  notifications: {
+    pushNotifications: true,
+    emailNotifications: true,
+    bookingReminders: true,
+    promotionalEmails: false,
+  },
+  privacy: {
+    profileVisibility: "public",
+    showBookingHistory: true,
+    allowLocationTracking: true,
+  },
+  preferences: {
+    theme: "system",
+    language: "en",
+    currency: "CAD",
+    distanceUnit: "km",
+  },
+};
+
 export default function App() {
   const [currentScreen, setCurrentScreen] = useState<Screen>('splash');
   const [user, setUser] = useState<User | null>(null);
-  const [userSettings, setUserSettings] = useState<UserSettings>(mockUserSettings);
+  const [userSettings, setUserSettings] = useState<UserSettings | null>(defaultUserSettings); // Use default
   const [selectedPlace, setSelectedPlace] = useState<StudyPlace | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [ticketId, setTicketId] = useState<string>('');
 
   const handleAuth = async (email: string, password: string, name?: string): Promise<void> => {
-    
-    const newUser = {
-      ...mockUser,
-      name: name || mockUser.name,
-      email: email
+    // This is a mock login, replace with real API call
+    const newUser: User = {
+      id: "1",
+      name: name || "Test User",
+      email: email,
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      dateJoined: new Date().toISOString(),
+      settings: defaultUserSettings, // <-- Give new user default settings
     };
     setUser(newUser);
+    
+    // --- FIX: Set userSettings state with the settings object, NOT the user object ---
+    setUserSettings(newUser.settings || defaultUserSettings);
+    
     setCurrentScreen('home');
   };
 
   const handleThirdPartyAuth = (provider: 'google' | 'apple'): void => {
-    const newUser = {
-      ...mockUser,
+    // This is a mock login, replace with real API call
+    const newUser: User = {
+      id: "2",
       name: `${provider === 'google' ? 'Google' : 'Apple'} User`,
       email: `user@${provider}.com`,
       avatar: '',
       provider: provider,
-      dateJoined: mockUser.createdAt
+      role: 'customer',
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      dateJoined: new Date().toISOString(),
+      settings: defaultUserSettings, // <-- Give new user default settings
     };
     setUser(newUser);
+
+    // --- FIX: Set userSettings state with the settings object, NOT the user object ---
+    setUserSettings(newUser.settings || defaultUserSettings);
+    
     setCurrentScreen('home');
   };
 
@@ -104,7 +142,6 @@ export default function App() {
   };
 
   const handleNavigate = (screen: "account" | "owner/dashboard" | "admin/dashboard") => {
-    // Map the navigation screens to our Screen type
     switch (screen) {
       case "account":
         setCurrentScreen("account");
@@ -117,6 +154,22 @@ export default function App() {
         break;
     }
   };
+
+  const handleReview = (booking: Booking) => {
+    console.log("Reviewing booking:", booking.id);
+    alert("Review modal not implemented in mock App.tsx");
+  };
+
+  const handleNavigateToPlace = (placeId: string) => {
+    console.log("Navigating to place:", placeId);
+    // This part can't work without mockPlaces, so it's dummied
+    // const place = mockPlaces.find(p => p.id === placeId);
+    // if (place) {
+    //   setSelectedPlace(place);
+    //   setCurrentScreen('place-details');
+    // }
+  };
+
 
   const renderScreen = () => {
     const commonProps = { key: currentScreen }; // Force remount on screen change
@@ -131,7 +184,6 @@ export default function App() {
             type="login" 
             onSubmit={handleAuth}
             onThirdPartyAuth={handleThirdPartyAuth}
-            // --- FIX: 'onBack' prop removed ---
             {...commonProps}
           />
         );
@@ -142,7 +194,6 @@ export default function App() {
             type="signup" 
             onSubmit={handleAuth}
             onThirdPartyAuth={handleThirdPartyAuth}
-            // --- FIX: 'onBack' prop removed ---
             {...commonProps}
           />
         );
@@ -151,7 +202,7 @@ export default function App() {
         return (
           <HomeScreen 
             userName={user?.name || 'User'}
-            places={mockPlaces}
+            places={[]} // <-- Pass empty array
             onPlaceSelect={handlePlaceSelect}
             onNavigate={handleNavigate}
             {...commonProps}
@@ -193,19 +244,23 @@ export default function App() {
         return user ? (
           <AccountScreen 
             user={user}
-            bookings={mockBookings}
+            bookings={[]} // <-- Pass empty array
+            bookmarkedPlaces={[]} 
             onBack={() => setCurrentScreen('home')}
             onNavigateToSettings={() => setCurrentScreen('settings')}
             onLogout={() => {
               setUser(null);
               setCurrentScreen('splash');
             }}
+            onReview={handleReview} 
+            onNavigateToPlace={handleNavigateToPlace} 
             {...commonProps}
           />
         ) : null;
       
       case 'settings':
-        return user ? (
+        // SettingsScreen needs a non-null settings object
+        return user && userSettings ? (
           <SettingsScreen 
             user={user}
             settings={userSettings}
@@ -218,7 +273,7 @@ export default function App() {
             }}
             {...commonProps}
           />
-        ) : null;
+        ) : null; // Or render loading/error
       
       default:
         return <SplashScreen onNavigate={setCurrentScreen} {...commonProps} />;

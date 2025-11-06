@@ -3,21 +3,28 @@ import React, { createContext, useState, useEffect, useContext, ReactNode, useCa
 import { useRouter } from 'next/router';
 import { setAuthToken, registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
 import { jwtDecode } from 'jwt-decode';
-import { toast } from "sonner"; // Import toast
+import { toast } from "sonner"; 
+import { User } from '../types'; // <-- FIX 1: Import the main User type
 
-interface User {
-  id: any;
-  exp: number;
+// --- FIX 2: Define the actual JWT payload ---
+// This is what's *actually* inside the token from your API
+interface JwtPayload {
+  id: string;
+  email: string; // <-- The missing property
   name: string;
   role: 'customer' | 'owner' | 'admin';
   status: 'active' | 'pending_verification' | 'rejected';
-  createdAt: string;
-  dateJoined: string;
-  [key: string]: any;
+  createdAt: string; // This comes from the API
+  created_at: string; // Handle legacy field
+  phone?: string;
+  provider?: 'google' | 'apple' | 'email';
+  exp: number;
+  iat: number;
 }
+// --- END FIX 2 ---
 
 interface AuthContextType {
-  user: User | null;
+  user: User | null; // <-- FIX 3: Use the imported User type
   isAuthenticated: boolean;
   loading: boolean;
   bookmarks: string[];
@@ -29,7 +36,7 @@ interface AuthContextType {
     role: 'customer' | 'owner',
     phone?: string,
     businessLocation?: string
-  ) => Promise<any>; // Changed from Promise<User>
+  ) => Promise<any>; 
   logout: () => void;
   handleTokenUpdate: (token: string) => void;
   addBookmark: (placeId: string) => Promise<void>;
@@ -51,12 +58,11 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
-  const [bookmarks, setBookmarks] = useState<string[]>([]); // <-- 3. ADD BOOKMARKS STATE
+  const [user, setUser] = useState<User | null>(null); // <-- Uses imported User type
+  const [bookmarks, setBookmarks] = useState<string[]>([]); 
   const [loading, setLoading] = useState(true);
   const router = useRouter();
 
-  // 4. Create a function to fetch bookmarks
   const fetchBookmarks = useCallback(async () => {
     try {
       const response = await getUserBookmarks();
@@ -70,9 +76,26 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const handleAuthSuccess = useCallback((token: string, redirect: boolean = true) => {
     localStorage.setItem('token', token);
     setAuthToken(token);
-    const decoded = jwtDecode<User>(token);
-    const fullUser = { ...decoded, dateJoined: decoded.createdAt, status: decoded.status };
+
+    // --- FIX 4: Decode as JwtPayload and map to User type ---
+    const decoded = jwtDecode<JwtPayload>(token);
+    
+    const fullUser: User = {
+      id: decoded.id,
+      name: decoded.name,
+      email: decoded.email, // <-- Now explicitly included
+      role: decoded.role,
+      status: decoded.status,
+      createdAt: decoded.createdAt || decoded.created_at, // Handle both
+      dateJoined: decoded.createdAt || decoded.created_at, // Use createdAt for dateJoined
+
+      // Add optional fields from JWT if they exist
+      phone: decoded.phone,
+      provider: decoded.provider,
+      settings: undefined
+    };
     setUser(fullUser);
+    // --- END FIX 4 ---
 
     if (fullUser.role === 'customer') { // Fetch bookmarks only for customers
       fetchBookmarks();
@@ -83,7 +106,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       router.replace(targetPath);
     }
     return fullUser;
-  }, [router, fetchBookmarks]); // <-- 5. Add dependency
+  }, [router, fetchBookmarks]); 
 
   const handleTokenUpdate = useCallback((token: string) => {
     handleAuthSuccess(token, false);
@@ -100,7 +123,8 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const localToken = localStorage.getItem('token');
       if (localToken) {
         try {
-          const decoded = jwtDecode<User>(localToken);
+          // --- FIX 5: Decode as JwtPayload here too ---
+          const decoded = jwtDecode<JwtPayload>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
             // Use handleAuthSuccess to set user AND fetch bookmarks
             handleAuthSuccess(localToken, false); 
@@ -151,6 +175,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     const response = await registerUser({ name, email, password, role, phone, businessLocation });
     return response.data;
   };
+
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);

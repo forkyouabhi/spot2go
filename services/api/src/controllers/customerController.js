@@ -1,7 +1,7 @@
 // services/api/src/controllers/customerController.js
 const { Op } = require('sequelize');
 // --- FIX: Added 'sequelize' to the import ---
-const { Place, Booking, MenuItem, User, Bookmark, Review, sequelize } = require('../models');
+const { Place, Booking, MenuItem, User, UserBookmark, Review, sequelize } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
 const listNearbyPlaces = async (req, res) => {
@@ -19,7 +19,7 @@ const listNearbyPlaces = async (req, res) => {
 const createReview = async (req, res) => {
   const t = await sequelize.transaction();
   try {
-    const { bookingId, rating, comment } = req.body;
+    const { bookingId, rating, comment } = req.body; // <-- FIX: Changed from placeId to bookingId
     const userId = req.user.id;
 
     if (!bookingId || !rating) {
@@ -42,9 +42,9 @@ const createReview = async (req, res) => {
       return res.status(409).json({ error: 'This booking has already been reviewed.' });
     }
     // Optional: Check if the booking date is in the past
-    if (new Date(booking.date) > new Date()) {
-       return res.status(400).json({ error: 'You can only review past bookings.' });
-    }
+    // if (new Date(booking.date) > new Date()) {
+    //    return res.status(400).json({ error: 'You can only review past bookings.' });
+    // }
     
     // 2. Create the review
     const review = await Review.create({
@@ -82,7 +82,12 @@ const createReview = async (req, res) => {
     // 5. Commit the transaction
     await t.commit();
 
-    res.status(201).json({ message: 'Review created successfully!', review });
+    // 6. Return the full review object with user info
+    const fullReview = await Review.findByPk(review.id, {
+      include: [{ model: User, as: 'user', attributes: ['name'] }]
+    });
+
+    res.status(201).json({ message: 'Review created successfully!', review: fullReview });
 
   } catch (err) {
     await t.rollback();
@@ -116,8 +121,16 @@ const getPlaceById = async (req, res) => {
        where: { id: placeId, status: 'approved' },
        include: [
         { model: MenuItem, as: 'menuItems', attributes: ['id', 'name', 'price'] },
-        { model: User, as: 'owner', attributes: ['name', 'email'] }
+        { model: User, as: 'owner', attributes: ['name', 'email'] },
+        // --- FIX: Include reviews with user info ---
+        { 
+          model: Review, 
+          as: 'reviews',
+          include: [{ model: User, as: 'user', attributes: ['name'] }]
+        }
       ],
+      // Order reviews by newest first
+      order: [[{ model: Review, as: 'reviews' }, 'created_at', 'DESC']],
     });
 
     if (!placeData) {
@@ -155,7 +168,7 @@ const getPlaceById = async (req, res) => {
         const closingHour = parseInt(place.reservableHours.end.split(':')[0], 10);
         
         while(currentHour < closingHour) {
-            const nextHour = currentHour + 2;
+            const nextHour = currentHour + 2; // Assuming 2-hour slots
             if (nextHour <= closingHour) {
                 const startTime = `${String(currentHour).padStart(2, '0')}:00`;
                 const slotId = `${dateString}T${startTime}`;
@@ -167,7 +180,7 @@ const getPlaceById = async (req, res) => {
                     available: !bookedSlots.has(slotId),
                 });
             }
-            currentHour += 2;
+            currentHour += 2; // Increment by slot length
         }
       }
     }
@@ -251,6 +264,7 @@ const listBookings = async (req, res) => {
   try {
     const userBookings = await Booking.findAll({
       where: { userId: req.user.id },
+      // FIX: Include the 'reviewed' field
       include: [{ model: Place, as: 'place', attributes: ['name', 'location'] }],
       order: [['created_at', 'DESC']],
     });
@@ -297,10 +311,10 @@ const getBookingByTicketId = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION: GET USER BOOKMARKS ---
+// --- FIX: USE UserBookmark MODEL ---
 const getUserBookmarks = async (req, res) => {
   try {
-    const bookmarks = await Bookmark.findAll({
+    const bookmarks = await UserBookmark.findAll({
       where: { userId: req.user.id },
       attributes: ['placeId']
     });
@@ -311,39 +325,65 @@ const getUserBookmarks = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION: ADD BOOKMARK ---
+// --- NEW CONTROLLER: Get Full Bookmarked Places ---
+const getBoookmarkedPlaces = async (req, res) => {
+  try {
+    const userWithBookmarks = await User.findByPk(req.user.id, {
+      include: {
+        model: Place,
+        as: 'bookmarkedPlaces',
+        through: { attributes: [] }, // Don't include the join table data
+        where: { status: 'approved' }, // Only show approved places
+        required: false,
+      },
+      order: [[{ model: Place, as: 'bookmarkedPlaces' }, 'created_at', 'DESC']],
+    });
+
+    if (!userWithBookmarks) {
+      return res.json([]);
+    }
+
+    res.json(userWithBookmarks.bookmarkedPlaces || []);
+  } catch (err) {
+    console.error('Error fetching bookmarked places:', err);
+    res.status(500).json({ error: 'Failed to fetch bookmarked places' });
+  }
+};
+
+// --- FIX: USE UserBookmark MODEL ---
 const addBookmark = async (req, res) => {
   try {
     const { placeId } = req.body;
     if (!placeId) {
       return res.status(400).json({ error: 'placeId is required.' });
     }
-    const bookmark = await Bookmark.create({
+    const bookmark = await UserBookmark.create({
       userId: req.user.id,
       placeId: placeId
     });
     res.status(201).json({ message: 'Bookmark added.', placeId: bookmark.placeId });
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
-      return res.status(200).json({ message: 'Already bookmarked.' });
+      // Return the placeId so the frontend can still update state
+      return res.status(200).json({ message: 'Already bookmarked.', placeId: req.body.placeId });
     }
     console.error('Error adding bookmark:', err);
     res.status(500).json({ error: 'Failed to add bookmark' });
   }
 };
 
-// --- NEW FUNCTION: REMOVE BOOKMARK ---
+// --- FIX: USE UserBookmark MODEL ---
 const removeBookmark = async (req, res) => {
   try {
     const { placeId } = req.params;
-    const result = await Bookmark.destroy({
+    const result = await UserBookmark.destroy({
       where: {
         userId: req.user.id,
         placeId: placeId
       }
     });
     if (result === 0) {
-      return res.status(200).json({ message: 'Bookmark not found or already removed.' });
+      return res.status(200).json({ message: 'Bookmark not found or already removed.', placeId: placeId });
     }
     res.json({ message: 'Bookmark removed.', placeId: placeId });
   } catch (err) {
@@ -359,6 +399,7 @@ module.exports = {
     listBookings,
     getBookingByTicketId,
     getUserBookmarks,
+    getBoookmarkedPlaces, // <-- EXPORT NEW CONTROLLER
     addBookmark,
     removeBookmark,
     createReview,
