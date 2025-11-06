@@ -8,7 +8,7 @@ import { User } from '../types';
 
 interface JwtPayload {
   id: string;
-  email: string; // <-- The missing property
+  email: string; 
   name: string;
   role: 'customer' | 'owner' | 'admin';
   status: 'active' | 'pending_verification' | 'rejected';
@@ -21,7 +21,7 @@ interface JwtPayload {
 }
 
 interface AuthContextType {
-  user: User | null; // <-- FIX 3: Use the imported User type
+  user: User | null; 
   isAuthenticated: boolean;
   loading: boolean;
   bookmarks: string[];
@@ -74,7 +74,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     localStorage.setItem('token', token);
     setAuthToken(token);
 
-    // --- FIX 4: Decode as JwtPayload and map to User type ---
+    
     const decoded = jwtDecode<JwtPayload>(token);
     
     const fullUser: User = {
@@ -92,7 +92,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       settings: undefined
     };
     setUser(fullUser);
-    // --- END FIX 4 ---
+    
 
     if (fullUser.role === 'customer') { // Fetch bookmarks only for customers
       fetchBookmarks();
@@ -123,7 +123,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
           // --- FIX 5: Decode as JwtPayload here too ---
           const decoded = jwtDecode<JwtPayload>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
-            // Use handleAuthSuccess to set user AND fetch bookmarks
+           
             handleAuthSuccess(localToken, false); 
           } else {
             localStorage.removeItem('token');
@@ -150,7 +150,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await loginUser({ email, password });
       return handleAuthSuccess(response.data.token);
     } catch (error: any) {
-      // --- MODIFIED: Handle the new "needsVerification" error ---
+      
       if (error.response?.data?.needsVerification) {
         toast.error(error.response.data.error);
         router.push(`/verify-email?email=${email}`);

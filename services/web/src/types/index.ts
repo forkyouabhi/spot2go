@@ -1,6 +1,5 @@
 // services/web/src/types/index.ts
 
-// --- MOVED UserSettings TO THE TOP ---
 export interface UserSettings {
   notifications: {
     pushNotifications: boolean;
@@ -32,9 +31,9 @@ export interface User {
   role: 'customer' | 'owner' | 'admin';
   status: 'active' | 'pending_verification' | 'rejected';
   createdAt: string;
-  created_at?: string; // Handle legacy field from token
+  created_at?: string; 
   businessLocation?: string;
-  settings?: UserSettings; // <-- FIX: Added optional settings property
+  settings?: UserSettings; 
 }
 
 export interface MenuItem {
@@ -62,22 +61,23 @@ export interface StudyPlace {
     start: string;
     end: string;
   };
+  maxCapacity?: number; // <-- NEW
   distance?: string;
   rating?: number;
   pricePerHour?: number;
-  availableSlots?: TimeSlot[];
+  availableSlots?: TimeSlot[]; 
   reviews?: Review[];
   created_at: string;
   owner?: Partial<User>;
 }
 
+// --- MODIFIED: TimeSlot now has remainingCapacity ---
 export interface TimeSlot {
-  id: string;
   date: string;
   startTime: string;
-  endTime: string;
-  available: boolean;
+  remainingCapacity: number; // <-- CHANGED from 'available: boolean'
 }
+// --- END MODIFICATION ---
 
 export interface Review {
   id: string;
@@ -86,8 +86,9 @@ export interface Review {
   rating: number;
   comment: string;
   date: string;
-  user?: Partial<User>; // API sends this
-  created_at?: string; // API sends this
+  user?: Partial<User>; 
+  created_at?: string; 
+  place?: Partial<StudyPlace>;
 }
 
 export interface Booking {
@@ -97,6 +98,8 @@ export interface Booking {
   date: string;
   startTime: string;
   endTime: string;
+  duration?: number;
+  partySize?: number; // <-- NEW
   status: 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'no-show';
   ticketId: string;  
   place?: StudyPlace;

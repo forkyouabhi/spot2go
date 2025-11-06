@@ -1,10 +1,39 @@
 // services/api/src/controllers/customerController.js
 const { Op } = require('sequelize');
-// --- FIX: Added 'sequelize' to the import ---
 const { Place, Booking, MenuItem, User, UserBookmark, Review, sequelize } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
+// --- NEW HELPER FUNCTIONS ---
+// Converts "HH:MM" to minutes since midnight
+const timeToMinutes = (time) => {
+  if (typeof time !== 'string') return 0;
+  const [hours, minutes] = time.split(':').map(Number);
+  return hours * 60 + minutes;
+};
+
+// Converts minutes since midnight to "HH:MM"
+const minutesToTime = (minutes) => {
+  const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
+  const mins = (minutes % 60).toString().padStart(2, '0');
+  return `${hours}:${mins}`;
+};
+
+// Generates an array of time strings in 30-minute intervals
+const generateTimeSlots = (start, end) => {
+  const slots = [];
+  let current = timeToMinutes(start);
+  const endTime = timeToMinutes(end);
+
+  while (current < endTime) {
+    slots.push(minutesToTime(current));
+    current += 30; // 30-minute increments
+  }
+  return slots;
+};
+// --- END HELPER FUNCTIONS ---
+
 const listNearbyPlaces = async (req, res) => {
+  // ... (unchanged)
   try {
     const places = await Place.findAll({
       where: { status: 'approved' },
@@ -16,17 +45,18 @@ const listNearbyPlaces = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch places' });
   }
 };
+
 const createReview = async (req, res) => {
+  // ... (unchanged)
   const t = await sequelize.transaction();
   try {
-    const { bookingId, rating, comment } = req.body; // <-- FIX: Changed from placeId to bookingId
+    const { bookingId, rating, comment } = req.body; 
     const userId = req.user.id;
 
     if (!bookingId || !rating) {
       return res.status(400).json({ error: 'Booking ID and rating are required.' });
     }
 
-    // 1. Find the booking and check ownership/status
     const booking = await Booking.findOne({
       where: {
         id: bookingId,
@@ -41,12 +71,7 @@ const createReview = async (req, res) => {
     if (booking.reviewed) {
       return res.status(409).json({ error: 'This booking has already been reviewed.' });
     }
-    // Optional: Check if the booking date is in the past
-    // if (new Date(booking.date) > new Date()) {
-    //    return res.status(400).json({ error: 'You can only review past bookings.' });
-    // }
     
-    // 2. Create the review
     const review = await Review.create({
       userId,
       placeId: booking.placeId,
@@ -55,17 +80,15 @@ const createReview = async (req, res) => {
       comment
     }, { transaction: t });
 
-    // 3. Update the booking to mark it as reviewed
     await booking.update({ reviewed: true }, { transaction: t });
 
-    // 4. Update the Place's average rating and review count
     const place = await Place.findByPk(booking.placeId, { transaction: t, lock: true });
     
     const [results] = await Review.findAll({
       where: { placeId: booking.placeId },
       attributes: [
-        [sequelize.fn('COUNT', sequelize.col('id')), 'count'], // <-- This now works
-        [sequelize.fn('AVG', sequelize.col('rating')), 'avg'] // <-- This now works
+        [sequelize.fn('COUNT', sequelize.col('id')), 'count'],
+        [sequelize.fn('AVG', sequelize.col('rating')), 'avg']
       ],
       raw: true,
       transaction: t
@@ -79,10 +102,8 @@ const createReview = async (req, res) => {
       reviewCount: newReviewCount
     }, { transaction: t });
 
-    // 5. Commit the transaction
     await t.commit();
 
-    // 6. Return the full review object with user info
     const fullReview = await Review.findByPk(review.id, {
       include: [{ model: User, as: 'user', attributes: ['name'] }]
     });
@@ -100,6 +121,7 @@ const createReview = async (req, res) => {
 };
 
 const getUserReviews = async (req, res) => {
+  // ... (unchanged)
   try {
     const reviews = await Review.findAll({
       where: { userId: req.user.id },
@@ -114,6 +136,8 @@ const getUserReviews = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch reviews' });
   }
 };
+
+// --- MODIFIED: getPlaceById for Capacity ---
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -122,14 +146,12 @@ const getPlaceById = async (req, res) => {
        include: [
         { model: MenuItem, as: 'menuItems', attributes: ['id', 'name', 'price'] },
         { model: User, as: 'owner', attributes: ['name', 'email'] },
-        // --- FIX: Include reviews with user info ---
         { 
           model: Review, 
           as: 'reviews',
           include: [{ model: User, as: 'user', attributes: ['name'] }]
         }
       ],
-      // Order reviews by newest first
       order: [[{ model: Review, as: 'reviews' }, 'created_at', 'DESC']],
     });
 
@@ -140,7 +162,7 @@ const getPlaceById = async (req, res) => {
     const place = placeData.toJSON();
 
     if (place.reservable && place.reservableHours?.start && place.reservableHours?.end) {
-      const today = new Date();
+      const today = new Date(new Date().setHours(0,0,0,0));
       const nextWeek = new Date(today);
       nextWeek.setDate(today.getDate() + 7);
 
@@ -153,35 +175,43 @@ const getPlaceById = async (req, res) => {
             [Op.lt]: nextWeek.toISOString().split('T')[0],
           }
         },
-        attributes: ['date', 'startTime']
+        attributes: ['date', 'startTime', 'endTime', 'partySize'] // <-- Get partySize
       });
 
-      const bookedSlots = new Set(bookings.map(b => `${b.date}T${b.startTime}`));
+      // Create a map of occupied capacity for each 30-min slot
+      const occupiedCapacity = new Map();
+      bookings.forEach(b => {
+        const date = b.date;
+        let current = timeToMinutes(b.startTime);
+        const end = timeToMinutes(b.endTime);
+        while (current < end) {
+          const slotKey = `${date}T${minutesToTime(current)}`;
+          const currentOccupancy = occupiedCapacity.get(slotKey) || 0;
+          occupiedCapacity.set(slotKey, currentOccupancy + b.partySize);
+          current += 30;
+        }
+      });
       
       place.availableSlots = [];
+      const allPossibleSlots = generateTimeSlots(place.reservableHours.start, place.reservableHours.end);
+      const maxCapacity = place.maxCapacity || 1;
+
       for (let i = 0; i < 7; i++) {
         const date = new Date(today);
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
 
-        let currentHour = parseInt(place.reservableHours.start.split(':')[0], 10);
-        const closingHour = parseInt(place.reservableHours.end.split(':')[0], 10);
-        
-        while(currentHour < closingHour) {
-            const nextHour = currentHour + 2; // Assuming 2-hour slots
-            if (nextHour <= closingHour) {
-                const startTime = `${String(currentHour).padStart(2, '0')}:00`;
-                const slotId = `${dateString}T${startTime}`;
-                place.availableSlots.push({
-                    id: `${place.id}-${slotId}`,
-                    date: dateString,
-                    startTime: startTime,
-                    endTime: `${String(nextHour).padStart(2, '0')}:00`,
-                    available: !bookedSlots.has(slotId),
-                });
-            }
-            currentHour += 2; // Increment by slot length
-        }
+        allPossibleSlots.forEach(startTime => {
+            const slotKey = `${dateString}T${startTime}`;
+            const currentOccupancy = occupiedCapacity.get(slotKey) || 0;
+            const remainingCapacity = maxCapacity - currentOccupancy;
+            
+            place.availableSlots.push({
+                date: dateString,
+                startTime: startTime,
+                remainingCapacity: remainingCapacity > 0 ? remainingCapacity : 0, // Don't go below 0
+            });
+        });
       }
     }
 
@@ -191,19 +221,26 @@ const getPlaceById = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch place details' });
   }
 };
+// --- END MODIFICATION ---
+
+// --- MODIFIED: createBooking for Capacity ---
 const createBooking = async (req, res) => {
   try {
-    const { placeId, amount, date, startTime, endTime } = req.body;
-    const userId = req.user.id; // Get user ID from authenticated request
+    // Add partySize to request
+    const { placeId, amount, date, startTime, duration, partySize = 1 } = req.body;
+    const userId = req.user.id;
 
-    // --- Find User and Place ---
+    if (!duration || duration <= 0) {
+      return res.status(400).json({ error: 'Invalid duration.' });
+    }
+
     const [user, place] = await Promise.all([
        User.findByPk(userId),
        Place.findByPk(placeId)
     ]);
 
     if (!user) {
-       return res.status(404).json({ error: 'User not found.' }); // Should not happen if authenticated
+       return res.status(404).json({ error: 'User not found.' });
     }
     if (!place) {
       return res.status(404).json({ error: 'Place not found' });
@@ -212,59 +249,91 @@ const createBooking = async (req, res) => {
         return res.status(400).json({ error: 'This place is not available for booking.' });
     }
 
-    // Check if the slot is already booked
-    const existingBooking = await Booking.findOne({
+    // Calculate endTime
+    const startMinutes = timeToMinutes(startTime);
+    const durationMinutes = duration * 60;
+    const endMinutes = startMinutes + durationMinutes;
+    const endTime = minutesToTime(endMinutes);
+    const maxCapacity = place.maxCapacity || 1;
+
+    // Server-side check for availability and capacity
+    const start = timeToMinutes(startTime);
+    const end = timeToMinutes(endTime);
+
+    const conflictingBookings = await Booking.findAll({
       where: {
         placeId,
         date,
-        startTime,
-        status: { [Op.in]: ['confirmed', 'pending'] } // Check pending too
+        status: 'confirmed',
+        [Op.or]: [
+          { // Existing booking starts during new booking
+            [Op.and]: [
+              sequelize.where(sequelize.fn('time_to_minutes', sequelize.col('startTime')), { [Op.lt]: end }),
+              sequelize.where(sequelize.fn('time_to_minutes', sequelize.col('endTime')), { [Op.gt]: start })
+            ]
+          },
+        ]
       }
     });
 
-    if (existingBooking) {
-      return res.status(409).json({ error: 'This time slot is no longer available.' });
+    // Check capacity for all overlapping 30-min slots
+    for (let t = start; t < end; t += 30) {
+      const slotTime = minutesToTime(t);
+      // Find all bookings that are active during this specific 30-min slot
+      const occupiedCapacity = conflictingBookings.reduce((sum, b) => {
+        if (timeToMinutes(b.startTime) < t + 30 && timeToMinutes(b.endTime) > t) {
+          return sum + b.partySize;
+        }
+        return sum;
+      }, 0);
+
+      if (occupiedCapacity + partySize > maxCapacity) {
+        return res.status(409).json({ error: `The time slot at ${slotTime} does not have enough capacity for ${partySize} people. Please try a different time or smaller group.` });
+      }
     }
 
-    // --- Create Booking ---
+    // Create Booking
     const booking = await Booking.create({
       userId,
       placeId,
-      amount, // You might want to calculate this server-side based on place.pricePerHour
+      amount,
       date,
       startTime,
-      endTime,
-      status: 'confirmed', // Assuming direct confirmation for now
+      endTime, // Use calculated endTime
+      duration,
+      partySize, // <-- Save partySize
+      status: 'confirmed', 
       ticketId: `SPOT2GO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     });
 
-    // --- Send Confirmation Email ---
+    // Send Confirmation Email
     try {
       await sendEmail(user.email, 'bookingConfirmation', {
         name: user.name,
         placeName: place.name,
         date: booking.date,
-        startTime: booking.startTime.slice(0, 5), // Format HH:MM
-        endTime: booking.endTime.slice(0, 5),     // Format HH:MM
+        startTime: booking.startTime.slice(0, 5),
+        endTime: booking.endTime.slice(0, 5),
         ticketId: booking.ticketId,
+        partySize: booking.partySize, 
       });
     } catch (emailError) {
-      // Log the error but don't fail the booking if email fails
       console.error(`Failed to send booking confirmation email to ${user.email}:`, emailError);
     }
-    // -----------------------------
 
     res.status(201).json({ message: 'Booking created successfully!', booking });
   } catch (err) {
-    console.error('Error creating booking:', err); // Log the specific error
+    console.error('Error creating booking:', err); 
     res.status(500).json({ error: 'Failed to create booking' });
   }
 };
+// --- END MODIFICATION ---
+
 const listBookings = async (req, res) => {
+  
   try {
     const userBookings = await Booking.findAll({
       where: { userId: req.user.id },
-      // FIX: Include the 'reviewed' field
       include: [{ model: Place, as: 'place', attributes: ['name', 'location'] }],
       order: [['created_at', 'DESC']],
     });
@@ -275,8 +344,8 @@ const listBookings = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION: GET BOOKING BY TICKET ID ---
 const getBookingByTicketId = async (req, res) => {
+  
   try {
     const { ticketId } = req.params;
     const userId = req.user.id; 
@@ -311,8 +380,8 @@ const getBookingByTicketId = async (req, res) => {
   }
 };
 
-// --- FIX: USE UserBookmark MODEL ---
 const getUserBookmarks = async (req, res) => {
+  
   try {
     const bookmarks = await UserBookmark.findAll({
       where: { userId: req.user.id },
@@ -325,15 +394,15 @@ const getUserBookmarks = async (req, res) => {
   }
 };
 
-// --- NEW CONTROLLER: Get Full Bookmarked Places ---
 const getBoookmarkedPlaces = async (req, res) => {
+  
   try {
     const userWithBookmarks = await User.findByPk(req.user.id, {
       include: {
         model: Place,
         as: 'bookmarkedPlaces',
-        through: { attributes: [] }, // Don't include the join table data
-        where: { status: 'approved' }, // Only show approved places
+        through: { attributes: [] },
+        where: { status: 'approved' }, 
         required: false,
       },
       order: [[{ model: Place, as: 'bookmarkedPlaces' }, 'created_at', 'DESC']],
@@ -350,8 +419,8 @@ const getBoookmarkedPlaces = async (req, res) => {
   }
 };
 
-// --- FIX: USE UserBookmark MODEL ---
 const addBookmark = async (req, res) => {
+  
   try {
     const { placeId } = req.body;
     if (!placeId) {
@@ -364,7 +433,6 @@ const addBookmark = async (req, res) => {
     res.status(201).json({ message: 'Bookmark added.', placeId: bookmark.placeId });
   } catch (err) {
     if (err.name === 'SequelizeUniqueConstraintError') {
-      // Return the placeId so the frontend can still update state
       return res.status(200).json({ message: 'Already bookmarked.', placeId: req.body.placeId });
     }
     console.error('Error adding bookmark:', err);
@@ -372,8 +440,8 @@ const addBookmark = async (req, res) => {
   }
 };
 
-// --- FIX: USE UserBookmark MODEL ---
 const removeBookmark = async (req, res) => {
+  
   try {
     const { placeId } = req.params;
     const result = await UserBookmark.destroy({
@@ -399,7 +467,7 @@ module.exports = {
     listBookings,
     getBookingByTicketId,
     getUserBookmarks,
-    getBoookmarkedPlaces, // <-- EXPORT NEW CONTROLLER
+    getBoookmarkedPlaces,
     addBookmark,
     removeBookmark,
     createReview,

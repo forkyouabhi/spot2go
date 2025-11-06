@@ -1,6 +1,6 @@
 // services/web/src/pages/places/[id].tsx
 import { useRouter } from 'next/router';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { useAuth } from '../../context/AuthContext';
 import { getPlaceById, createBooking } from '../../lib/api';
@@ -14,18 +14,25 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { ImageCarouselModal } from '../../components/ImageCarouselModal';
-import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon, Hourglass, Users } from 'lucide-react'; // <-- IMPORTED Users
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
 import Image from 'next/image'; 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
-// ... (DynamicMap import) ...
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
 });
 
 const ReviewCard = ({ review }: { review: Review }) => {
+  // ... (unchanged)
   const userName = review.user?.name || review.userName;
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
   
@@ -52,20 +59,50 @@ const ReviewCard = ({ review }: { review: Review }) => {
   );
 };
 
-const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void, isBooking: boolean }) => {
-    // ... (content of BookingWidget remains the same)
+// --- MODIFIED: BookingWidget ---
+const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot, duration: number, partySize: number) => void, isBooking: boolean }) => {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+    const [duration, setDuration] = useState(1);
+    const [partySize, setPartySize] = useState(1); // <-- NEW: Party size state
+    const maxCapacity = place.maxCapacity || 1;
 
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-    const availableSlotsForDate = place.availableSlots?.filter(
-        slot => selectedDate && slot.date === formatDate(selectedDate) && slot.available
-    ) || [];
+    const slotsForDate = useMemo(() => {
+      return place.availableSlots?.filter(
+        slot => selectedDate && slot.date === formatDate(selectedDate)
+      ) || [];
+    }, [place.availableSlots, selectedDate]);
+
+    // Filter start times based on selected duration AND party size
+    const availableStartTimes = useMemo(() => {
+      const durationInSlots = duration * 2; // 1 hour = 2 slots
+      
+      return slotsForDate.filter((slot, index) => {
+        // Check if this slot meets party size
+        if (slot.remainingCapacity < partySize) return false;
+
+        // Check if subsequent slots for the duration are all available
+        let canBook = true;
+        for (let i = 0; i < durationInSlots; i++) {
+          const nextSlot = slotsForDate[index + i];
+          // Check if slot exists and has enough capacity
+          if (!nextSlot || nextSlot.remainingCapacity < partySize) {
+            canBook = false;
+            break;
+          }
+        }
+        return canBook;
+      });
+    }, [slotsForDate, duration, partySize]); // <-- Re-run when partySize changes
 
     useEffect(() => {
         setSelectedSlot(null);
-    }, [selectedDate]);
+    }, [selectedDate, duration, partySize]);
+
+    // Generate options for party size select
+    const partySizeOptions = Array.from({ length: maxCapacity }, (_, i) => i + 1);
 
     return (
         <Card className="shadow-lg border-2 border-brand-orange bg-white">
@@ -86,51 +123,90 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
                       />
                     </div>
                 </div>
+
+                {/* --- NEW: Party Size & Duration Row --- */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Users className="h-4 w-4 text-brand-orange" />Party Size</Label>
+                    <Select value={partySize.toString()} onValueChange={(val) => setPartySize(Number(val))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {partySizeOptions.map(size => (
+                          <SelectItem key={size} value={size.toString()}>
+                            {size} {size > 1 ? 'People' : 'Person'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Hourglass className="h-4 w-4 text-brand-orange" />Duration</Label>
+                    <Select value={duration.toString()} onValueChange={(val) => setDuration(Number(val))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Hour</SelectItem>
+                        <SelectItem value="1.5">1.5 Hours</SelectItem>
+                        <SelectItem value="2">2 Hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {/* --- END: Party Size & Duration Row --- */}
+
+
                 <div>
-                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-brand-orange" />Available Times</Label>
-                    {availableSlotsForDate.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                            {availableSlotsForDate.map((slot) => (
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-brand-orange" />Available Start Times</Label>
+                    {availableStartTimes.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                            {availableStartTimes.map((slot) => (
                             <Button
-                                key={slot.id}
-                                className={`h-auto p-2 flex flex-col items-center rounded-xl border-2 transition-transform ${selectedSlot?.id === slot.id ? 'shadow-lg scale-105' : ''}`}
-                                style={selectedSlot?.id === slot.id
+                                key={slot.startTime}
+                                variant="outline"
+                                className={`h-10 p-2 flex items-center justify-center rounded-xl border-2 transition-transform ${selectedSlot?.startTime === slot.startTime ? 'shadow-lg scale-105' : ''}`}
+                                style={selectedSlot?.startTime === slot.startTime
                                 ? { backgroundColor: '#DC6B19', color: '#FFF8DC', borderColor: '#6C0345' }
                                 : { backgroundColor: '#F7C566', color: '#6C0345', borderColor: '#DC6B19' }}
                                 onClick={() => setSelectedSlot(slot)}
                             >
                                 <span className="font-semibold text-sm">{slot.startTime}</span>
-                                <span className="text-xs opacity-80">to {slot.endTime}</span>
                             </Button>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-sm text-brand-orange py-4">No slots available for this date.</p>
+                        <p className="text-center text-sm text-brand-orange py-4">No slots available for this date, duration, and party size.</p>
                     )}
                 </div>
                  <Button
-                    onClick={() => selectedSlot && onConfirmBooking(selectedSlot)}
+                    onClick={() => selectedSlot && onConfirmBooking(selectedSlot, duration, partySize)}
                     disabled={!selectedSlot || isBooking}
                     size="lg" className="w-full h-12 text-lg font-bold bg-brand-orange text-brand-cream"
                 >
-                   {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? 'Confirm Booking' : 'Select a Slot')}
+                   {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? 'Confirm Booking' : 'Select a Start Time')}
                 </Button>
             </CardContent>
         </Card>
     );
 };
+// --- END MODIFICATION ---
 
 export default function PlaceDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [place, setPlace] = useState<StudyPlace | null>(null);
+  // ... (rest of state remains unchanged)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const mobileBookingSectionRef = useRef<HTMLDivElement>(null);
   const [isBookingWidgetVisible, setIsBookingWidgetVisible] = useState(false);
 
   useEffect(() => {
+    // ... (intersection observer unchanged)
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsBookingWidgetVisible(entry.isIntersecting);
@@ -155,19 +231,18 @@ export default function PlaceDetailPage() {
   }, []);
 
   useEffect(() => {
+    // ... (auth/role checks unchanged)
     if (authLoading) return;
     if (!isAuthenticated) {
       router.push('/login');
       return;
     }
 
-    // --- THIS IS THE FIX ---
     if (user?.role && user.role !== 'customer') {
       toast.error("Owners cannot browse places. Redirecting to your dashboard.");
       router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
       return;
     }
-    // --- END FIX ---
 
     if (id && isAuthenticated) {
       const fetchPlace = async () => {
@@ -181,9 +256,10 @@ export default function PlaceDetailPage() {
       };
       fetchPlace();
     }
-  }, [id, isAuthenticated, authLoading, router, user]); // Added 'user'
+  }, [id, isAuthenticated, authLoading, router, user]);
 
   const handleGetDirections = () => {
+    // ... (unchanged)
     if (!place?.location?.lat || !place?.location?.lng) {
       toast.error("Location data is not available for directions.");
       return;
@@ -192,7 +268,8 @@ export default function PlaceDetailPage() {
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleConfirmBooking = async (slot: TimeSlot) => {
+  // --- MODIFIED: Handle Confirm Booking ---
+  const handleConfirmBooking = async (slot: TimeSlot, duration: number, partySize: number) => {
     if (!place || !user) return;
     setIsBooking(true);
     try {
@@ -201,8 +278,9 @@ export default function PlaceDetailPage() {
             userId: user.id,
             date: slot.date,
             startTime: slot.startTime,
-            endTime: slot.endTime,
-            amount: place.pricePerHour ? place.pricePerHour * 2 : 0, // Assuming 2hr slots
+            duration: duration,
+            partySize: partySize, // <-- Pass partySize
+            amount: place.pricePerHour ? place.pricePerHour * duration * partySize : 0, // <-- Update amount
         };
 
         const response = await createBooking(bookingData);
@@ -210,7 +288,6 @@ export default function PlaceDetailPage() {
 
         toast.success("Booking confirmed!");
 
-        // Use ticketId from the API response for robustness
         router.push(`/confirmation?ticketId=${booking.ticketId}`);
     } catch (error: any) {
         const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
@@ -223,10 +300,11 @@ export default function PlaceDetailPage() {
         setIsBooking(false);
     }
   };
+  // --- END MODIFICATION ---
 
   const hasReservations = place?.reservable && place?.availableSlots && place.availableSlots.length > 0;
 
-  if (authLoading || !place || (isAuthenticated && user?.role !== 'customer')) {
+  if (authLoading || !place) {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 
@@ -235,7 +313,8 @@ export default function PlaceDetailPage() {
       <Head>
         <title>Spot2Go | {place.name}</title>
       </Head>
-      {place.images && <ImageCarouselModal images={place.images} open={isModalOpen} onOpenChange={setIsModalOpen} />}
+      {/* ... (rest of the JSX remains unchanged) ... */}
+       {place.images && <ImageCarouselModal images={place.images} open={isModalOpen} onOpenChange={setIsModalOpen} />}
 
       <div className="min-h-screen bg-brand-cream">
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">

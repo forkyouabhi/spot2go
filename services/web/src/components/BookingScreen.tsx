@@ -1,32 +1,104 @@
-import { useState } from 'react';
+// services/web/src/components/BookingScreen.tsx
+import { useState, useMemo, useEffect } from 'react';
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Calendar } from "./ui/calendar";
 import { Badge } from "./ui/badge";
-import { ArrowLeft, Clock, Calendar as CalendarIcon } from "lucide-react";
+import { ArrowLeft, Clock, Calendar as CalendarIcon, Hourglass, Loader2, Users } from "lucide-react"; // <-- IMPORTED Users
 import { StudyPlace, TimeSlot } from '../types';
+import { Label } from './ui/label';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "./ui/select";
+import { toast } from 'sonner';
+import { createBooking } from '../lib/api';
+import { useAuth } from '../context/AuthContext';
+import { useRouter } from 'next/router';
 
 interface BookingScreenProps {
   place: StudyPlace;
   onBack: () => void;
-  onConfirmBooking: (place: StudyPlace, slot: TimeSlot) => void;
 }
 
-export function BookingScreen({ place, onBack, onConfirmBooking }: BookingScreenProps) {
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
+export function BookingScreen({ place, onBack }: BookingScreenProps) {
+  const router = useRouter();
+  const { user } = useAuth();
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+  const [duration, setDuration] = useState(1); // Default 1 hour
+  const [partySize, setPartySize] = useState(1); // <-- NEW: Party size state
+  const [isBooking, setIsBooking] = useState(false);
+  const maxCapacity = place.maxCapacity || 1;
 
-  const formatDate = (date: Date) => {
-    return date.toISOString().split('T')[0];
-  };
+  const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-  const availableSlotsForDate = place.availableSlots.filter(
-    slot => slot.date === formatDate(selectedDate) && slot.available
-  );
+  const slotsForDate = useMemo(() => {
+    return place.availableSlots?.filter(
+      slot => selectedDate && slot.date === formatDate(selectedDate)
+    ) || [];
+  }, [place.availableSlots, selectedDate]);
 
-  const handleBooking = () => {
-    if (selectedSlot) {
-      onConfirmBooking(place, selectedSlot);
+  // Filter start times based on selected duration AND party size
+  const availableStartTimes = useMemo(() => {
+    const durationInSlots = duration * 2; // 1 hour = 2 slots
+    
+    return slotsForDate.filter((slot, index) => {
+      // Check if this slot meets party size
+      if (slot.remainingCapacity < partySize) return false;
+
+      // Check if subsequent slots for the duration are all available
+      let canBook = true;
+      for (let i = 0; i < durationInSlots; i++) {
+        const nextSlot = slotsForDate[index + i];
+        if (!nextSlot || nextSlot.remainingCapacity < partySize) {
+          canBook = false;
+          break;
+        }
+      }
+      return canBook;
+    });
+  }, [slotsForDate, duration, partySize]); // <-- Re-run when partySize changes
+
+  useEffect(() => {
+      setSelectedSlot(null);
+  }, [selectedDate, duration, partySize]);
+
+  // Generate options for party size select
+  const partySizeOptions = Array.from({ length: maxCapacity }, (_, i) => i + 1);
+
+  const handleBooking = async () => {
+    if (!selectedSlot || !user || !selectedDate) {
+      toast.error("Please select a date, duration, and time slot.");
+      return;
+    }
+    
+    setIsBooking(true);
+    try {
+        const bookingData = {
+            placeId: place.id,
+            userId: user.id,
+            date: formatDate(selectedDate),
+            startTime: selectedSlot.startTime,
+            duration: duration,
+            partySize: partySize, // <-- Pass partySize
+            amount: place.pricePerHour ? place.pricePerHour * duration * partySize : 0, // <-- Update amount
+        };
+
+        const response = await createBooking(bookingData);
+        const { booking } = response.data;
+
+        toast.success("Booking confirmed!");
+        router.push(`/confirmation?ticketId=${booking.ticketId}`);
+        
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
+        toast.error(errorMessage);
+    } finally {
+        setIsBooking(false);
     }
   };
 
@@ -75,15 +147,59 @@ export function BookingScreen({ place, onBack, onConfirmBooking }: BookingScreen
               onSelect={(date) => {
                 if (date) {
                   setSelectedDate(date);
-                  setSelectedSlot(null);
                 }
               }}
-              disabled={(date) => date < new Date() || date > new Date(Date.now() + 30 * 24 * 60 * 60 * 1000)}
+              disabled={(date) => date < new Date(new Date().setDate(new Date().getDate() - 1)) || date > new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)} // <-- Corrected disable logic
               className="rounded-xl border-2"
               style={{ borderColor: '#F7C566' }}
             />
           </CardContent>
         </Card>
+
+        {/* --- MODIFIED: Duration & Party Size Selectors --- */}
+        <Card 
+          className="border-2 rounded-2xl shadow-lg animate-fade-in-up"
+          style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}
+        >
+          <CardHeader>
+            <CardTitle className="flex items-center space-x-2" style={{ color: '#6C0345' }}>
+              <Hourglass className="h-5 w-5" style={{ color: '#DC6B19' }} />
+              <span>Select Details</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-2 gap-4">
+            <div>
+              <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Users className="h-4 w-4" />Party Size</Label>
+              <Select value={partySize.toString()} onValueChange={(val) => setPartySize(Number(val))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select size" />
+                </SelectTrigger>
+                <SelectContent>
+                  {partySizeOptions.map(size => (
+                    <SelectItem key={size} value={size.toString()}>
+                      {size} {size > 1 ? 'People' : 'Person'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Hourglass className="h-4 w-4" />Duration</Label>
+              <Select value={duration.toString()} onValueChange={(val) => setDuration(Number(val))}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select duration" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">1 Hour</SelectItem>
+                  <SelectItem value="1.5">1.5 Hours</SelectItem>
+                  <SelectItem value="2">2 Hours</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardContent>
+        </Card>
+        {/* --- END MODIFICATION --- */}
+
 
         {/* Time Slot Selection */}
         <Card 
@@ -93,36 +209,34 @@ export function BookingScreen({ place, onBack, onConfirmBooking }: BookingScreen
           <CardHeader>
             <CardTitle className="flex items-center space-x-2" style={{ color: '#6C0345' }}>
               <Clock className="h-5 w-5" style={{ color: '#DC6B19' }} />
-              <span>Available Times</span>
+              <span>Available Start Times</span>
             </CardTitle>
           </CardHeader>
           <CardContent>
-            {availableSlotsForDate.length > 0 ? (
-              <div className="grid grid-cols-2 gap-4">
-                {availableSlotsForDate.map((slot, index) => (
+            {availableStartTimes.length > 0 ? (
+              <div className="grid grid-cols-3 gap-3">
+                {availableStartTimes.map((slot, index) => (
                   <Button
-                    key={slot.id}
-                    className={`h-auto p-4 flex flex-col items-center rounded-xl border-2 transition-button animate-fade-in-up ${
-                      selectedSlot?.id === slot.id ? 'shadow-lg transform scale-105' : ''
+                    key={slot.startTime}
+                    variant="outline"
+                    className={`h-10 p-2 flex items-center justify-center rounded-xl border-2 transition-transform ${
+                      selectedSlot?.startTime === slot.startTime ? 'shadow-lg scale-105' : ''
                     }`}
-                    style={selectedSlot?.id === slot.id 
+                    style={selectedSlot?.startTime === slot.startTime
                       ? {
                           backgroundColor: '#DC6B19',
                           color: '#FFF8DC',
                           borderColor: '#6C0345',
-                          animationDelay: `${index * 0.1}s`
                         }
                       : {
                           backgroundColor: '#F7C566',
                           color: '#6C0345',
                           borderColor: '#DC6B19',
-                          animationDelay: `${index * 0.1}s`
                         }
                     }
                     onClick={() => setSelectedSlot(slot)}
                   >
-                    <span className="font-semibold">{slot.startTime}</span>
-                    <span className="text-xs opacity-80">to {slot.endTime}</span>
+                    <span className="font-semibold text-sm">{slot.startTime}</span>
                   </Button>
                 ))}
               </div>
@@ -130,68 +244,21 @@ export function BookingScreen({ place, onBack, onConfirmBooking }: BookingScreen
               <div className="text-center py-8">
                 <Clock className="h-12 w-12 mx-auto mb-3" style={{ color: '#DC6B19' }} />
                 <p className="font-medium" style={{ color: '#6C0345' }}>
-                  No available slots for this date
+                  No available slots for this date/duration/party size
                 </p>
                 <p className="text-sm mt-1" style={{ color: '#6C0345', opacity: 0.7 }}>
-                  Please select a different date
+                  Please select a different option
                 </p>
               </div>
             )}
           </CardContent>
         </Card>
 
-        {/* Booking Summary */}
-        {selectedSlot && (
-          <Card 
-            className="border-2 rounded-2xl shadow-lg animate-slide-in-right"
-            style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}
-          >
-            <CardHeader>
-              <CardTitle style={{ color: '#6C0345' }}>Booking Summary</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="flex justify-between items-center p-3 rounded-xl"
-                   style={{ backgroundColor: '#F7C566' }}>
-                <span style={{ color: '#6C0345' }}>Location:</span>
-                <span className="font-semibold" style={{ color: '#6C0345' }}>
-                  {place.name}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-3 rounded-xl"
-                   style={{ backgroundColor: '#F7C566' }}>
-                <span style={{ color: '#6C0345' }}>Date:</span>
-                <span className="font-semibold" style={{ color: '#6C0345' }}>
-                  {selectedDate.toLocaleDateString()}
-                </span>
-              </div>
-              <div className="flex justify-between items-center p-3 rounded-xl"
-                   style={{ backgroundColor: '#F7C566' }}>
-                <span style={{ color: '#6C0345' }}>Time:</span>
-                <span className="font-semibold" style={{ color: '#6C0345' }}>
-                  {selectedSlot.startTime} - {selectedSlot.endTime}
-                </span>
-              </div>
-              {place.pricePerHour && (
-                <div className="flex justify-between items-center p-3 rounded-xl border-t-2"
-                     style={{ 
-                       backgroundColor: '#DC6B19',
-                       borderColor: '#6C0345'
-                     }}>
-                  <span className="font-bold" style={{ color: '#FFF8DC' }}>Total:</span>
-                  <span className="font-bold text-lg" style={{ color: '#FFF8DC' }}>
-                    ${place.pricePerHour * 2} {/* Assuming 2-hour slot */}
-                  </span>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        )}
-
         {/* Confirm Booking Button */}
         <div className="sticky bottom-4">
           <Button 
             onClick={handleBooking}
-            disabled={!selectedSlot}
+            disabled={!selectedSlot || isBooking}
             className={`w-full h-14 rounded-2xl font-semibold text-lg shadow-xl transition-button transform ${
               selectedSlot ? 'hover:scale-[1.02] animate-button-pulse' : 'opacity-60'
             }`}
@@ -207,7 +274,7 @@ export function BookingScreen({ place, onBack, onConfirmBooking }: BookingScreen
             }
             size="lg"
           >
-            {selectedSlot ? '🎯 Confirm Booking' : '⏰ Select a Time Slot'}
+            {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? '🎯 Confirm Booking' : '⏰ Select a Start Time')}
           </Button>
         </div>
       </div>

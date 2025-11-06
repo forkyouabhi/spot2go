@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { CheckCircle, MapPin, Calendar, Clock, Download, User as UserIcon } from 'lucide-react';
+import { CheckCircle, MapPin, Calendar, Clock, Download, User as UserIcon, Users } from 'lucide-react'; // <-- IMPORTED Users
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import QRCode from 'react-qr-code';
@@ -24,19 +24,18 @@ export default function ConfirmationPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (authLoading) return; // Wait for user to be loaded
+    // ... (auth/role checks unchanged) ...
+    if (authLoading) return; 
     if (!user) {
       router.replace('/login');
       return;
     }
-
-    // --- THIS IS THE FIX ---
+    
     if (user?.role && user.role !== 'customer') {
       toast.error("Owners cannot view booking confirmations.");
       router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
       return;
     }
-    // --- END FIX ---
     
     if (ticketId && typeof ticketId === 'string') {
       const fetchBooking = async () => {
@@ -54,23 +53,20 @@ export default function ConfirmationPage() {
       };
       fetchBooking();
     } else if (router.isReady && !ticketId) {
-      // If the page is loaded without a ticketId
       toast.error("Invalid booking link.");
       router.push('/');
     }
   }, [ticketId, router, user, authLoading]);
 
-  // Handler for the "Add to Calendar" button
   const handleCalendarDownload = () => {
+    // ... (unchanged)
     if (booking) {
-      // Use the API URL from environment variables
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
-      // This links directly to the API endpoint we already built
       window.open(`${apiUrl}/bookings/${booking.id}/calendar?token=${localStorage.getItem('token')}`);
     }
   };
 
-  if (authLoading || loading || !booking || (user && user.role !== 'customer')) {
+  if (authLoading || loading || !booking) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-cream">
         <Loader2 className="h-12 w-12 animate-spin text-brand-orange" />
@@ -78,7 +74,7 @@ export default function ConfirmationPage() {
     );
   }
   
-  const { place, user: customer, date, startTime, endTime } = booking;
+  const { place, user: customer, date, startTime, endTime, partySize } = booking; // <-- Added partySize
 
   return (
     <>
@@ -88,6 +84,7 @@ export default function ConfirmationPage() {
       <div className="min-h-screen bg-brand-cream p-4 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-lg bg-white border-2 border-brand-orange shadow-2xl animate-scale-in">
           <CardHeader className="text-center items-center">
+            {/* ... (unchanged) ... */}
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
               <CheckCircle className="h-12 w-12 text-white" />
             </div>
@@ -114,6 +111,7 @@ export default function ConfirmationPage() {
             {/* Information Card */}
             <Card className="bg-brand-cream/50 border-brand-yellow">
               <CardHeader className="flex flex-row items-center gap-4">
+                {/* ... (unchanged) ... */}
                 <ImageWithFallback
                   src={place?.images?.[0] || ''}
                   alt={place?.name || 'Study Spot'}
@@ -126,6 +124,7 @@ export default function ConfirmationPage() {
                   </CardDescription>
                 </div>
               </CardHeader>
+              {/* --- MODIFIED: Added Party Size --- */}
               <CardContent className="grid grid-cols-2 gap-4 text-brand-burgundy border-t border-brand-yellow pt-4">
                 <div className="flex items-center gap-2">
                   <UserIcon className="h-5 w-5 text-brand-orange" />
@@ -135,13 +134,20 @@ export default function ConfirmationPage() {
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
+                  <Users className="h-5 w-5 text-brand-orange" />
+                  <div>
+                    <p className="text-xs">Guests</p>
+                    <p className="font-semibold">{partySize || 1} {partySize && partySize > 1 ? 'People' : 'Person'}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2">
                   <Calendar className="h-5 w-5 text-brand-orange" />
                   <div>
                     <p className="text-xs">Date</p>
                     <p className="font-semibold">{date}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-2 col-span-2">
+                <div className="flex items-center gap-2">
                   <Clock className="h-5 w-5 text-brand-orange" />
                   <div>
                     <p className="text-xs">Time</p>
@@ -149,9 +155,11 @@ export default function ConfirmationPage() {
                   </div>
                 </div>
               </CardContent>
+              {/* --- END MODIFICATION --- */}
             </Card>
 
             {/* Action Buttons */}
+            {/* ... (unchanged) ... */}
             <Button 
               onClick={handleCalendarDownload}
               variant="outline" 

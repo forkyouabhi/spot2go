@@ -1,3 +1,4 @@
+// services/api/src/models/Place.js
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/sequelize');
 
@@ -60,6 +61,14 @@ const Place = sequelize.define('Place', {
     allowNull: true,
     field: 'reservable_hours',
   },
+  // --- NEW FIELD ---
+  maxCapacity: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1, // Default to 1 person per booking
+    field: 'max_capacity',
+  },
+  // --- END NEW FIELD ---
 }, {
   tableName: 'places',
   timestamps: true,

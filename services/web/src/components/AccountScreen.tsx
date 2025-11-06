@@ -15,29 +15,77 @@ import {
   LogOut,
   Image as ImageIcon,
 } from "lucide-react";
-import { User, Booking, StudyPlace } from "../types"; // <-- IMPORT StudyPlace
-import { ImageWithFallback } from "./figma/ImageWithFallback"; // <-- IMPORT ImageWithFallback
+import { User, Booking, StudyPlace, Review } from "../types"; // <-- IMPORTED REVIEW
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+
+// --- NEW: Review Card Component (moved from account.tsx) ---
+const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavigateToPlace: (placeId: string) => void }) => {
+  const userName = review.user?.name || 'A User';
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
+
+  return (
+    <Card className="bg-white border-brand-yellow w-full">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">
+                    {userInitial}
+                </div>
+                <div>
+                    <CardTitle className="text-sm font-semibold text-brand-burgundy">
+                        Review for {review.place?.name || 'a place'}
+                    </CardTitle>
+                    <p className="text-xs text-brand-orange">{new Date(review.created_at!).toLocaleDateString()}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-1 text-amber-500">
+                {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
+            </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-gray-700">{review.comment}</p>
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="border-brand-orange text-brand-orange hover:bg-brand-yellow/50"
+          onClick={() => onNavigateToPlace(review.place!.id)}
+        >
+          <MapPin className="h-4 w-4 mr-2" />
+          View Place
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+// --- END NEW COMPONENT ---
 
 interface AccountScreenProps {
   user: User;
   bookings: Booking[];
-  bookmarkedPlaces: StudyPlace[]; // <-- PROP for bookmarks
+  bookmarkedPlaces: StudyPlace[]; 
+  reviews: Review[]; // <-- NEW
+  activeTab: string; // <-- NEW
   onBack: () => void;
   onNavigateToSettings: () => void;
   onLogout: () => void;
-  onReview: (booking: Booking) => void; // <-- PROP for review
-  onNavigateToPlace: (placeId: string) => void; // <-- PROP for place navigation
+  onReview: (booking: Booking) => void; 
+  onNavigateToPlace: (placeId: string) => void; 
+  onTabChange: (tab: string) => void; // <-- NEW
 }
 
 export function AccountScreen({
   user,
   bookings,
   bookmarkedPlaces,
+  reviews, // <-- NEW
+  activeTab, // <-- NEW
   onBack,
   onNavigateToSettings,
   onLogout,
   onReview,
   onNavigateToPlace,
+  onTabChange, // <-- NEW
 }: AccountScreenProps) {
   const upcomingBookings = bookings.filter(
     (booking) =>
@@ -47,6 +95,10 @@ export function AccountScreen({
   const pastBookings = bookings.filter(
     (booking) => new Date(booking.date) < new Date() || booking.status === 'completed' || booking.status === 'no-show'
   );
+
+  // --- NEW: Get review count from the prop ---
+  const reviewCount = reviews.length;
+  // --- END NEW ---
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -124,7 +176,6 @@ export function AccountScreen({
         </Button>
       </div>
 
-      {/* --- MODIFICATION START: Reverted to single column with max-width --- */}
       <main className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
         
         {/* --- Profile Card --- */}
@@ -253,7 +304,7 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  0
+                  {reviewCount} {/* <-- USE STATE COUNT */}
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
                   Reviews
@@ -314,11 +365,13 @@ export function AccountScreen({
           </Card>
         </div>
         
-        {/* --- END MODIFICATION --- */}
-
-
-        {/* Enhanced Tabs */}
-        <Tabs defaultValue="bookings" className="w-full animate-scale-in">
+        {/* --- MODIFIED: Connect Tabs to state --- */}
+        <Tabs 
+          defaultValue="bookings" 
+          value={activeTab} // <-- Control the active tab
+          onValueChange={onTabChange} // <-- Handle tab change
+          className="w-full animate-scale-in"
+        >
           <TabsList
             className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12 rounded-2xl border-2 shadow-lg"
             style={{
@@ -328,7 +381,7 @@ export function AccountScreen({
           >
             <TabsTrigger
               value="bookings"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0" // Added padding for mobile
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0" 
               style={{
                 color: "#6C0345",
               }}
@@ -366,6 +419,7 @@ export function AccountScreen({
               ⭐ Reviews
             </TabsTrigger>
           </TabsList>
+          {/* --- END MODIFICATION --- */}
 
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
@@ -662,35 +716,48 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
+          {/* --- MODIFIED: Implemented Reviews Tab --- */}
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
             >
-              <CardContent className="p-8">
-                <div className="text-center py-12">
-                  <div
-                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
-                    style={{
-                      backgroundColor: "#F7C566",
-                      borderColor: "#DC6B19",
-                    }}
-                  >
-                    <Star className="h-8 w-8" style={{ color: "#6C0345" }} />
+              <CardContent className={reviews.length > 0 ? "p-4 space-y-3" : "p-8"}>
+                {reviews.length > 0 ? (
+                  reviews.map(review => (
+                    <ReviewItemCard 
+                      key={review.id} 
+                      review={review} 
+                      onNavigateToPlace={onNavigateToPlace} 
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div
+                      className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
+                      style={{
+                        backgroundColor: "#F7C566",
+                        borderColor: "#DC6B19",
+                      }}
+                    >
+                      <Star className="h-8 w-8" style={{ color: "#6C0345" }} />
+                    </div>
+                    <p
+                      className="font-semibold"
+                      style={{ color: "#6C0345" }}
+                    >
+                      No reviews written yet
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
+                      Share your experience after visiting places
+                    </p>
                   </div>
-                  <p
-                    className="font-semibold"
-                    style={{ color: "#6C0345" }}
-                  >
-                    No reviews written yet
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
-                    Share your experience after visiting places
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
+          {/* --- END MODIFICATION --- */}
+
         </Tabs>
       </main>
     </div>

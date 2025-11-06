@@ -11,23 +11,21 @@ import { toast } from 'sonner';
 export default function BookingPage() {
   const router = useRouter();
   const { id } = router.query;
-  const { user, isAuthenticated, loading: authLoading } = useAuth(); // Get user
+  const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [place, setPlace] = useState<StudyPlace | null>(null);
 
   useEffect(() => {
     if (authLoading) return;
     if (!isAuthenticated) {
-      router.push('/login');
+      router.replace('/login');
       return;
     }
 
-    // --- THIS IS THE FIX ---
     if (user?.role && user.role !== 'customer') {
       toast.error("Owners cannot book spots. Redirecting to your dashboard.");
       router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
       return;
     }
-    // --- END FIX ---
 
     if (id && isAuthenticated) {
       const fetchPlace = async () => {
@@ -41,25 +39,7 @@ export default function BookingPage() {
       };
       fetchPlace();
     }
-  }, [id, isAuthenticated, authLoading, router, user]); // Added 'user'
-
-  const handleConfirmBooking = (confirmedPlace: StudyPlace, slot: TimeSlot) => {
-    // Generate a mock ticket ID
-    const ticketId = `SPOT2GO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    
-    // Pass booking details to the confirmation page via query parameters
-    router.push({
-      pathname: '/confirmation',
-      query: {
-        placeName: confirmedPlace.name,
-        placeAddress: confirmedPlace.location.address,
-        date: slot.date,
-        startTime: slot.startTime,
-        endTime: slot.endTime,
-        ticketId: ticketId,
-      },
-    });
-  };
+  }, [id, isAuthenticated, authLoading, router, user]);
 
   if (authLoading || !place || (isAuthenticated && user?.role !== 'customer')) {
     return (
@@ -72,8 +52,7 @@ export default function BookingPage() {
   return (
     <BookingScreen
       place={place}
-      onBack={() => router.back()}
-      onConfirmBooking={handleConfirmBooking}
+      onBack={() => router.back()}      
     />
   );
 }

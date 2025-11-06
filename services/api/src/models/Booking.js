@@ -47,6 +47,14 @@ const Booking = sequelize.define('Booking', {
     allowNull: true,
     field: 'endTime'
   },
+  // --- NEW FIELD ---
+  partySize: {
+    type: DataTypes.INTEGER,
+    allowNull: false,
+    defaultValue: 1,
+    field: 'party_size',
+  },
+  // --- END NEW FIELD ---
   ticketId: {
     type: DataTypes.TEXT,
     unique: true,

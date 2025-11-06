@@ -62,6 +62,9 @@ export default function App() {
   const [selectedPlace, setSelectedPlace] = useState<StudyPlace | null>(null);
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
   const [ticketId, setTicketId] = useState<string>('');
+  
+  const [reviews, setReviews] = useState<Review[]>([]);
+  const [activeTab, setActiveTab] = useState('bookings');
 
   const handleAuth = async (email: string, password: string, name?: string): Promise<void> => {
     // This is a mock login, replace with real API call
@@ -77,7 +80,6 @@ export default function App() {
     };
     setUser(newUser);
     
-    // --- FIX: Set userSettings state with the settings object, NOT the user object ---
     setUserSettings(newUser.settings || defaultUserSettings);
     
     setCurrentScreen('home');
@@ -99,7 +101,6 @@ export default function App() {
     };
     setUser(newUser);
 
-    // --- FIX: Set userSettings state with the settings object, NOT the user object ---
     setUserSettings(newUser.settings || defaultUserSettings);
     
     setCurrentScreen('home');
@@ -113,15 +114,6 @@ export default function App() {
   const handleBookNow = (place: StudyPlace) => {
     setSelectedPlace(place);
     setCurrentScreen('booking');
-  };
-
-  const handleConfirmBooking = (place: StudyPlace, slot: TimeSlot) => {
-    setSelectedPlace(place);
-    setSelectedSlot(slot);
-    // Generate a ticket ID
-    const newTicketId = `SPOT2GO-${Math.random().toString(36).substr(2, 9).toUpperCase()}`;
-    setTicketId(newTicketId);
-    setCurrentScreen('confirmation');
   };
 
   const handleGoHome = () => {
@@ -224,12 +216,16 @@ export default function App() {
           <BookingScreen 
             place={selectedPlace}
             onBack={() => setCurrentScreen('place-details')}
-            onConfirmBooking={handleConfirmBooking}
+            // --- FIX: REMOVED THIS PROP ---
+            // onConfirmBooking={handleConfirmBooking}
+            // --- END FIX ---
             {...commonProps}
           />
         ) : null;
       
       case 'confirmation':
+        // Note: This case is now orphaned in App.tsx since BookingScreen
+        // handles its own navigation. It is kept here for completeness.
         return selectedPlace && selectedSlot ? (
           <ConfirmationScreen 
             place={selectedPlace}
@@ -255,6 +251,9 @@ export default function App() {
             onReview={handleReview} 
             onNavigateToPlace={handleNavigateToPlace} 
             {...commonProps}
+            reviews={reviews}
+            activeTab={activeTab}
+            onTabChange={setActiveTab}
           />
         ) : null;
       
