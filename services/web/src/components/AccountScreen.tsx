@@ -124,14 +124,15 @@ export function AccountScreen({
         </Button>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Enhanced Profile Card */}
+      {/* --- MODIFICATION START: Reverted to single column with max-width --- */}
+      <main className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+        
+        {/* --- Profile Card --- */}
         <Card
-          className="border-2 rounded-2xl shadow-lg animate-fade-in-up"
+          className="w-full border-2 rounded-2xl shadow-lg animate-fade-in-up"
           style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
         >
           <CardContent className="p-6">
-            {/* --- FIX: Made responsive --- */}
             <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-6 gap-4 sm:gap-0">
               <div className="flex items-center space-x-4">
                 <div
@@ -209,7 +210,7 @@ export function AccountScreen({
                 variant="outline"
                 size="sm"
                 onClick={onNavigateToSettings}
-                className="rounded-xl border-2 transition-button w-full sm:w-auto" // <-- Full width on mobile
+                className="rounded-xl border-2 transition-button w-full sm:w-auto"
                 style={{
                   backgroundColor: "#F7C566",
                   borderColor: "#DC6B19",
@@ -220,8 +221,6 @@ export function AccountScreen({
                 Edit Profile
               </Button>
             </div>
-            {/* --- END RESPONSIVE FIX --- */}
-
 
             <div
               className="grid grid-cols-3 gap-4 pt-6 border-t-2"
@@ -264,8 +263,8 @@ export function AccountScreen({
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 animate-slide-in-right">
+        {/* --- Quick Actions (Restored to 2-col grid) --- */}
+        <div className="w-full grid grid-cols-2 gap-4 animate-slide-in-right">
           <Card
             className="border-2 rounded-2xl shadow-lg cursor-pointer transition-button hover:shadow-xl transform hover:scale-[1.02]"
             style={{ borderColor: "#DC6B19", backgroundColor: "#F7C566" }}
@@ -314,10 +313,12 @@ export function AccountScreen({
             </CardContent>
           </Card>
         </div>
+        
+        {/* --- END MODIFICATION --- */}
+
 
         {/* Enhanced Tabs */}
         <Tabs defaultValue="bookings" className="w-full animate-scale-in">
-          {/* --- FIX: Made responsive --- */}
           <TabsList
             className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12 rounded-2xl border-2 shadow-lg"
             style={{
@@ -365,8 +366,6 @@ export function AccountScreen({
               ⭐ Reviews
             </TabsTrigger>
           </TabsList>
-          {/* --- END RESPONSIVE FIX --- */}
-
 
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
@@ -546,7 +545,6 @@ export function AccountScreen({
                               {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </Badge>
                           </div>
-                          {/* --- FIX: Wire up Review Button --- */}
                           <Button
                             variant="outline"
                             size="sm"
@@ -561,7 +559,6 @@ export function AccountScreen({
                           >
                             {booking.reviewed ? 'Reviewed' : '⭐ Review'}
                           </Button>
-                          {/* --- END FIX --- */}
                         </div>
 
                         <div
@@ -606,7 +603,6 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
-          {/* --- FIX: Bookmarks Tab --- */}
           <TabsContent value="bookmarks" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -665,8 +661,6 @@ export function AccountScreen({
               </CardContent>
             </Card>
           </TabsContent>
-          {/* --- END FIX --- */}
-
 
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card
@@ -698,7 +692,7 @@ export function AccountScreen({
             </Card>
           </TabsContent>
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 }

@@ -2,7 +2,7 @@
 const router = require('express').Router();
 const passport = require('passport');
 const jwt = require('jsonwebtoken');
-const { register, verifyEmail, requestPasswordReset, resetPassword } = require('../controllers/authController');
+const { register, verifyEmail, requestPasswordReset, resetPassword, resendVerificationOtp } = require('../controllers/authController'); // <-- IMPORT resendVerificationOtp
 
 // Register (local)
 router.post('/register', register);
@@ -29,7 +29,13 @@ router.post('/login', passport.authenticate('local', { session: false }), (req, 
 router.post('/request-password-reset', requestPasswordReset);
 // Reset Password
 router.post('/reset-password', resetPassword);
+// Verify Email (OTP)
 router.post('/verify-email', verifyEmail);
+// --- NEW ROUTE ---
+// Resend Verification (OTP)
+router.post('/resend-otp', resendVerificationOtp);
+// --- END NEW ROUTE ---
+
 // Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback',

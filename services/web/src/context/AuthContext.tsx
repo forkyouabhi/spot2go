@@ -4,24 +4,21 @@ import { useRouter } from 'next/router';
 import { setAuthToken, registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
 import { jwtDecode } from 'jwt-decode';
 import { toast } from "sonner"; 
-import { User } from '../types'; // <-- FIX 1: Import the main User type
+import { User } from '../types';
 
-// --- FIX 2: Define the actual JWT payload ---
-// This is what's *actually* inside the token from your API
 interface JwtPayload {
   id: string;
   email: string; // <-- The missing property
   name: string;
   role: 'customer' | 'owner' | 'admin';
   status: 'active' | 'pending_verification' | 'rejected';
-  createdAt: string; // This comes from the API
+  createdAt: string; 
   created_at: string; // Handle legacy field
   phone?: string;
   provider?: 'google' | 'apple' | 'email';
   exp: number;
   iat: number;
 }
-// --- END FIX 2 ---
 
 interface AuthContextType {
   user: User | null; // <-- FIX 3: Use the imported User type

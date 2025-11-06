@@ -29,6 +29,14 @@ export default function ConfirmationPage() {
       router.replace('/login');
       return;
     }
+
+    // --- THIS IS THE FIX ---
+    if (user?.role && user.role !== 'customer') {
+      toast.error("Owners cannot view booking confirmations.");
+      router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
+      return;
+    }
+    // --- END FIX ---
     
     if (ticketId && typeof ticketId === 'string') {
       const fetchBooking = async () => {
@@ -62,7 +70,7 @@ export default function ConfirmationPage() {
     }
   };
 
-  if (authLoading || loading || !booking) {
+  if (authLoading || loading || !booking || (user && user.role !== 'customer')) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-cream">
         <Loader2 className="h-12 w-12 animate-spin text-brand-orange" />
@@ -70,11 +78,7 @@ export default function ConfirmationPage() {
     );
   }
   
-  // --- THIS IS THE FIX ---
-  // The API returns a 'user' object, but the page uses 'customer'
-  // We alias 'user' to 'customer' here.
   const { place, user: customer, date, startTime, endTime } = booking;
-  // --- END FIX ---
 
   return (
     <>

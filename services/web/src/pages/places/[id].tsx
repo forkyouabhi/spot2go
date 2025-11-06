@@ -26,7 +26,6 @@ const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod =>
 });
 
 const ReviewCard = ({ review }: { review: Review }) => {
-  // --- FIX: Use review.user.name if available, fallback to review.userName
   const userName = review.user?.name || review.userName;
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
   
@@ -52,9 +51,9 @@ const ReviewCard = ({ review }: { review: Review }) => {
     </Card>
   );
 };
-// --- END FIX ---
 
 const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void, isBooking: boolean }) => {
+    // ... (content of BookingWidget remains the same)
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
 
@@ -156,6 +155,20 @@ export default function PlaceDetailPage() {
   }, []);
 
   useEffect(() => {
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    // --- THIS IS THE FIX ---
+    if (user?.role && user.role !== 'customer') {
+      toast.error("Owners cannot browse places. Redirecting to your dashboard.");
+      router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
+      return;
+    }
+    // --- END FIX ---
+
     if (id && isAuthenticated) {
       const fetchPlace = async () => {
         try {
@@ -167,10 +180,8 @@ export default function PlaceDetailPage() {
         }
       };
       fetchPlace();
-    } else if (!authLoading && !isAuthenticated) {
-        router.push('/login');
     }
-  }, [id, isAuthenticated, authLoading, router]);
+  }, [id, isAuthenticated, authLoading, router, user]); // Added 'user'
 
   const handleGetDirections = () => {
     if (!place?.location?.lat || !place?.location?.lng) {
@@ -215,7 +226,7 @@ export default function PlaceDetailPage() {
 
   const hasReservations = place?.reservable && place?.availableSlots && place.availableSlots.length > 0;
 
-  if (authLoading || !place) {
+  if (authLoading || !place || (isAuthenticated && user?.role !== 'customer')) {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 

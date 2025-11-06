@@ -14,7 +14,6 @@ import Image from 'next/image'; // Import Image
 export default function BusinessSignupPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
-  const [signupSuccess, setSignupSuccess] = useState(false);
   
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -41,9 +40,14 @@ export default function BusinessSignupPage() {
 
     try {
       await register(name, email, password, 'owner', phone, businessLocation);
-      toast.success('Account created successfully!');
-      toast.info('Your account is now pending verification by an admin.');
-      setSignupSuccess(true);
+      toast.success('Account created successfully! Check your email for an OTP.');
+      
+      // --- THIS IS THE FIX ---
+      // Instead of showing a success message here,
+      // redirect to the verification page just like the customer flow.
+      router.push(`/verify-email?email=${email}`);
+      // --- END FIX ---
+
     } catch (error) {
         const errorMessage = (error as any).response?.data?.error || 'Signup failed. Please try again.';
         toast.error(errorMessage);
@@ -52,55 +56,6 @@ export default function BusinessSignupPage() {
       setLoading(false);
     }
   };
-
-  // Success message screen
-  if (signupSuccess) {
-    return (
-      <>
-        <Head>
-          <title>Spot2Go | Verification Pending</title>
-        </Head>
-        <div className="min-h-screen relative overflow-hidden auth-background">
-          <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
-            <div className="max-w-md w-full space-y-8">
-              {/* --- MODIFIED: Use Logo Image --- */}
-              <div className="flex items-center justify-center space-x-3">
-                <Image 
-                  src="/logo-full.png" // Assumes 'logo-full.png' is in /public
-                  alt="Spot2Go Logo"
-                  width={250}
-                  height={67}
-                  className="object-contain mx-auto"
-                  style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
-                  priority
-                />
-              </div>
-              {/* --- END MODIFICATION --- */}
-              <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
-                <CardHeader className="text-center space-y-4 pb-6">
-                   <CheckCircle className="h-12 w-12 text-green-500 mx-auto" />
-                  <CardTitle className="text-2xl" style={{ color: '#6C0345' }}>
-                    Registration Submitted!
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="text-center space-y-4">
-                  <p className="text-base" style={{ color: '#6C0345' }}>
-                    Thank you for registering. Your account is now pending verification by our admin team.
-                  </p>
-                  <p className="text-sm text-brand-orange">
-                    You will receive an email as soon as your account is approved.
-                  </p>
-                  <Button onClick={() => router.push('/')} className="mt-4" style={{ backgroundColor: '#DC6B19', color: '#FFF8DC' }}>
-                    Back to Home
-                  </Button>
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </>
-    );
-  }
 
   // The signup form
   return (

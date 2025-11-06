@@ -35,6 +35,7 @@ export const setAuthToken = (token) => {
 export const registerUser = (userData) => api.post('/auth/register', userData);
 export const loginUser = (credentials) => api.post('/auth/login', credentials);
 export const verifyEmail = (data) => api.post('/auth/verify-email', data);
+export const resendOtp = (emailData) => api.post('/auth/resend-otp', emailData); // <-- NEW FUNCTION
 export const requestPasswordReset = (emailData) => api.post('/auth/request-password-reset', emailData);
 export const resetPassword = (resetData) => api.post('/auth/reset-password', resetData);
 

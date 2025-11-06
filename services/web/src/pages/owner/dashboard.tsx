@@ -15,7 +15,8 @@ import { PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, E
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import Image from 'next/image';
 
-const PendingVerification = () => (
+// --- MODIFICATION: Added onLogout prop ---
+const PendingVerification = ({ onLogout }: { onLogout: () => void }) => (
   <div className="min-h-screen bg-brand-cream">
      <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
         <div className="p-4 flex justify-between items-center max-w-screen-xl mx-auto">
@@ -31,6 +32,12 @@ const PendingVerification = () => (
                 <h1 className="text-2xl font-bold text-brand-cream">Owner Dashboard</h1>
               </div>
             </div>
+            {/* --- ADDED LOGOUT BUTTON --- */}
+            <Button onClick={onLogout} variant="outline" className="border-brand-orange text-brand-orange hover:bg-brand-orange hover:text-brand-cream">
+              <LogOut className="h-4 w-4 mr-2" />
+              Logout
+            </Button>
+            {/* --- END FIX --- */}
         </div>
       </header>
       <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
@@ -55,6 +62,7 @@ const PendingVerification = () => (
       </main>
   </div>
 );
+// --- END MODIFICATION ---
 
 
 export default function OwnerDashboard() {
@@ -131,9 +139,11 @@ export default function OwnerDashboard() {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
 
+  // --- MODIFICATION: Pass logout to PendingVerification ---
   if (user.status === 'pending_verification') {
-    return <PendingVerification />;
+    return <PendingVerification onLogout={logout} />;
   }
+  // --- END MODIFICATION ---
 
   if (user.status === 'rejected') {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream">Your account application was rejected. Please contact support.</div>;

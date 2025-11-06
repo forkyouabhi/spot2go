@@ -39,10 +39,10 @@ export default function AccountPage() {
     try {
       const response = await getBoookmarkedPlaces();
       setBookmarkedPlaces(response.data);
-    } catch (error) {
+    } catch (error) { // <-- THIS IS THE FIX (braces added)
       toast.error('Could not fetch your bookmarks.');
       console.error('Failed to fetch bookmarks:', error);
-    }
+    } // <-- THIS IS THE FIX (braces added)
   }, []);
 
   useEffect(() => {
@@ -52,6 +52,15 @@ export default function AccountPage() {
       return;
     }
 
+    // If the user is not a customer, redirect them.
+    if (user?.role && user.role !== 'customer') {
+      toast.error("Access denied.");
+      const destination = user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard';
+      router.replace(destination);
+      return; // Stop execution
+    }
+
+    // This code will now only run if the user is a customer
     const fetchAllData = async () => {
       setLoadingData(true);
       await Promise.all([
@@ -62,7 +71,7 @@ export default function AccountPage() {
     };
 
     fetchAllData();
-  }, [isAuthenticated, authLoading, router, fetchUserBookings, fetchBookmarkedPlaces]);
+  }, [isAuthenticated, authLoading, router, fetchUserBookings, fetchBookmarkedPlaces, user]); // Added 'user'
 
   const handleReviewSubmitted = (newReview: Review) => {
     // Refetch bookings to update the 'reviewed' status
@@ -70,7 +79,7 @@ export default function AccountPage() {
     setReviewingBooking(null);
   };
 
-  if (authLoading || (isAuthenticated && loadingData)) {
+  if (authLoading || (isAuthenticated && (loadingData || user?.role !== 'customer'))) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8DC' }}>
         <p className="font-semibold" style={{ color: '#6C0345' }}>Loading Your Account...</p>
@@ -82,14 +91,11 @@ export default function AccountPage() {
       return null;
   }
   
-  // --- FIX: Handle legacy 'created_at' from token vs 'createdAt' from API/type ---
-  // This ensures the user object prop matches the component's expectation
   const userForScreen: User = {
     ...user,
     createdAt: user.createdAt || user.created_at || new Date().toISOString(),
     dateJoined: user.dateJoined || user.createdAt || user.created_at || new Date().toISOString()
   };
-  // --- END FIX ---
 
   return (
     <>
@@ -116,7 +122,7 @@ export default function AccountPage() {
           {reviewingBooking && (
             <ReviewForm
               booking={reviewingBooking}
-              user={userForScreen} // <-- FIX: Pass the corrected user object, remove 'as User'
+              user={userForScreen} 
               onReviewSubmitted={handleReviewSubmitted}
             />
           )}

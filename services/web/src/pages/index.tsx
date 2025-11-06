@@ -77,6 +77,17 @@ export default function HomePage() {
     }
   };
   
+  // --- NEW: Navigation handler for the account button ---
+  const handleAccountNavigation = () => {
+    if (user?.role === 'owner') {
+      router.push('/owner/dashboard');
+    } else if (user?.role === 'admin') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/account');
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-cream">
@@ -104,13 +115,15 @@ export default function HomePage() {
                 <h1 className="text-3xl font-bold">Hi, {user?.name || 'Guest'} 👋</h1>
                 <p className="text-brand-yellow">Find your perfect study spot in Thunder Bay</p>
               </div>
-               <Button variant="outline" onClick={() => router.push('/account')} className="bg-transparent border-brand-orange text-brand-cream hover:bg-brand-orange hover:text-brand-cream">
-                  <Building2 className="h-4 w-4 mr-2" /> My Account
+              {/* --- THIS BUTTON IS NOW FIXED --- */}
+               <Button variant="outline" onClick={handleAccountNavigation} className="bg-transparent border-brand-orange text-brand-cream hover:bg-brand-orange hover:text-brand-cream">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  {user?.role === 'owner' ? 'Owner Dashboard' : 'My Account'}
                </Button>
+               {/* --- END FIX --- */}
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              {/* --- FIX 1: Added text-brand-burgundy --- */}
               <Input 
                 type="text" 
                 placeholder="Search by name or address..." 
@@ -124,7 +137,6 @@ export default function HomePage() {
 
         {/* --- STICKY PILL NAVBAR --- */}
         <nav className="sticky top-0 z-10 bg-brand-burgundy/95 backdrop-blur-sm shadow-md">
-          {/* --- FIX 2: Slimmer padding --- */}
           <div className="max-w-screen-xl mx-auto px-4 py-3"> 
             <div className="flex flex-wrap gap-2">
               {PLACE_TYPES.map(type => (
