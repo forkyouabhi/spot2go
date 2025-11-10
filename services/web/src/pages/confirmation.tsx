@@ -157,9 +157,6 @@ export default function ConfirmationPage() {
               </CardContent>
               {/* --- END MODIFICATION --- */}
             </Card>
-
-            {/* Action Buttons */}
-            {/* ... (unchanged) ... */}
             <Button 
               onClick={handleCalendarDownload}
               variant="outline" 

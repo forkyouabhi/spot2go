@@ -71,11 +71,12 @@ export interface StudyPlace {
   owner?: Partial<User>;
 }
 
-// --- MODIFIED: TimeSlot now has remainingCapacity ---
+// --- MODIFIED: TimeSlot now has remainingCapacity and optional endTime ---
 export interface TimeSlot {
   date: string;
   startTime: string;
-  remainingCapacity: number; // <-- CHANGED from 'available: boolean'
+  endTime?: string; // <-- FIX: Added this optional property
+  remainingCapacity: number; 
 }
 // --- END MODIFICATION ---
 

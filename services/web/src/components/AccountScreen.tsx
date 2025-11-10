@@ -14,11 +14,13 @@ import {
   Edit,
   LogOut,
   Image as ImageIcon,
+  Users, // <-- IMPORTED
+  Ticket, // <-- IMPORTED
 } from "lucide-react";
 import { User, Booking, StudyPlace, Review } from "../types"; // <-- IMPORTED REVIEW
 import { ImageWithFallback } from "./figma/ImageWithFallback";
 
-// --- NEW: Review Card Component (moved from account.tsx) ---
+// --- Review Card Component ---
 const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavigateToPlace: (placeId: string) => void }) => {
   const userName = review.user?.name || 'A User';
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
@@ -58,47 +60,65 @@ const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavig
     </Card>
   );
 };
-// --- END NEW COMPONENT ---
+// --- END REVIEW COMPONENT ---
 
 interface AccountScreenProps {
   user: User;
   bookings: Booking[];
   bookmarkedPlaces: StudyPlace[]; 
-  reviews: Review[]; // <-- NEW
-  activeTab: string; // <-- NEW
+  reviews: Review[];
+  activeTab: string;
   onBack: () => void;
   onNavigateToSettings: () => void;
   onLogout: () => void;
   onReview: (booking: Booking) => void; 
   onNavigateToPlace: (placeId: string) => void; 
-  onTabChange: (tab: string) => void; // <-- NEW
+  onNavigateToTicket: (ticketId: string) => void; // <-- Prop for ticket button
+  onTabChange: (tab: string) => void;
 }
 
 export function AccountScreen({
   user,
   bookings,
   bookmarkedPlaces,
-  reviews, // <-- NEW
-  activeTab, // <-- NEW
+  reviews,
+  activeTab,
   onBack,
   onNavigateToSettings,
   onLogout,
   onReview,
   onNavigateToPlace,
-  onTabChange, // <-- NEW
+  onNavigateToTicket, // <-- Destructure prop
+  onTabChange,
 }: AccountScreenProps) {
-  const upcomingBookings = bookings.filter(
-    (booking) =>
-      booking.status === "confirmed" && new Date(booking.date) >= new Date()
-  );
 
-  const pastBookings = bookings.filter(
-    (booking) => new Date(booking.date) < new Date() || booking.status === 'completed' || booking.status === 'no-show'
-  );
+  // --- THIS IS THE FIX for sorting bookings ---
+  const now = new Date();
 
-  // --- NEW: Get review count from the prop ---
+  const upcomingBookings = bookings.filter((booking) => {
+    if (booking.status !== "confirmed") return false;
+    
+    // Combine date and time
+    const [year, month, day] = booking.date.split('-').map(Number);
+    const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+    // Create date in local timezone: new Date(year, monthIndex, day, hour, minute)
+    const bookingEndDate = new Date(year, month - 1, day, endHour, endMinute);
+    
+    // Check if the booking's end time is in the future
+    return bookingEndDate >= now;
+  });
+
+  const pastBookings = bookings.filter((booking) => {
+    const [year, month, day] = booking.date.split('-').map(Number);
+    const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+    const bookingEndDate = new Date(year, month - 1, day, endHour, endMinute);
+    
+    // Is past if end time is before now OR status is completed/no-show
+    return bookingEndDate < now || booking.status === 'completed' || booking.status === 'no-show';
+  });
+  // --- END FIX ---
+
   const reviewCount = reviews.length;
-  // --- END NEW ---
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -304,7 +324,7 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  {reviewCount} {/* <-- USE STATE COUNT */}
+                  {reviewCount}
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
                   Reviews
@@ -314,7 +334,7 @@ export function AccountScreen({
           </CardContent>
         </Card>
 
-        {/* --- Quick Actions (Restored to 2-col grid) --- */}
+        {/* --- Quick Actions --- */}
         <div className="w-full grid grid-cols-2 gap-4 animate-slide-in-right">
           <Card
             className="border-2 rounded-2xl shadow-lg cursor-pointer transition-button hover:shadow-xl transform hover:scale-[1.02]"
@@ -365,11 +385,11 @@ export function AccountScreen({
           </Card>
         </div>
         
-        {/* --- MODIFIED: Connect Tabs to state --- */}
+        {/* --- Tabs --- */}
         <Tabs 
           defaultValue="bookings" 
-          value={activeTab} // <-- Control the active tab
-          onValueChange={onTabChange} // <-- Handle tab change
+          value={activeTab}
+          onValueChange={onTabChange}
           className="w-full animate-scale-in"
         >
           <TabsList
@@ -419,8 +439,8 @@ export function AccountScreen({
               ⭐ Reviews
             </TabsTrigger>
           </TabsList>
-          {/* --- END MODIFICATION --- */}
 
+          {/* --- BOOKINGS TAB --- */}
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -450,6 +470,7 @@ export function AccountScreen({
                 {upcomingBookings.length > 0 ? (
                   <div className="space-y-4">
                     {upcomingBookings.map((booking, index) => (
+                      // --- UPCOMING BOOKING CARD (FIXED) ---
                       <div
                         key={booking.id}
                         className="p-4 rounded-2xl border-2 transition-smooth hover:shadow-md animate-fade-in-up"
@@ -465,7 +486,7 @@ export function AccountScreen({
                               className="font-semibold"
                               style={{ color: "#6C0345" }}
                             >
-                              {booking.placeName}
+                              {booking.place?.name}
                             </h4>
                             <Badge
                               className="mt-1 px-3 py-1 rounded-full border-2"
@@ -480,42 +501,51 @@ export function AccountScreen({
                               ✅ {booking.status}
                             </Badge>
                           </div>
-                          <div className="text-right">
-                            <span
-                              className="text-xs px-2 py-1 rounded-full border-2"
-                              style={{
-                                backgroundColor: "#6C0345",
-                                color: "#FFF8DC",
-                                borderColor: "#DC6B19",
-                              }}
-                            >
-                              {booking.ticketId}
-                            </span>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl border-2 transition-button"
+                            style={{
+                              backgroundColor: "#6C0345",
+                              borderColor: "#DC6B19",
+                              color: "#FFF8DC",
+                            }}
+                            onClick={() => onNavigateToTicket(booking.ticketId)}
+                          >
+                            <Ticket className="h-4 w-4 mr-2" />
+                            E-Ticket
+                          </Button>
                         </div>
-
-                        <div
-                          className="flex items-center justify-between text-sm"
-                          style={{ color: "#6C0345" }}
-                        >
-                          <div className="flex items-center space-x-2">
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
                             <Calendar
-                              className="h-4 w-4"
+                              className="h-4 w-4 mr-2"
                               style={{ color: "#DC6B19" }}
                             />
                             <span className="font-medium">{booking.date}</span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
                             <Clock
-                              className="h-4 w-4"
+                              className="h-4 w-4 mr-2"
                               style={{ color: "#DC6B19" }}
                             />
                             <span className="font-medium">
                               {booking.startTime} - {booking.endTime}
                             </span>
                           </div>
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
+                            <Users
+                              className="h-4 w-4 mr-2"
+                              style={{ color: "#DC6B19" }}
+                            />
+                            <span className="font-medium">
+                              {booking.partySize || 1} {booking.partySize && booking.partySize > 1 ? 'Guests' : 'Guest'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      // --- END UPCOMING BOOKING CARD FIX ---
                     ))}
                   </div>
                 ) : (
@@ -571,6 +601,7 @@ export function AccountScreen({
                 {pastBookings.length > 0 ? (
                   <div className="space-y-3">
                     {pastBookings.map((booking, index) => (
+                      // --- PAST BOOKING CARD FIX ---
                       <div
                         key={booking.id}
                         className="border-2 rounded-xl p-3 opacity-80 transition-smooth hover:opacity-100 animate-fade-in-up"
@@ -586,7 +617,7 @@ export function AccountScreen({
                               className="font-medium"
                               style={{ color: "#6C0345" }}
                             >
-                              {booking.placeName}
+                              {booking.place?.name}
                             </h4>
                             <Badge
                               className="mt-1 px-2 py-1 rounded-full border"
@@ -599,24 +630,41 @@ export function AccountScreen({
                               {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </Badge>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl border-2 transition-button"
-                            style={{
-                              backgroundColor: "#DC6B19",
-                              borderColor: "#6C0345",
-                              color: "#FFF8DC",
-                            }}
-                            disabled={booking.reviewed}
-                            onClick={() => onReview(booking)}
-                          >
-                            {booking.reviewed ? 'Reviewed' : '⭐ Review'}
-                          </Button>
+                          {booking.status === 'completed' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-2 transition-button"
+                              style={{
+                                backgroundColor: "#DC6B19",
+                                borderColor: "#6C0345",
+                                color: "#FFF8DC",
+                              }}
+                              disabled={booking.reviewed}
+                              onClick={() => onReview(booking)}
+                            >
+                              {booking.reviewed ? 'Reviewed' : '⭐ Review'}
+                            </Button>
+                          ) : (
+                             <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-2 transition-button"
+                              style={{
+                                backgroundColor: "#6C0345",
+                                borderColor: "#DC6B19",
+                                color: "#FFF8DC",
+                              }}
+                              onClick={() => onNavigateToTicket(booking.ticketId)}
+                            >
+                              <Ticket className="h-4 w-4 mr-2" />
+                              View
+                            </Button>
+                          )}
                         </div>
 
                         <div
-                          className="flex items-center space-x-4 text-sm"
+                          className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm space-y-1 sm:space-y-0"
                           style={{ color: "#6C0345" }}
                         >
                           <div className="flex items-center space-x-1">
@@ -635,8 +683,18 @@ export function AccountScreen({
                               {booking.startTime} - {booking.endTime}
                             </span>
                           </div>
+                           <div className="flex items-center space-x-1">
+                            <Users
+                              className="h-4 w-4"
+                              style={{ color: "#DC6B19" }}
+                            />
+                            <span>
+                              {booking.partySize || 1} {booking.partySize && booking.partySize > 1 ? 'Guests' : 'Guest'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      // --- END PAST BOOKING CARD FIX ---
                     ))}
                   </div>
                 ) : (
@@ -645,7 +703,7 @@ export function AccountScreen({
                       className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center border-2"
                       style={{
                         backgroundColor: "#F7C566",
-                        borderColor: "#DC6B19",
+                        borderColor: "#DC6B1A",
                       }}
                     >
                       <Clock className="h-6 w-6" style={{ color: "#6C0345" }} />
@@ -657,6 +715,7 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
+          {/* --- BOOKMARKS TAB --- */}
           <TabsContent value="bookmarks" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -716,7 +775,7 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
-          {/* --- MODIFIED: Implemented Reviews Tab --- */}
+          {/* --- REVIEWS TAB --- */}
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -756,7 +815,6 @@ export function AccountScreen({
               </CardContent>
             </Card>
           </TabsContent>
-          {/* --- END MODIFICATION --- */}
 
         </Tabs>
       </main>

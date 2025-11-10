@@ -32,9 +32,21 @@ export function BookingScreen({ place, onBack }: BookingScreenProps) {
   const [duration, setDuration] = useState(1); // Default 1 hour
   const [partySize, setPartySize] = useState(1); // <-- NEW: Party size state
   const [isBooking, setIsBooking] = useState(false);
-  const maxCapacity = place.maxCapacity || 1;
+  
+  // --- FIX 1: Cap the max capacity for the dropdown at 6 ---
+  const maxCapacity = Math.min(place.maxCapacity || 1, 6);
+  // --- END FIX 1 ---
 
   const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+  // --- FIX 2: Helper to check if a date is today ---
+  const isToday = (date: Date) => {
+    const today = new Date();
+    return date.getDate() === today.getDate() &&
+           date.getMonth() === today.getMonth() &&
+           date.getFullYear() === today.getFullYear();
+  };
+  // --- END FIX 2 ---
 
   const slotsForDate = useMemo(() => {
     return place.availableSlots?.filter(
@@ -45,8 +57,22 @@ export function BookingScreen({ place, onBack }: BookingScreenProps) {
   // Filter start times based on selected duration AND party size
   const availableStartTimes = useMemo(() => {
     const durationInSlots = duration * 2; // 1 hour = 2 slots
+
+    // --- FIX 3: Get current time if today ---
+    let now = null;
+    if (selectedDate && isToday(selectedDate)) {
+      const d = new Date();
+      now = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+    }
+    // --- END FIX 3 ---
     
     return slotsForDate.filter((slot, index) => {
+      // --- FIX 4: Filter out past times ---
+      if (now && slot.startTime <= now) {
+        return false;
+      }
+      // --- END FIX 4 ---
+
       // Check if this slot meets party size
       if (slot.remainingCapacity < partySize) return false;
 
@@ -61,7 +87,7 @@ export function BookingScreen({ place, onBack }: BookingScreenProps) {
       }
       return canBook;
     });
-  }, [slotsForDate, duration, partySize]); // <-- Re-run when partySize changes
+  }, [slotsForDate, duration, partySize, selectedDate]); // <-- Re-run when selectedDate changes
 
   useEffect(() => {
       setSelectedSlot(null);

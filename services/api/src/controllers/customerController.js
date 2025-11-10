@@ -11,12 +11,13 @@ const timeToMinutes = (time) => {
   return hours * 60 + minutes;
 };
 
-// Converts minutes since midnight to "HH:MM"
+// --- FIX: Modified to return HH:MM:SS for SQL compatibility ---
 const minutesToTime = (minutes) => {
   const hours = Math.floor(minutes / 60).toString().padStart(2, '0');
   const mins = (minutes % 60).toString().padStart(2, '0');
-  return `${hours}:${mins}`;
+  return `${hours}:${mins}:00`; // Returns HH:MM:SS
 };
+// --- END FIX ---
 
 // Generates an array of time strings in 30-minute intervals
 const generateTimeSlots = (start, end) => {
@@ -25,7 +26,7 @@ const generateTimeSlots = (start, end) => {
   const endTime = timeToMinutes(end);
 
   while (current < endTime) {
-    slots.push(minutesToTime(current));
+    slots.push(minutesToTime(current).substring(0, 5)); // Return HH:MM for frontend
     current += 30; // 30-minute increments
   }
   return slots;
@@ -33,12 +34,20 @@ const generateTimeSlots = (start, end) => {
 // --- END HELPER FUNCTIONS ---
 
 const listNearbyPlaces = async (req, res) => {
-  // ... (unchanged)
   try {
+    // --- FIX: Optimized attributes and used explicit aliasing ---
     const places = await Place.findAll({
+      attributes: [
+        'id', 'name', 'type', 'amenities', 'location', 'images', 
+        'description', 'rating', 
+        ['review_count', 'reviewCount'], 
+        ['price_per_hour', 'pricePerHour'], 
+        'reservable'
+      ],
       where: { status: 'approved' },
       order: [['created_at', 'DESC']],
     });
+    // --- END FIX ---
     res.json(places);
   } catch (err) {
     console.error('Error fetching places for customer:', err);
@@ -137,23 +146,34 @@ const getUserReviews = async (req, res) => {
   }
 };
 
-// --- MODIFIED: getPlaceById for Capacity ---
+// --- MODIFIED: getPlaceById for Capacity and DB Error Fix ---
 const getPlaceById = async (req, res) => {
   try {
     const { placeId } = req.params;
+    // --- FIX: Optimized attributes and used explicit aliasing ---
     const placeData = await Place.findOne({
+       attributes: [
+         'id', 'name', 'type', 'description', 'amenities', 'images', 
+         'location', 'status', 'reservable', 
+         ['reservable_hours', 'reservableHours'], 
+         ['max_capacity', 'maxCapacity'], 
+         'rating', 
+         ['review_count', 'reviewCount'], 
+         ['price_per_hour', 'pricePerHour']
+       ],
        where: { id: placeId, status: 'approved' },
        include: [
         { model: MenuItem, as: 'menuItems', attributes: ['id', 'name', 'price'] },
-        { model: User, as: 'owner', attributes: ['name', 'email'] },
         { 
           model: Review, 
           as: 'reviews',
+          attributes: ['id', 'rating', 'comment', 'created_at', 'userId'],
           include: [{ model: User, as: 'user', attributes: ['name'] }]
         }
       ],
       order: [[{ model: Review, as: 'reviews' }, 'created_at', 'DESC']],
     });
+    // --- END FIX ---
 
     if (!placeData) {
       return res.status(404).json({ error: 'Place not found or not approved' });
@@ -175,7 +195,7 @@ const getPlaceById = async (req, res) => {
             [Op.lt]: nextWeek.toISOString().split('T')[0],
           }
         },
-        attributes: ['date', 'startTime', 'endTime', 'partySize'] // <-- Get partySize
+        attributes: ['date', 'startTime', 'endTime', 'partySize']
       });
 
       // Create a map of occupied capacity for each 30-min slot
@@ -185,7 +205,7 @@ const getPlaceById = async (req, res) => {
         let current = timeToMinutes(b.startTime);
         const end = timeToMinutes(b.endTime);
         while (current < end) {
-          const slotKey = `${date}T${minutesToTime(current)}`;
+          const slotKey = `${date}T${minutesToTime(current).substring(0, 5)}`; // Use HH:MM key
           const currentOccupancy = occupiedCapacity.get(slotKey) || 0;
           occupiedCapacity.set(slotKey, currentOccupancy + b.partySize);
           current += 30;
@@ -201,7 +221,7 @@ const getPlaceById = async (req, res) => {
         date.setDate(today.getDate() + i);
         const dateString = date.toISOString().split('T')[0];
 
-        allPossibleSlots.forEach(startTime => {
+        allPossibleSlots.forEach(startTime => { // startTime is HH:MM
             const slotKey = `${dateString}T${startTime}`;
             const currentOccupancy = occupiedCapacity.get(slotKey) || 0;
             const remainingCapacity = maxCapacity - currentOccupancy;
@@ -223,10 +243,9 @@ const getPlaceById = async (req, res) => {
 };
 // --- END MODIFICATION ---
 
-// --- MODIFIED: createBooking for Capacity ---
+// --- MODIFIED: createBooking for Capacity and DB Error Fix ---
 const createBooking = async (req, res) => {
   try {
-    // Add partySize to request
     const { placeId, amount, date, startTime, duration, partySize = 1 } = req.body;
     const userId = req.user.id;
 
@@ -249,37 +268,40 @@ const createBooking = async (req, res) => {
         return res.status(400).json({ error: 'This place is not available for booking.' });
     }
 
-    // Calculate endTime
     const startMinutes = timeToMinutes(startTime);
     const durationMinutes = duration * 60;
     const endMinutes = startMinutes + durationMinutes;
-    const endTime = minutesToTime(endMinutes);
+    
+    // --- FIX: Convert minutes back to HH:MM:SS for SQL comparison ---
+    const newEndTime = minutesToTime(endMinutes);
+    const newStartTime = minutesToTime(startMinutes);
+    const endTimeForDB = newEndTime.substring(0, 5); // Use HH:MM for DB storage
+    // --- END FIX ---
+
     const maxCapacity = place.maxCapacity || 1;
 
-    // Server-side check for availability and capacity
-    const start = timeToMinutes(startTime);
-    const end = timeToMinutes(endTime);
-
+    // --- FIX: Use direct time comparison instead of time_to_minutes ---
     const conflictingBookings = await Booking.findAll({
       where: {
         placeId,
         date,
         status: 'confirmed',
-        [Op.or]: [
-          { // Existing booking starts during new booking
-            [Op.and]: [
-              sequelize.where(sequelize.fn('time_to_minutes', sequelize.col('startTime')), { [Op.lt]: end }),
-              sequelize.where(sequelize.fn('time_to_minutes', sequelize.col('endTime')), { [Op.gt]: start })
-            ]
-          },
-        ]
+        // Find bookings where:
+        // (Existing Start < New End) AND (Existing End > New Start)
+        startTime: {
+          [Op.lt]: newEndTime // Compare as HH:MM:SS
+        },
+        endTime: {
+          [Op.gt]: newStartTime // Compare as HH:MM:SS
+        }
       }
     });
+    // --- END FIX ---
 
     // Check capacity for all overlapping 30-min slots
-    for (let t = start; t < end; t += 30) {
-      const slotTime = minutesToTime(t);
-      // Find all bookings that are active during this specific 30-min slot
+    for (let t = startMinutes; t < endMinutes; t += 30) {
+      const slotTime = minutesToTime(t); // HH:MM:SS
+      
       const occupiedCapacity = conflictingBookings.reduce((sum, b) => {
         if (timeToMinutes(b.startTime) < t + 30 && timeToMinutes(b.endTime) > t) {
           return sum + b.partySize;
@@ -287,8 +309,8 @@ const createBooking = async (req, res) => {
         return sum;
       }, 0);
 
-      if (occupiedCapacity + partySize > maxCapacity) {
-        return res.status(409).json({ error: `The time slot at ${slotTime} does not have enough capacity for ${partySize} people. Please try a different time or smaller group.` });
+      if (occupiedCapacity + (partySize || 1) > maxCapacity) {
+        return res.status(409).json({ error: `The time slot at ${slotTime.substring(0,5)} does not have enough capacity for ${partySize || 1} people. Please try a different time or smaller group.` });
       }
     }
 
@@ -299,7 +321,7 @@ const createBooking = async (req, res) => {
       amount,
       date,
       startTime,
-      endTime, // Use calculated endTime
+      endTime: endTimeForDB, // Use calculated endTime (HH:MM)
       duration,
       partySize, // <-- Save partySize
       status: 'confirmed', 
@@ -329,13 +351,19 @@ const createBooking = async (req, res) => {
 };
 // --- END MODIFICATION ---
 
+// --- THIS IS THE FIX ---
 const listBookings = async (req, res) => {
-  
   try {
     const userBookings = await Booking.findAll({
       where: { userId: req.user.id },
-      include: [{ model: Place, as: 'place', attributes: ['name', 'location'] }],
-      order: [['created_at', 'DESC']],
+      // Explicitly ask for the attributes we need
+      attributes: [
+        'id', 'placeId', 'date', 'startTime', 'endTime', 'status', 
+        'ticketId', 'partySize', 'reviewed'
+      ],
+      // Include the associated Place model to get its name
+      include: [{ model: Place, as: 'place', attributes: ['id', 'name', 'location'] }],
+      order: [['date', 'DESC'], ['startTime', 'DESC']], // Order by date, then time
     });
     res.json(userBookings);
   } catch (err) {
@@ -343,6 +371,7 @@ const listBookings = async (req, res) => {
     res.status(500).json({ error: 'Failed to fetch bookings' });
   }
 };
+// --- END FIX ---
 
 const getBookingByTicketId = async (req, res) => {
   

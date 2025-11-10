@@ -2,14 +2,14 @@
 import { useState, lazy, Suspense } from 'react';
 import { Toaster } from './components/ui/sonner';
 import { SplashScreen } from './components/SplashScreen';
-import { Screen, StudyPlace, TimeSlot, User, UserSettings, Booking, Review } from './types'; // Import Booking and Review
+import { Screen, StudyPlace, TimeSlot, User, UserSettings, Booking, Review } from './types';
 
 // Lazy load components
 const AuthForm = lazy(() => import('./components/AuthForm').then(module => ({ default: module.AuthForm })));
 const HomeScreen = lazy(() => import('./components/HomeScreen').then(module => ({ default: module.HomeScreen })));
 const PlaceDetails = lazy(() => import('./components/PlaceDetails').then(module => ({ default: module.PlaceDetails })));
 const BookingScreen = lazy(() => import('./components/BookingScreen').then(module => ({ default: module.BookingScreen })));
-const ConfirmationScreen = lazy(() => import('./components/ConfirmationScreen').then(module => ({ default: module.ConfirmationScreen })));
+const ConfirmationScreen = lazy(() => import('./components/ConfirmationScreen').then(module => ({ default: module.ConfirmationScreen})));
 const AccountScreen = lazy(() => import('./components/AccountScreen').then(module => ({ default: module.AccountScreen })));
 const SettingsScreen = lazy(() => import('./components/SettingsScreen').then(module => ({ default: module.SettingsScreen })));
 
@@ -154,17 +154,11 @@ export default function App() {
 
   const handleNavigateToPlace = (placeId: string) => {
     console.log("Navigating to place:", placeId);
-    // This part can't work without mockPlaces, so it's dummied
-    // const place = mockPlaces.find(p => p.id === placeId);
-    // if (place) {
-    //   setSelectedPlace(place);
-    //   setCurrentScreen('place-details');
-    // }
   };
 
 
   const renderScreen = () => {
-    const commonProps = { key: currentScreen }; // Force remount on screen change
+    const commonProps = { key: currentScreen }; 
 
     switch (currentScreen) {
       case 'splash':
@@ -216,45 +210,42 @@ export default function App() {
           <BookingScreen 
             place={selectedPlace}
             onBack={() => setCurrentScreen('place-details')}
-            // --- FIX: REMOVED THIS PROP ---
-            // onConfirmBooking={handleConfirmBooking}
-            // --- END FIX ---
+            
             {...commonProps}
           />
         ) : null;
       
       case 'confirmation':
-        // Note: This case is now orphaned in App.tsx since BookingScreen
-        // handles its own navigation. It is kept here for completeness.
-        return selectedPlace && selectedSlot ? (
-          <ConfirmationScreen 
-            place={selectedPlace}
-            slot={selectedSlot}
-            ticketId={ticketId}
-            onGoHome={handleGoHome}
-            {...commonProps}
-          />
-        ) : null;
-      
+      return selectedPlace && selectedSlot ? (
+        <ConfirmationScreen 
+          place={selectedPlace}
+          slot={selectedSlot}
+          ticketId={ticketId}
+          onGoHome={handleGoHome}
+          partySize={1} // Add this - get it from your booking data
+          {...commonProps}
+        />
+      ) : null;
       case 'account':
         return user ? (
           <AccountScreen 
-            user={user}
+            onNavigateToTicket={function (ticketId: string): void {
+              throw new Error('Function not implemented.');
+            } } user={user}
             bookings={[]} // <-- Pass empty array
-            bookmarkedPlaces={[]} 
+            bookmarkedPlaces={[]}
             onBack={() => setCurrentScreen('home')}
             onNavigateToSettings={() => setCurrentScreen('settings')}
             onLogout={() => {
               setUser(null);
               setCurrentScreen('splash');
-            }}
-            onReview={handleReview} 
-            onNavigateToPlace={handleNavigateToPlace} 
+            } }
+            onReview={handleReview}
+            onNavigateToPlace={handleNavigateToPlace}
             {...commonProps}
             reviews={reviews}
             activeTab={activeTab}
-            onTabChange={setActiveTab}
-          />
+            onTabChange={setActiveTab}/>
         ) : null;
       
       case 'settings':

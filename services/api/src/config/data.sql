@@ -25,6 +25,9 @@ CREATE TABLE IF NOT EXISTS places (
     status TEXT DEFAULT 'pending' NOT NULL,
     reservable BOOLEAN DEFAULT false NOT NULL,
     reservable_hours JSONB,
+    -- --- THIS IS THE FIX ---
+    price_per_hour NUMERIC DEFAULT 0,
+    -- --- END FIX ---
     created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT NOW()
 );

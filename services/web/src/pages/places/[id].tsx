@@ -45,7 +45,7 @@ const ReviewCard = ({ review }: { review: Review }) => {
           </div>
           <div>
             <CardTitle className="text-sm font-semibold text-brand-burgundy">{userName}</CardTitle>
-            <p className="text-xs text-brand-orange">{new Date(review.date).toLocaleDateString()}</p>
+            <p className="text-xs text-brand-orange">{new Date(review.date || review.created_at).toLocaleDateString()}</p>
           </div>
         </div>
         <div className="flex items-center gap-1 text-amber-500">
@@ -64,10 +64,22 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
     const [duration, setDuration] = useState(1);
-    const [partySize, setPartySize] = useState(1); // <-- NEW: Party size state
-    const maxCapacity = place.maxCapacity || 1;
+    const [partySize, setPartySize] = useState(1);
+    
+    // --- FIX 1: Cap the max capacity for the dropdown at 6 ---
+    const maxCapacity = Math.min(place.maxCapacity || 1, 6);
+    // --- END FIX 1 ---
 
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
+
+    // --- FIX 2: Helper to check if a date is today ---
+    const isToday = (date: Date) => {
+      const today = new Date();
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    };
+    // --- END FIX 2 ---
 
     const slotsForDate = useMemo(() => {
       return place.availableSlots?.filter(
@@ -78,8 +90,22 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
     // Filter start times based on selected duration AND party size
     const availableStartTimes = useMemo(() => {
       const durationInSlots = duration * 2; // 1 hour = 2 slots
+
+      // --- FIX 3: Get current time if today ---
+      let now = null;
+      if (selectedDate && isToday(selectedDate)) {
+        const d = new Date();
+        now = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+      // --- END FIX 3 ---
       
       return slotsForDate.filter((slot, index) => {
+        // --- FIX 4: Filter out past times ---
+        if (now && slot.startTime <= now) {
+          return false;
+        }
+        // --- END FIX 4 ---
+
         // Check if this slot meets party size
         if (slot.remainingCapacity < partySize) return false;
 
@@ -95,7 +121,7 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
         }
         return canBook;
       });
-    }, [slotsForDate, duration, partySize]); // <-- Re-run when partySize changes
+    }, [slotsForDate, duration, partySize, selectedDate]); // <-- Re-run when selectedDate changes
 
     useEffect(() => {
         setSelectedSlot(null);
@@ -124,7 +150,7 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
                     </div>
                 </div>
 
-                {/* --- NEW: Party Size & Duration Row --- */}
+                {/* --- Party Size & Duration Row --- */}
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Users className="h-4 w-4 text-brand-orange" />Party Size</Label>

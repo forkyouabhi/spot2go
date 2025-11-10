@@ -68,7 +68,14 @@ const Place = sequelize.define('Place', {
     defaultValue: 1, // Default to 1 person per booking
     field: 'max_capacity',
   },
-  // --- END NEW FIELD ---
+  // --- THIS IS THE FIX ---
+  pricePerHour: {
+    type: DataTypes.DECIMAL(10, 2), // Allows for prices like 12.50
+    allowNull: true,
+    defaultValue: 0.00,
+    field: 'price_per_hour',
+  },
+  // --- END FIX ---
 }, {
   tableName: 'places',
   timestamps: true,

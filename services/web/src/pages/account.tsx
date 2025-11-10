@@ -163,6 +163,12 @@ export default function AccountPage() {
     router.push(`/places/${placeId}`);
   };
 
+  // --- THIS IS THE FIX ---
+  const handleNavigateToTicket = (ticketId: string) => {
+    router.push(`/confirmation?ticketId=${ticketId}`);
+  };
+  // --- END FIX ---
+
   if (authLoading || (isAuthenticated && (loadingData || user?.role !== 'customer'))) {
     return (
       <div className="min-h-screen flex items-center justify-center" style={{ backgroundColor: '#FFF8DC' }}>
@@ -192,6 +198,7 @@ export default function AccountPage() {
         onLogout={logout}
         onReview={(booking) => setReviewingBooking(booking)} 
         onNavigateToPlace={handleNavigateToPlace}
+        onNavigateToTicket={handleNavigateToTicket} // <-- PASS THE NEW PROP
         // --- PASS NEW PROPS ---
         reviews={reviews} // Pass reviews down
         activeTab={activeTab}
