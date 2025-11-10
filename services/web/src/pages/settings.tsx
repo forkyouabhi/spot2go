@@ -4,14 +4,14 @@ import { useAuth } from '../context/AuthContext';
 import { SettingsScreen } from '../components/SettingsScreen';
 import { toast } from 'sonner';
 import { updateUser, updateUserPassword,updateUserSettings } from '../lib/api';
-import { mockUserSettings } from '../data/mockData';
+
 import { UserSettings } from '../types';
 
 export default function SettingsPage() {
   const router = useRouter();
   const { user, isAuthenticated, loading, logout, handleTokenUpdate } = useAuth();
   
-  const [settings, setSettings] = useState<UserSettings>(user?.settings || mockUserSettings);
+  const [settings, setSettings] = useState<UserSettings>(user?.settings);
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {

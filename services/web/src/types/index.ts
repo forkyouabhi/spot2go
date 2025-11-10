@@ -1,18 +1,4 @@
 // services/web/src/types/index.ts
-export interface User {
-  id: string;
-  name: string;
-  email: string;
-  phone?: string; // This already exists, but good to confirm
-  dateJoined: string;
-  avatar?: string;
-  provider?: 'google' | 'apple' | 'email';
-  role: 'customer' | 'owner' | 'admin';
-  status: 'active' | 'pending_verification' | 'rejected';
-  createdAt: string;
-  created_at?: string;
-  businessLocation?: string; // --- NEW FIELD ---
-}
 
 export interface UserSettings {
   notifications: {
@@ -34,7 +20,22 @@ export interface UserSettings {
   };
 }
 
-// ... (MenuItem, StudyPlace, TimeSlot, Review, Booking, Screen types remain the same) ...
+export interface User {
+  id: string;
+  name: string;
+  email: string;
+  phone?: string; 
+  dateJoined: string;
+  avatar?: string;
+  provider?: 'google' | 'apple' | 'email';
+  role: 'customer' | 'owner' | 'admin';
+  status: 'active' | 'pending_verification' | 'rejected';
+  createdAt: string;
+  created_at?: string; 
+  businessLocation?: string;
+  settings?: UserSettings; 
+}
+
 export interface MenuItem {
   id: number;
   name: string;
@@ -60,22 +61,24 @@ export interface StudyPlace {
     start: string;
     end: string;
   };
+  maxCapacity?: number; // <-- NEW
   distance?: string;
   rating?: number;
   pricePerHour?: number;
-  availableSlots?: TimeSlot[];
+  availableSlots?: TimeSlot[]; 
   reviews?: Review[];
   created_at: string;
   owner?: Partial<User>;
 }
 
+// --- MODIFIED: TimeSlot now has remainingCapacity and optional endTime ---
 export interface TimeSlot {
-  id: string;
   date: string;
   startTime: string;
-  endTime: string;
-  available: boolean;
+  endTime?: string; // <-- FIX: Added this optional property
+  remainingCapacity: number; 
 }
+// --- END MODIFICATION ---
 
 export interface Review {
   id: string;
@@ -84,6 +87,9 @@ export interface Review {
   rating: number;
   comment: string;
   date: string;
+  user?: Partial<User>; 
+  created_at?: string; 
+  place?: Partial<StudyPlace>;
 }
 
 export interface Booking {
@@ -93,11 +99,13 @@ export interface Booking {
   date: string;
   startTime: string;
   endTime: string;
-  status: 'confirmed' | 'pending' | 'cancelled';
+  duration?: number;
+  partySize?: number; // <-- NEW
+  status: 'confirmed' | 'pending' | 'cancelled' | 'completed' | 'no-show';
   ticketId: string;  
   place?: StudyPlace;
   user?: User;
-  // --- END FIX ---
+  reviewed?: boolean;
 }
 
 export type Screen = 'splash' | 'login' | 'signup' | 'home' | 'place-details' | 'booking' | 'account' | 'confirmation' | 'settings';

@@ -3,7 +3,8 @@ const { Place, MenuItem, Bundle, Booking, User } = require('../models');
 
 const createPlace = async (req, res) => {
   try {
-    const { name, type, description, amenities, location, reservable, reservableHours } = req.body;
+    // --- ADDED maxCapacity ---
+    const { name, type, description, amenities, location, reservable, reservableHours, maxCapacity } = req.body;
     const ownerId = req.user.id;
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'At least one image is required.' });
@@ -29,6 +30,7 @@ const createPlace = async (req, res) => {
       status: 'pending',
       reservable: reservable === 'true',
       reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
+      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1, // <-- SAVE maxCapacity
     });
     res.status(201).json({ message: 'Place submitted for approval!', place });
   } catch (err) {
@@ -41,7 +43,8 @@ const updateOwnerPlace = async (req, res) => {
   try {
     const { placeId } = req.params;
     const ownerId = req.user.id;
-    const { name, type, description, amenities, location, reservable, reservableHours } = req.body;
+    // --- ADDED maxCapacity ---
+    const { name, type, description, amenities, location, reservable, reservableHours, maxCapacity } = req.body;
 
     const place = await Place.findOne({ where: { id: placeId, ownerId } });
     if (!place) {
@@ -73,6 +76,7 @@ const updateOwnerPlace = async (req, res) => {
       images: newImageUrls,
       reservable: reservable === 'true',
       reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
+      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1, // <-- UPDATE maxCapacity
       status: 'pending', // Re-submit for approval
     });
 
@@ -119,6 +123,11 @@ const getOwnerBookings = async (req, res) => {
     const ownerId = req.user.id;
 
     const bookings = await Booking.findAll({
+      // --- FIX: Explicitly include partySize ---
+      attributes: [
+        'id', 'date', 'startTime', 'endTime', 'status', 'ticketId', 'partySize', 'reviewed'
+      ],
+      // --- END FIX ---
       include: [
         {
           model: Place,
@@ -129,8 +138,6 @@ const getOwnerBookings = async (req, res) => {
         {
           model: User,
           as: 'user',
-          // --- THIS IS THE FIX ---
-          // Add 'phone' to the attributes
           attributes: ['name', 'email', 'phone'] 
         }
       ],
@@ -178,10 +185,13 @@ const updateBookingStatus = async (req, res) => {
     await booking.save();
 
     const updatedBooking = await Booking.findByPk(bookingId, {
+      // --- FIX: Explicitly include partySize ---
+      attributes: [
+        'id', 'date', 'startTime', 'endTime', 'status', 'ticketId', 'partySize', 'reviewed'
+      ],
+      // --- END FIX ---
       include: [
         { model: Place, as: 'place', attributes: ['name'] },
-        // --- ALSO FIX IT HERE ---
-        // Make sure the returned object also has the phone
         { model: User, as: 'user', attributes: ['name', 'email', 'phone'] } 
       ]
     });
@@ -193,6 +203,7 @@ const updateBookingStatus = async (req, res) => {
     res.status(500).json({ error: 'Failed to update booking status.' });
   }
 };
+
 const checkInByTicketId = async (req, res) => {
   try {
     const { ticketId } = req.body;
@@ -215,7 +226,6 @@ const checkInByTicketId = async (req, res) => {
       return res.status(404).json({ error: 'Invalid Ticket: Booking not found.' });
     }
 
-    // Security Check: Ensure the owner scanning this ticket actually owns the place
     if (booking.place.ownerId !== ownerId) {
       return res.status(403).json({ error: 'Forbidden. This booking is for a place you do not own.' });
     }
@@ -228,7 +238,6 @@ const checkInByTicketId = async (req, res) => {
       return res.status(400).json({ error: `Cannot check in a booking with status "${booking.status}".` });
     }
 
-    // Success! Mark as completed.
     booking.status = 'completed';
     await booking.save();
 

@@ -1,3 +1,4 @@
+// services/web/src/components/AccountScreen.tsx
 import { Button } from "./ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
 import { Badge } from "./ui/badge";
@@ -11,37 +12,113 @@ import {
   Bookmark,
   Settings,
   Edit,
-  Shield,
-  Bell,
-  Sparkles,
-  User as UserIcon,
   LogOut,
+  Image as ImageIcon,
+  Users, // <-- IMPORTED
+  Ticket, // <-- IMPORTED
 } from "lucide-react";
-import { User, Booking } from "../types";
+import { User, Booking, StudyPlace, Review } from "../types"; // <-- IMPORTED REVIEW
+import { ImageWithFallback } from "./figma/ImageWithFallback";
+
+// --- Review Card Component ---
+const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavigateToPlace: (placeId: string) => void }) => {
+  const userName = review.user?.name || 'A User';
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
+
+  return (
+    <Card className="bg-white border-brand-yellow w-full">
+      <CardHeader className="pb-3">
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">
+                    {userInitial}
+                </div>
+                <div>
+                    <CardTitle className="text-sm font-semibold text-brand-burgundy">
+                        Review for {review.place?.name || 'a place'}
+                    </CardTitle>
+                    <p className="text-xs text-brand-orange">{new Date(review.created_at!).toLocaleDateString()}</p>
+                </div>
+            </div>
+            <div className="flex items-center gap-1 text-amber-500">
+                {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
+            </div>
+        </div>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <p className="text-sm text-gray-700">{review.comment}</p>
+        <Button 
+          variant="outline" 
+          size="sm"
+          className="border-brand-orange text-brand-orange hover:bg-brand-yellow/50"
+          onClick={() => onNavigateToPlace(review.place!.id)}
+        >
+          <MapPin className="h-4 w-4 mr-2" />
+          View Place
+        </Button>
+      </CardContent>
+    </Card>
+  );
+};
+// --- END REVIEW COMPONENT ---
 
 interface AccountScreenProps {
   user: User;
   bookings: Booking[];
+  bookmarkedPlaces: StudyPlace[]; 
+  reviews: Review[];
+  activeTab: string;
   onBack: () => void;
   onNavigateToSettings: () => void;
-  onLogout: () => void; // Added onLogout prop
+  onLogout: () => void;
+  onReview: (booking: Booking) => void; 
+  onNavigateToPlace: (placeId: string) => void; 
+  onNavigateToTicket: (ticketId: string) => void; // <-- Prop for ticket button
+  onTabChange: (tab: string) => void;
 }
 
 export function AccountScreen({
   user,
   bookings,
+  bookmarkedPlaces,
+  reviews,
+  activeTab,
   onBack,
   onNavigateToSettings,
   onLogout,
+  onReview,
+  onNavigateToPlace,
+  onNavigateToTicket, // <-- Destructure prop
+  onTabChange,
 }: AccountScreenProps) {
-  const upcomingBookings = bookings.filter(
-    (booking) =>
-      booking.status === "confirmed" && new Date(booking.date) >= new Date()
-  );
 
-  const pastBookings = bookings.filter(
-    (booking) => new Date(booking.date) < new Date()
-  );
+  // --- THIS IS THE FIX for sorting bookings ---
+  const now = new Date();
+
+  const upcomingBookings = bookings.filter((booking) => {
+    if (booking.status !== "confirmed") return false;
+    
+    // Combine date and time
+    const [year, month, day] = booking.date.split('-').map(Number);
+    const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+    // Create date in local timezone: new Date(year, monthIndex, day, hour, minute)
+    const bookingEndDate = new Date(year, month - 1, day, endHour, endMinute);
+    
+    // Check if the booking's end time is in the future
+    return bookingEndDate >= now;
+  });
+
+  const pastBookings = bookings.filter((booking) => {
+    const [year, month, day] = booking.date.split('-').map(Number);
+    const [endHour, endMinute] = booking.endTime.split(':').map(Number);
+    const bookingEndDate = new Date(year, month - 1, day, endHour, endMinute);
+    
+    // Is past if end time is before now OR status is completed/no-show
+    return bookingEndDate < now || booking.status === 'completed' || booking.status === 'no-show';
+  });
+  // --- END FIX ---
+
+  const reviewCount = reviews.length;
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -58,10 +135,17 @@ export function AccountScreen({
           border: "#F7C566",
         };
       case "cancelled":
+      case "no-show":
         return {
           bg: "#DC6B19",
           text: "#FFF8DC",
           border: "#6C0345",
+        };
+      case "completed":
+         return {
+          bg: "#d1fae5", // green-100
+          text: "#065f46", // green-800
+          border: "#6ee7b7", // green-300
         };
       default:
         return {
@@ -76,7 +160,7 @@ export function AccountScreen({
     <div className="min-h-screen" style={{ backgroundColor: "#FFF8DC" }}>
       {/* Header */}
       <div
-        className="shadow-sm p-4 flex items-center justify-between"
+        className="shadow-sm p-4 flex items-center justify-between sticky top-0 z-20"
         style={{ backgroundColor: "#6C0345" }}
       >
         <div className="flex items-center space-x-3">
@@ -112,14 +196,15 @@ export function AccountScreen({
         </Button>
       </div>
 
-      <div className="p-4 space-y-6">
-        {/* Enhanced Profile Card */}
+      <main className="p-4 md:p-8 max-w-5xl mx-auto space-y-6">
+        
+        {/* --- Profile Card --- */}
         <Card
-          className="border-2 rounded-2xl shadow-lg animate-fade-in-up"
+          className="w-full border-2 rounded-2xl shadow-lg animate-fade-in-up"
           style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
         >
           <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-6">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center sm:justify-between mb-6 gap-4 sm:gap-0">
               <div className="flex items-center space-x-4">
                 <div
                   className="w-16 h-16 rounded-2xl flex items-center justify-center shadow-lg border-2"
@@ -196,7 +281,7 @@ export function AccountScreen({
                 variant="outline"
                 size="sm"
                 onClick={onNavigateToSettings}
-                className="rounded-xl border-2 transition-button"
+                className="rounded-xl border-2 transition-button w-full sm:w-auto"
                 style={{
                   backgroundColor: "#F7C566",
                   borderColor: "#DC6B19",
@@ -204,7 +289,7 @@ export function AccountScreen({
                 }}
               >
                 <Edit className="h-4 w-4 mr-2" />
-                Edit
+                Edit Profile
               </Button>
             </div>
 
@@ -228,10 +313,10 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  {bookings.filter((b) => b.status === "confirmed").length}
+                  {bookmarkedPlaces.length}
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
-                  Confirmed
+                  Bookmarks
                 </div>
               </div>
               <div className="text-center">
@@ -239,7 +324,7 @@ export function AccountScreen({
                   className="text-2xl font-bold"
                   style={{ color: "#6C0345" }}
                 >
-                  0
+                  {reviewCount}
                 </div>
                 <div className="text-sm" style={{ color: "#DC6B19" }}>
                   Reviews
@@ -249,8 +334,8 @@ export function AccountScreen({
           </CardContent>
         </Card>
 
-        {/* Quick Actions */}
-        <div className="grid grid-cols-2 gap-4 animate-slide-in-right">
+        {/* --- Quick Actions --- */}
+        <div className="w-full grid grid-cols-2 gap-4 animate-slide-in-right">
           <Card
             className="border-2 rounded-2xl shadow-lg cursor-pointer transition-button hover:shadow-xl transform hover:scale-[1.02]"
             style={{ borderColor: "#DC6B19", backgroundColor: "#F7C566" }}
@@ -299,11 +384,16 @@ export function AccountScreen({
             </CardContent>
           </Card>
         </div>
-
-        {/* Enhanced Tabs */}
-        <Tabs defaultValue="bookings" className="w-full animate-scale-in">
+        
+        {/* --- Tabs --- */}
+        <Tabs 
+          defaultValue="bookings" 
+          value={activeTab}
+          onValueChange={onTabChange}
+          className="w-full animate-scale-in"
+        >
           <TabsList
-            className="grid w-full grid-cols-3 h-12 rounded-2xl border-2 shadow-lg"
+            className="grid w-full grid-cols-1 sm:grid-cols-3 h-auto sm:h-12 rounded-2xl border-2 shadow-lg"
             style={{
               backgroundColor: "#FFF8DC",
               borderColor: "#DC6B19",
@@ -311,7 +401,7 @@ export function AccountScreen({
           >
             <TabsTrigger
               value="bookings"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0" 
               style={{
                 color: "#6C0345",
               }}
@@ -324,7 +414,7 @@ export function AccountScreen({
             </TabsTrigger>
             <TabsTrigger
               value="bookmarks"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0"
               style={{
                 color: "#6C0345",
               }}
@@ -337,7 +427,7 @@ export function AccountScreen({
             </TabsTrigger>
             <TabsTrigger
               value="reviews"
-              className="rounded-xl transition-button data-[state=active]:shadow-lg"
+              className="rounded-xl transition-button data-[state=active]:shadow-lg py-2 sm:py-0"
               style={{
                 color: "#6C0345",
               }}
@@ -350,6 +440,7 @@ export function AccountScreen({
             </TabsTrigger>
           </TabsList>
 
+          {/* --- BOOKINGS TAB --- */}
           <TabsContent value="bookings" className="space-y-6 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
@@ -379,6 +470,7 @@ export function AccountScreen({
                 {upcomingBookings.length > 0 ? (
                   <div className="space-y-4">
                     {upcomingBookings.map((booking, index) => (
+                      // --- UPCOMING BOOKING CARD (FIXED) ---
                       <div
                         key={booking.id}
                         className="p-4 rounded-2xl border-2 transition-smooth hover:shadow-md animate-fade-in-up"
@@ -394,7 +486,7 @@ export function AccountScreen({
                               className="font-semibold"
                               style={{ color: "#6C0345" }}
                             >
-                              {booking.placeName}
+                              {booking.place?.name}
                             </h4>
                             <Badge
                               className="mt-1 px-3 py-1 rounded-full border-2"
@@ -409,42 +501,51 @@ export function AccountScreen({
                               ✅ {booking.status}
                             </Badge>
                           </div>
-                          <div className="text-right">
-                            <span
-                              className="text-xs px-2 py-1 rounded-full border-2"
-                              style={{
-                                backgroundColor: "#6C0345",
-                                color: "#FFF8DC",
-                                borderColor: "#DC6B19",
-                              }}
-                            >
-                              {booking.ticketId}
-                            </span>
-                          </div>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="rounded-xl border-2 transition-button"
+                            style={{
+                              backgroundColor: "#6C0345",
+                              borderColor: "#DC6B19",
+                              color: "#FFF8DC",
+                            }}
+                            onClick={() => onNavigateToTicket(booking.ticketId)}
+                          >
+                            <Ticket className="h-4 w-4 mr-2" />
+                            E-Ticket
+                          </Button>
                         </div>
-
-                        <div
-                          className="flex items-center justify-between text-sm"
-                          style={{ color: "#6C0345" }}
-                        >
-                          <div className="flex items-center space-x-2">
+                        
+                        <div className="space-y-2">
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
                             <Calendar
-                              className="h-4 w-4"
+                              className="h-4 w-4 mr-2"
                               style={{ color: "#DC6B19" }}
                             />
                             <span className="font-medium">{booking.date}</span>
                           </div>
-                          <div className="flex items-center space-x-2">
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
                             <Clock
-                              className="h-4 w-4"
+                              className="h-4 w-4 mr-2"
                               style={{ color: "#DC6B19" }}
                             />
                             <span className="font-medium">
                               {booking.startTime} - {booking.endTime}
                             </span>
                           </div>
+                          <div className="flex items-center text-sm" style={{ color: "#6C0345" }}>
+                            <Users
+                              className="h-4 w-4 mr-2"
+                              style={{ color: "#DC6B19" }}
+                            />
+                            <span className="font-medium">
+                              {booking.partySize || 1} {booking.partySize && booking.partySize > 1 ? 'Guests' : 'Guest'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      // --- END UPCOMING BOOKING CARD FIX ---
                     ))}
                   </div>
                 ) : (
@@ -500,6 +601,7 @@ export function AccountScreen({
                 {pastBookings.length > 0 ? (
                   <div className="space-y-3">
                     {pastBookings.map((booking, index) => (
+                      // --- PAST BOOKING CARD FIX ---
                       <div
                         key={booking.id}
                         className="border-2 rounded-xl p-3 opacity-80 transition-smooth hover:opacity-100 animate-fade-in-up"
@@ -515,35 +617,54 @@ export function AccountScreen({
                               className="font-medium"
                               style={{ color: "#6C0345" }}
                             >
-                              {booking.placeName}
+                              {booking.place?.name}
                             </h4>
                             <Badge
                               className="mt-1 px-2 py-1 rounded-full border"
                               style={{
-                                backgroundColor: "#F7C566",
-                                color: "#6C0345",
-                                borderColor: "#DC6B19",
+                                backgroundColor: getStatusColor(booking.status).bg,
+                                color: getStatusColor(booking.status).text,
+                                borderColor: getStatusColor(booking.status).border,
                               }}
                             >
-                              ✅ Completed
+                              {booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}
                             </Badge>
                           </div>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="rounded-xl border-2 transition-button"
-                            style={{
-                              backgroundColor: "#DC6B19",
-                              borderColor: "#6C0345",
-                              color: "#FFF8DC",
-                            }}
-                          >
-                            ⭐ Review
-                          </Button>
+                          {booking.status === 'completed' ? (
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-2 transition-button"
+                              style={{
+                                backgroundColor: "#DC6B19",
+                                borderColor: "#6C0345",
+                                color: "#FFF8DC",
+                              }}
+                              disabled={booking.reviewed}
+                              onClick={() => onReview(booking)}
+                            >
+                              {booking.reviewed ? 'Reviewed' : '⭐ Review'}
+                            </Button>
+                          ) : (
+                             <Button
+                              variant="outline"
+                              size="sm"
+                              className="rounded-xl border-2 transition-button"
+                              style={{
+                                backgroundColor: "#6C0345",
+                                borderColor: "#DC6B19",
+                                color: "#FFF8DC",
+                              }}
+                              onClick={() => onNavigateToTicket(booking.ticketId)}
+                            >
+                              <Ticket className="h-4 w-4 mr-2" />
+                              View
+                            </Button>
+                          )}
                         </div>
 
                         <div
-                          className="flex items-center space-x-4 text-sm"
+                          className="flex flex-col sm:flex-row sm:items-center sm:space-x-4 text-sm space-y-1 sm:space-y-0"
                           style={{ color: "#6C0345" }}
                         >
                           <div className="flex items-center space-x-1">
@@ -562,8 +683,18 @@ export function AccountScreen({
                               {booking.startTime} - {booking.endTime}
                             </span>
                           </div>
+                           <div className="flex items-center space-x-1">
+                            <Users
+                              className="h-4 w-4"
+                              style={{ color: "#DC6B19" }}
+                            />
+                            <span>
+                              {booking.partySize || 1} {booking.partySize && booking.partySize > 1 ? 'Guests' : 'Guest'}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      // --- END PAST BOOKING CARD FIX ---
                     ))}
                   </div>
                 ) : (
@@ -572,7 +703,7 @@ export function AccountScreen({
                       className="w-12 h-12 rounded-xl mx-auto mb-3 flex items-center justify-center border-2"
                       style={{
                         backgroundColor: "#F7C566",
-                        borderColor: "#DC6B19",
+                        borderColor: "#DC6B1A",
                       }}
                     >
                       <Clock className="h-6 w-6" style={{ color: "#6C0345" }} />
@@ -584,70 +715,109 @@ export function AccountScreen({
             </Card>
           </TabsContent>
 
+          {/* --- BOOKMARKS TAB --- */}
           <TabsContent value="bookmarks" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
             >
-              <CardContent className="p-8">
-                <div className="text-center py-12">
-                  <div
-                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
-                    style={{
-                      backgroundColor: "#F7C566",
-                      borderColor: "#DC6B19",
-                    }}
-                  >
-                    <Bookmark
-                      className="h-8 w-8"
+              <CardContent className={bookmarkedPlaces.length > 0 ? "p-4 space-y-3" : "p-8"}>
+                {bookmarkedPlaces.length > 0 ? (
+                  bookmarkedPlaces.map(place => (
+                    <div 
+                      key={place.id}
+                      className="flex items-center space-x-4 p-3 rounded-xl border-2 bg-white border-brand-yellow cursor-pointer hover:shadow-md transition-shadow"
+                      onClick={() => onNavigateToPlace(place.id)}
+                    >
+                      <ImageWithFallback
+                        src={place.images?.[0] || ''}
+                        alt={place.name}
+                        className="w-16 h-16 object-cover rounded-lg flex-shrink-0"
+                      />
+                      <div className="flex-1 min-w-0">
+                        <h4 className="font-semibold text-brand-burgundy truncate">{place.name}</h4>
+                        <p className="text-sm text-brand-orange flex items-center gap-1">
+                          <MapPin className="h-4 w-4" />
+                          {place.location.address}
+                        </p>
+                      </div>
+                      <Badge className="bg-brand-yellow text-brand-burgundy capitalize shadow-md border border-brand-orange/50">
+                        {place.type}
+                      </Badge>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div
+                      className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
+                      style={{
+                        backgroundColor: "#F7C566",
+                        borderColor: "#DC6B19",
+                      }}
+                    >
+                      <Bookmark
+                        className="h-8 w-8"
+                        style={{ color: "#6C0345" }}
+                      />
+                    </div>
+                    <p
+                      className="font-semibold"
                       style={{ color: "#6C0345" }}
-                    />
+                    >
+                      No bookmarked places yet
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
+                      Bookmark places to find them easily later
+                    </p>
                   </div>
-                  <p
-                    className="font-semibold"
-                    style={{ color: "#6C0345" }}
-                  >
-                    No bookmarked places yet
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
-                    Bookmark places to find them easily later
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
 
+          {/* --- REVIEWS TAB --- */}
           <TabsContent value="reviews" className="space-y-4 mt-6">
             <Card
               className="border-2 rounded-2xl shadow-lg"
               style={{ borderColor: "#DC6B19", backgroundColor: "#FFF8DC" }}
             >
-              <CardContent className="p-8">
-                <div className="text-center py-12">
-                  <div
-                    className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
-                    style={{
-                      backgroundColor: "#F7C566",
-                      borderColor: "#DC6B19",
-                    }}
-                  >
-                    <Star className="h-8 w-8" style={{ color: "#6C0345" }} />
+              <CardContent className={reviews.length > 0 ? "p-4 space-y-3" : "p-8"}>
+                {reviews.length > 0 ? (
+                  reviews.map(review => (
+                    <ReviewItemCard 
+                      key={review.id} 
+                      review={review} 
+                      onNavigateToPlace={onNavigateToPlace} 
+                    />
+                  ))
+                ) : (
+                  <div className="text-center py-12">
+                    <div
+                      className="w-16 h-16 rounded-2xl mx-auto mb-4 flex items-center justify-center border-2"
+                      style={{
+                        backgroundColor: "#F7C566",
+                        borderColor: "#DC6B19",
+                      }}
+                    >
+                      <Star className="h-8 w-8" style={{ color: "#6C0345" }} />
+                    </div>
+                    <p
+                      className="font-semibold"
+                      style={{ color: "#6C0345" }}
+                    >
+                      No reviews written yet
+                    </p>
+                    <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
+                      Share your experience after visiting places
+                    </p>
                   </div>
-                  <p
-                    className="font-semibold"
-                    style={{ color: "#6C0345" }}
-                  >
-                    No reviews written yet
-                  </p>
-                  <p className="text-sm mt-1" style={{ color: "#DC6B19" }}>
-                    Share your experience after visiting places
-                  </p>
-                </div>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
+
         </Tabs>
-      </div>
+      </main>
     </div>
   );
 }

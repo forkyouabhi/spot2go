@@ -2,7 +2,6 @@
 const { Place, User, MenuItem } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
-// ... (getPlaceStats, getPendingPlaces, updatePlaceStatus are unchanged) ...
 const getPlaceStats = async (req, res) => {
   try {
     const totalPlaces = await Place.count();
@@ -63,7 +62,7 @@ const updatePlaceStatus = async (req, res) => {
   }
 };
 
-// --- MODIFIED FUNCTION ---
+
 // Get users pending verification
 const getPendingOwners = async (req, res) => {
   try {
@@ -72,9 +71,17 @@ const getPendingOwners = async (req, res) => {
         role: 'owner',
         status: 'pending_verification'
       },
-      // Include the new fields
-      attributes: ['id', 'name', 'email', 'createdAt', 'phone', 'businessLocation'],
-      order: [['createdAt', 'ASC']],
+      // --- FIX: Use aliasing for 'createdAt' and 'businessLocation' ---
+      attributes: [
+        'id', 
+        'name', 
+        'email', 
+        ['created_at', 'createdAt'], // Map DB column 'created_at' to 'createdAt' in the result
+        'phone', 
+        ['business_location', 'businessLocation'] // Map DB column 'business_location'
+      ],
+      order: [['created_at', 'ASC']], // Order by the actual DB column name
+      // --- END FIX ---
     });
     res.json(pendingUsers);
   } catch (err) {
@@ -83,7 +90,7 @@ const getPendingOwners = async (req, res) => {
   }
 };
 
-// ... (updateOwnerStatus is unchanged) ...
+
 const updateOwnerStatus = async (req, res) => {
   const { userId } = req.params;
   const { status } = req.body; // Expecting 'active' or 'rejected'

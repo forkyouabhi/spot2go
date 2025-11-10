@@ -11,12 +11,13 @@ import { InputOTP, InputOTPGroup, InputOTPSlot } from '../components/ui/input-ot
 import { Loader2, MailCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { verifyEmail } from '../lib/api';
+import { verifyEmail, resendOtp } from '../lib/api'; // <-- IMPORT resendOtp
 
 export default function VerifyEmailPage() {
   const router = useRouter();
   const { handleTokenUpdate } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false); // <-- NEW STATE
   const [otp, setOtp] = useState('');
   const [email, setEmail] = useState('');
 
@@ -36,29 +37,44 @@ export default function VerifyEmailPage() {
     setLoading(true);
     try {
       const response = await verifyEmail({ email, otp });
-      // On success, the API returns a token.
-      // We use handleTokenUpdate to log the user in and redirect.
-      handleTokenUpdate(response.data.token);
+      const { token, user } = response.data;
+
+      handleTokenUpdate(token);
       toast.success("Email verified successfully! Welcome to Spot2Go.");
+
+      if (user.role === 'owner') {
+        router.push('/owner/dashboard');
+      } else if (user.role === 'admin') {
+        router.push('/admin/dashboard');
+      } else {
+        router.push('/');
+      }
+
     } catch (error: any) {
       const errorMessage = error.response?.data?.error || "Verification failed. Please try again.";
       toast.error(errorMessage);
-    } finally {
-      setLoading(false);
+      setLoading(false); // Only set loading false on error
     }
   };
 
-  // TODO: Add a "Resend OTP" function
-  // This would call a new API endpoint, e.g., POST /api/auth/resend-otp
-  const handleResendOtp = () => {
-    toast.info("Resend OTP functionality is not yet implemented.");
-    // Example:
-    // setLoading(true);
-    // api.post('/auth/resend-otp', { email })
-    //   .then(() => toast.success("A new code has been sent."))
-    //   .catch(() => toast.error("Failed to resend code."))
-    //   .finally(() => setLoading(false));
+  // --- IMPLEMENTED FUNCTION ---
+  const handleResendOtp = async () => {
+    if (!email) {
+      toast.error("Email address not found.");
+      return;
+    }
+    setResendLoading(true);
+    try {
+      await resendOtp({ email });
+      toast.success("A new code has been sent.");
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error || "Failed to resend code.";
+      toast.error(errorMessage);
+    } finally {
+      setResendLoading(false);
+    }
   };
+  // --- END ---
 
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-brand-cream auth-background">
@@ -101,7 +117,7 @@ export default function VerifyEmailPage() {
             
             <Button 
               type="submit" 
-              disabled={loading || otp.length !== 6}
+              disabled={loading || resendLoading || otp.length !== 6} // <-- UPDATE DISABLED
               className="w-full h-12 text-lg font-semibold bg-brand-burgundy hover:bg-brand-burgundy/90 text-brand-cream"
             >
               {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Verify & Log In"}
@@ -111,8 +127,15 @@ export default function VerifyEmailPage() {
           <div className="text-center text-sm text-brand-burgundy mt-6 space-y-2">
             <p>
               Didn't get a code?
-              <Button variant="link" onClick={handleResendOtp} className="text-brand-orange underline pl-1">
-                Resend code
+              {/* --- UPDATE BUTTON WITH LOADING STATE --- */}
+              <Button 
+                variant="link" 
+                onClick={handleResendOtp} 
+                disabled={loading || resendLoading} // <-- UPDATE DISABLED
+                className="text-brand-orange underline pl-1"
+              >
+                {resendLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : null}
+                {resendLoading ? 'Sending...' : 'Resend code'}
               </Button>
             </p>
             <p>

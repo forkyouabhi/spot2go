@@ -6,15 +6,15 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Star, Loader2, Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { createReview } from '../lib/api';
-import { Review, User } from '../types';
+import { Review, User, Booking } from '../types'; // Import Booking
 
 interface ReviewFormProps {
-  placeId: string;
+  booking: Booking; // <-- FIX: Pass the whole booking
   user: User;
   onReviewSubmitted: (newReview: Review) => void;
 }
 
-export function ReviewForm({ placeId, user, onReviewSubmitted }: ReviewFormProps) {
+export function ReviewForm({ booking, user, onReviewSubmitted }: ReviewFormProps) {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -29,13 +29,24 @@ export function ReviewForm({ placeId, user, onReviewSubmitted }: ReviewFormProps
     setIsSubmitting(true);
     try {
       const reviewData = {
-        placeId: parseInt(placeId, 10), // Ensure API gets a number
+        bookingId: parseInt(booking.id, 10), // <-- FIX: Send bookingId
         rating,
         comment,
       };
-      const response = await createReview(reviewData);
+      // The API now returns the full review object with user info
+      const response = await createReview(reviewData); 
       toast.success('Review submitted successfully!');
-      onReviewSubmitted(response.data); // Pass the full review object back
+      
+      // We manually add userName because the API returns review.user.name
+      // This ensures the Account screen can update its state if needed
+      const newReview = {
+        ...response.data.review,
+        userName: response.data.review.user?.name || user.name,
+        date: response.data.review.created_at || new Date().toISOString(),
+      };
+      
+      onReviewSubmitted(newReview); 
+      
       // Reset form
       setRating(0);
       setComment('');
@@ -48,9 +59,11 @@ export function ReviewForm({ placeId, user, onReviewSubmitted }: ReviewFormProps
   };
 
   return (
-    <Card className="bg-white border-2 border-brand-yellow shadow-lg">
+    <Card className="bg-white border-0 shadow-none">
       <CardHeader>
-        <CardTitle className="text-xl text-brand-burgundy">Leave a Review</CardTitle>
+        <CardTitle className="text-xl text-brand-burgundy">
+          Reviewing: {booking.placeName}
+        </CardTitle>
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -76,7 +89,7 @@ export function ReviewForm({ placeId, user, onReviewSubmitted }: ReviewFormProps
             <Textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
-              placeholder={`Hi ${user.name}, share your experience at this spot...`}
+              placeholder={`Hi ${user.name}, share your experience...`}
               className="min-h-[100px]"
             />
           </div>

@@ -1,93 +1,187 @@
-import { Button } from "./ui/button";
-import { Card, CardContent, CardHeader, CardTitle } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { CheckCircle, Calendar, Clock, MapPin } from "lucide-react"; // Replaced Sparkles with MapPin
 import { StudyPlace, TimeSlot } from '../types';
-import { toast } from "sonner";
-
-// Simple SVG placeholder for a QR code
-const QrCode = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="120" height="120" viewBox="0 0 33 33" className="shadow-md rounded-lg bg-white p-1 border border-brand-yellow">
-        <path fill="#6C0345" d="M0 0h11v11H0zM4 4h3v3H4zM11 0h11v11H11zM15 4h3v3h-3zM22 0h11v11H22zM26 4h3v3h-3zM0 11h11v11H0zM4 15h3v3H4zM11 11h11v11H11zM22 11h11v11H22zM26 15h3v3h-3zM0 22h11v11H0zM4 26h3v3H4zM11 22h11v11H11zM15 26h3v3h-3zM22 22h11v11H22zM26 26h3v3h-3z"></path>
-    </svg>
-);
-
-// Apple Wallet SVG icon
-const AppleWalletIcon = () => (
-  <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="currentColor">
-      <path d="M19.36,8.23a3.54,3.54,0,0,0-2.42,1,3.33,3.33,0,0,0-2.32,1,3.14,3.14,0,0,0-2.22-1,3.42,3.42,0,0,0-3.32,2.4H4.25a2.5,2.5,0,0,0,0,5H9.08a3.42,3.42,0,0,0,3.32,2.4,3.14,3.14,0,0,0,2.22-1,3.33,3.33,0,0,0,2.32-1,3.54,3.54,0,0,0,2.42-1H20V10.63h-.25A3.76,3.76,0,0,0,19.36,8.23Zm-1.5,5.27a1,1,0,0,1-1,.7H12.4a1,1,0,0,1-1-.7,1,1,0,0,1,1-.7h4.46A1,1,0,0,1,17.86,13.5Z"/>
-  </svg>
-);
-
+import { Button } from './ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
+import { CheckCircle, MapPin, Calendar, Clock, Download, User as UserIcon, Users } from 'lucide-react';
+import QRCode from 'react-qr-code';
 
 interface ConfirmationScreenProps {
   place: StudyPlace;
   slot: TimeSlot;
   ticketId: string;
   onGoHome: () => void;
+  partySize?: number; // Optional party size prop
 }
 
-export function ConfirmationScreen({ place, slot, ticketId, onGoHome }: ConfirmationScreenProps) {
-  const handleAddToWallet = () => {
-    toast.info('Apple Wallet pass generation is coming soon!');
-  }
+export function ConfirmationScreen({ place, slot, ticketId, onGoHome, partySize }: ConfirmationScreenProps) {
+  const handleCalendarDownload = () => {
+    // Create an .ics calendar file
+    const event = `BEGIN:VCALENDAR
+VERSION:2.0
+BEGIN:VEVENT
+SUMMARY:${place.name} - Study Session
+LOCATION:${place.location?.address || ''}
+DTSTART:${slot.date.replace(/-/g, '')}T${slot.startTime.replace(/:/g, '')}00
+DTEND:${slot.date.replace(/-/g, '')}T${slot.endTime?.replace(/:/g, '') || slot.startTime.replace(/:/g, '')}00
+DESCRIPTION:Booking ID: ${ticketId}
+END:VEVENT
+END:VCALENDAR`;
+
+    const blob = new Blob([event], { type: 'text/calendar' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `spot2go-booking-${ticketId}.ics`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+  };
 
   return (
-    <div className="min-h-screen bg-brand-cream flex flex-col items-center justify-center p-4 sm:p-6">
-      <div className="max-w-md w-full space-y-6 text-center">
-        <div>
-          <CheckCircle className="h-16 w-16 text-green-500 mx-auto mb-4" />
-          <h1 className="text-3xl font-bold text-brand-burgundy">Booking Confirmed!</h1>
-          <p className="text-brand-orange mt-2">Your e-ticket is ready. Show this upon arrival.</p>
-        </div>
+    <div 
+      className="min-h-screen p-4 md:p-8 flex items-center justify-center"
+      style={{ backgroundColor: '#FFF8DC' }}
+    >
+      <Card className="w-full max-w-lg bg-white shadow-2xl animate-in fade-in duration-500"
+        style={{ borderWidth: '2px', borderColor: '#DC6B19' }}
+      >
+        <CardHeader className="text-center items-center space-y-4">
+          {/* Success Icon */}
+          <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
+            <CheckCircle className="h-12 w-12 text-white" />
+          </div>
+          
+          <CardTitle className="text-3xl font-bold pt-4" style={{ color: '#6C0345' }}>
+            Booking Confirmed!
+          </CardTitle>
+          
+          <CardDescription style={{ color: '#DC6B19' }}>
+            Your spot is reserved. Show this QR code at the counter.
+          </CardDescription>
+        </CardHeader>
 
-        <Card className="text-left border-2 border-brand-orange shadow-lg w-full">
-          <CardHeader className="text-center bg-brand-cream rounded-t-lg p-4">
-            <div className="flex items-center justify-center gap-2">
-                {/* --- ICON FIX: Replaced Sparkles with MapPin --- */}
-                <MapPin className="h-6 w-6 text-brand-orange"/>
-                <CardTitle className="text-brand-burgundy">Spot2Go E-Ticket</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-4 p-6">
-            <div className="text-center pb-4 border-b border-brand-yellow">
-              <h3 className="font-semibold text-xl text-brand-burgundy">{place.name}</h3>
-              <p className="text-sm text-gray-600 flex items-center justify-center gap-1 mt-1"><MapPin className="h-4 w-4" />{place.location?.address}</p>
-            </div>
+        <CardContent className="space-y-6">
+          {/* QR Code */}
+          <div 
+            className="p-4 bg-white rounded-lg shadow-inner mx-auto" 
+            style={{ 
+              borderWidth: '4px', 
+              borderColor: '#6C0345',
+              maxWidth: '200px',
+              width: '100%'
+            }}
+          >
+            <QRCode
+              size={256}
+              style={{ height: "auto", maxWidth: "100%", width: "100%" }}
+              value={ticketId}
+              viewBox="0 0 256 256"
+              fgColor="#6C0345"
+            />
+          </div>
 
-            <div className="grid grid-cols-2 gap-4 text-center py-4">
-              <div className="space-y-1">
-                <Calendar className="h-5 w-5 text-brand-orange mx-auto" />
-                <p className="text-sm font-medium text-brand-burgundy">Date</p>
-                <p className="text-sm text-gray-600">{new Date(slot.date).toLocaleDateString("en-US", { weekday: 'short', year: 'numeric', month: 'long', day: 'numeric' })}</p>
+          {/* Ticket ID */}
+          <div className="text-center">
+            <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#DC6B19' }}>
+              Ticket ID
+            </p>
+            <p className="font-bold text-lg tracking-wider" style={{ color: '#6C0345' }}>
+              {ticketId}
+            </p>
+          </div>
+
+          {/* Information Card */}
+          <Card style={{ backgroundColor: '#FFF8DC80', borderColor: '#F4D06F' }}>
+            <CardHeader className="flex flex-row items-center gap-4 pb-4">
+              {/* Place Image */}
+              {place.images && place.images[0] && (
+                <img
+                  src={place.images[0]}
+                  alt={place.name}
+                  className="w-16 h-16 object-cover rounded-lg"
+                  style={{ borderWidth: '2px', borderColor: '#F4D06F' }}
+                  onError={(e) => {
+                    e.currentTarget.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="64" height="64"%3E%3Crect fill="%23F4D06F" width="64" height="64"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-size="24" fill="%236C0345"%3E📚%3C/text%3E%3C/svg%3E';
+                  }}
+                />
+              )}
+              
+              <div className="flex-1">
+                <CardTitle className="text-lg" style={{ color: '#6C0345' }}>
+                  {place.name}
+                </CardTitle>
+                <CardDescription className="flex items-center gap-2 pt-1" style={{ color: '#DC6B19' }}>
+                  <MapPin className="h-4 w-4" />
+                  {place.location?.address || 'Location not specified'}
+                </CardDescription>
               </div>
-              <div className="space-y-1">
-                <Clock className="h-5 w-5 text-brand-orange mx-auto" />
-                <p className="text-sm font-medium text-brand-burgundy">Time</p>
-                <p className="text-sm text-gray-600">{slot.startTime} - {slot.endTime}</p>
+            </CardHeader>
+
+            <CardContent 
+              className="grid grid-cols-2 gap-4 border-t pt-4" 
+              style={{ borderColor: '#F4D06F', color: '#6C0345' }}
+            >
+              {/* Date */}
+              <div className="flex items-center gap-2">
+                <Calendar className="h-5 w-5" style={{ color: '#DC6B19' }} />
+                <div>
+                  <p className="text-xs opacity-70">Date</p>
+                  <p className="font-semibold">{slot.date}</p>
+                </div>
               </div>
-            </div>
 
-            <div className="flex flex-col items-center justify-center gap-4 pt-4 border-t border-brand-yellow">
-                <QrCode />
-                <Badge variant="outline" className="mx-auto border-brand-yellow bg-white text-brand-burgundy font-mono text-lg py-1 px-4">
-                    {ticketId}
-                </Badge>
-            </div>
-          </CardContent>
-        </Card>
-        
-        <div className="w-full space-y-3">
-            <Button onClick={handleAddToWallet} className="w-full h-12 bg-black text-white hover:bg-gray-800 text-base flex items-center justify-center">
-                 <AppleWalletIcon />
-                 Add to Apple Wallet
-            </Button>
-            <Button onClick={onGoHome} className="w-full h-12 bg-brand-burgundy text-brand-cream hover:bg-brand-burgundy/90 text-base">
-                Back to Home
-            </Button>
-        </div>
+              {/* Time */}
+              <div className="flex items-center gap-2">
+                <Clock className="h-5 w-5" style={{ color: '#DC6B19' }} />
+                <div>
+                  <p className="text-xs opacity-70">Time</p>
+                  <p className="font-semibold">
+                    {slot.startTime?.slice(0, 5)}
+                    {slot.endTime && ` - ${slot.endTime.slice(0, 5)}`}
+                  </p>
+                </div>
+              </div>
 
-      </div>
+              {/* Party Size (if provided) */}
+              {partySize && (
+                <div className="flex items-center gap-2 col-span-2">
+                  <Users className="h-5 w-5" style={{ color: '#DC6B19' }} />
+                  <div>
+                    <p className="text-xs opacity-70">Party Size</p>
+                    <p className="font-semibold">
+                      {partySize} {partySize > 1 ? 'People' : 'Person'}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Calendar Download Button */}
+          <Button 
+            onClick={handleCalendarDownload}
+            variant="outline" 
+            className="w-full h-12 hover:opacity-80 transition-opacity"
+            style={{ 
+              color: '#6C0345', 
+              borderColor: '#DC6B19',
+              backgroundColor: 'transparent'
+            }}
+          >
+            <Download className="h-4 w-4 mr-2" />
+            Add to Calendar (.ics)
+          </Button>
+
+          {/* Back to Home Button */}
+          <Button 
+            onClick={onGoHome}
+            className="w-full h-12 text-lg font-semibold text-white transition-all hover:opacity-90"
+            style={{ backgroundColor: '#DC6B19' }}
+          >
+            Back to Home
+          </Button>
+        </CardContent>
+      </Card>
     </div>
   );
 }

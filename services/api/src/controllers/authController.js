@@ -2,8 +2,8 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
-const crypto = require('crypto'); // We need this to generate the OTP
-const { Op } = require('sequelize'); // <-- FIX: IMPORTED Op
+const crypto = require('crypto'); 
+const { Op } = require('sequelize');
 
 // Helper function to generate a 6-digit OTP
 const generateOTP = () => {
@@ -86,7 +86,6 @@ const register = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION TO VERIFY OTP ---
 const verifyEmail = async (req, res) => {
   const { email, otp } = req.body;
 
@@ -138,9 +137,41 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// --- FIX: REMOVED UNUSED 'login' FUNCTION ---
-// The logic for this has been moved to the passport.js strategy,
-// as the /auth/login route does not call this controller.
+// --- NEW FUNCTION TO RESEND OTP ---
+const resendVerificationOtp = async (req, res) => {
+  const { email } = req.body;
+  if (!email) {
+    return res.status(400).json({ error: 'Email is required.' });
+  }
+
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) {
+      return res.status(404).json({ error: 'User not found.' });
+    }
+    if (user.emailVerified) {
+      return res.status(400).json({ error: 'Email is already verified.' });
+    }
+
+    // Generate a new OTP and expiry
+    const otp = generateOTP();
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    // Update the user
+    user.emailVerificationToken = otp;
+    user.emailVerificationExpires = expires;
+    await user.save();
+
+    // Resend the email
+    await sendEmail(email, 'emailVerificationOTP', { name: user.name, otp });
+
+    res.json({ message: 'A new verification code has been sent to your email.' });
+
+  } catch (err) {
+    console.error('Error resending OTP:', err);
+    res.status(500).json({ error: 'An error occurred while resending the code.' });
+  }
+};
 
 const requestPasswordReset = async (req, res) => {
   const { email } = req.body;
@@ -203,8 +234,8 @@ const resetPassword = async (req, res) => {
 
 module.exports = {
   register,
-  // 'login' removed from here
   verifyEmail,
   requestPasswordReset,
   resetPassword,
+  resendVerificationOtp, // <-- EXPORT THE NEW FUNCTION
 };

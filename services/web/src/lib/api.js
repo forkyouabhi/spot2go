@@ -35,6 +35,7 @@ export const setAuthToken = (token) => {
 export const registerUser = (userData) => api.post('/auth/register', userData);
 export const loginUser = (credentials) => api.post('/auth/login', credentials);
 export const verifyEmail = (data) => api.post('/auth/verify-email', data);
+export const resendOtp = (emailData) => api.post('/auth/resend-otp', emailData);
 export const requestPasswordReset = (emailData) => api.post('/auth/request-password-reset', emailData);
 export const resetPassword = (resetData) => api.post('/auth/reset-password', resetData);
 
@@ -52,10 +53,11 @@ export const getPlaceById = (placeId) => api.get(`/customers/places/${placeId}`)
 export const getUserBookings = () => api.get('/customers/bookings');
 export const createBooking = (bookingData) => api.post('/customers/bookings', bookingData);
 export const getUserBookmarks = () => api.get('/customers/bookmarks'); // Gets list of IDs
-export const getBoookmarkedPlaces = () => api.get('/customers/bookmarks/places'); // <-- NEW: Gets full place data
+export const getBoookmarkedPlaces = () => api.get('/customers/bookmarks/places'); 
 export const addBookmark = (placeId) => api.post('/customers/bookmarks', { placeId });
 export const removeBookmark = (placeId) => api.delete(`/customers/bookmarks/${placeId}`);
-export const createReview = (reviewData) => api.post('/customers/reviews', reviewData); // <-- Unchanged, but now works
+export const createReview = (reviewData) => api.post('/customers/reviews', reviewData);
+export const getUserReviews = () => api.get('/customers/reviews'); // <-- THIS WAS ADDED
 export const getBookingByTicketId = (ticketId) => api.get(`/customers/bookings/ticket/${ticketId}`);
 
 // --- Owner Endpoints ---

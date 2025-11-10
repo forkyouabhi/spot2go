@@ -33,18 +33,18 @@ export default function HomePage() {
         setDataLoading(true);
         try {
           const response = await getPlaces();
-          // Add mock rating/distance if not present
-          const placesWithMocks = response.data.map((place: StudyPlace) => ({
-            ...place,
-            // In a real app, the API would return this. We mock it for now.
-            rating: place.rating || (Math.random() * 1.5 + 3.5).toFixed(1),
-            distance: place.distance || (Math.random() * 2 + 0.3).toFixed(1) + ' km'
-          }));
-          setAllPlaces(placesWithMocks);
-          setFilteredPlaces(placesWithMocks);
+          const placesData = Array.isArray(response.data) ? response.data : [];
+          
+          // --- THIS IS THE FIX: Removed mock data generation ---
+          setAllPlaces(placesData);
+          setFilteredPlaces(placesData);
+          // --- END FIX ---
+
         } catch (error) {
           toast.error('Could not fetch study spots.');
           console.error("API Error:", error);
+          setAllPlaces([]);
+          setFilteredPlaces([]);
         } finally {
           setDataLoading(false);
         }
@@ -77,6 +77,16 @@ export default function HomePage() {
     }
   };
   
+  const handleAccountNavigation = () => {
+    if (user?.role === 'owner') {
+      router.push('/owner/dashboard');
+    } else if (user?.role === 'admin') {
+      router.push('/admin/dashboard');
+    } else {
+      router.push('/account');
+    }
+  };
+
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-brand-cream">
@@ -96,7 +106,7 @@ export default function HomePage() {
       </Head>
       <div className="min-h-screen bg-brand-cream">
         
-        {/* --- HEADER (NO LONGER STICKY) --- */}
+        
         <header className="bg-brand-burgundy text-brand-cream p-4 shadow-md">
           <div className="max-w-screen-xl mx-auto">
             <div className="flex justify-between items-center mb-4">
@@ -104,13 +114,13 @@ export default function HomePage() {
                 <h1 className="text-3xl font-bold">Hi, {user?.name || 'Guest'} 👋</h1>
                 <p className="text-brand-yellow">Find your perfect study spot in Thunder Bay</p>
               </div>
-               <Button variant="outline" onClick={() => router.push('/account')} className="bg-transparent border-brand-orange text-brand-cream hover:bg-brand-orange hover:text-brand-cream">
-                  <Building2 className="h-4 w-4 mr-2" /> My Account
+               <Button variant="outline" onClick={handleAccountNavigation} className="bg-transparent border-brand-orange text-brand-cream hover:bg-brand-orange hover:text-brand-cream">
+                  <Building2 className="h-4 w-4 mr-2" />
+                  {user?.role === 'owner' ? 'Owner Dashboard' : 'My Account'}
                </Button>
             </div>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
-              {/* --- FIX 1: Added text-brand-burgundy --- */}
               <Input 
                 type="text" 
                 placeholder="Search by name or address..." 
@@ -124,7 +134,6 @@ export default function HomePage() {
 
         {/* --- STICKY PILL NAVBAR --- */}
         <nav className="sticky top-0 z-10 bg-brand-burgundy/95 backdrop-blur-sm shadow-md">
-          {/* --- FIX 2: Slimmer padding --- */}
           <div className="max-w-screen-xl mx-auto px-4 py-3"> 
             <div className="flex flex-wrap gap-2">
               {PLACE_TYPES.map(type => (
@@ -194,12 +203,15 @@ export default function HomePage() {
                             <h3 className="text-xl font-bold text-brand-burgundy mb-1">{place.name}</h3>
                             <div className="flex items-center space-x-4 text-sm mb-2">
                               <span className="flex items-center gap-1 text-amber-600 font-semibold">
-                                <Star className="h-4 w-4 fill-amber-500" /> {place.rating}
+                                <Star className="h-4 w-4 fill-amber-500" /> {place.rating || 'New'}
                               </span>
+                              
+                              {/* This will now be empty if distance isn't provided, which is correct */}
                               <span className="text-brand-orange font-medium">
                                 {place.distance}
                               </span>
-                              {place.pricePerHour > 0 && (
+                              
+                              {place.pricePerHour && place.pricePerHour > 0 && (
                                 <span className="flex items-center gap-1 text-brand-burgundy font-semibold">
                                   <Clock className="h-4 w-4" /> ${place.pricePerHour}/hr
                                 </span>

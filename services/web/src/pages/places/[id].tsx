@@ -1,6 +1,6 @@
 // services/web/src/pages/places/[id].tsx
 import { useRouter } from 'next/router';
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import Head from 'next/head';
 import { useAuth } from '../../context/AuthContext';
 import { getPlaceById, createBooking } from '../../lib/api';
@@ -14,50 +14,121 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { ImageCarouselModal } from '../../components/ImageCarouselModal';
-import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon } from 'lucide-react';
+import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon, Hourglass, Users } from 'lucide-react'; // <-- IMPORTED Users
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image'; 
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "../../components/ui/select";
 
-// ... (DynamicMap import, ReviewCard, BookingWidget components are unchanged) ...
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
 });
 
-const ReviewCard = ({ review }: { review: Review }) => (
+const ReviewCard = ({ review }: { review: Review }) => {
+  // ... (unchanged)
+  const userName = review.user?.name || review.userName;
+  const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
+  
+  return (
     <Card className="bg-white border-brand-yellow">
-    <CardHeader className="flex flex-row items-center justify-between pb-2">
-      <div className="flex items-center gap-3">
-        <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">{review.userName.charAt(0)}</div>
-        <div>
-          <CardTitle className="text-sm font-semibold text-brand-burgundy">{review.userName}</CardTitle>
-          <p className="text-xs text-brand-orange">{new Date(review.date).toLocaleDateString()}</p>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <div className="flex items-center gap-3">
+          <div className="bg-brand-burgundy text-brand-cream rounded-full h-8 w-8 flex items-center justify-center font-semibold">
+            {userInitial}
+          </div>
+          <div>
+            <CardTitle className="text-sm font-semibold text-brand-burgundy">{userName}</CardTitle>
+            <p className="text-xs text-brand-orange">{new Date(review.date || review.created_at).toLocaleDateString()}</p>
+          </div>
         </div>
-      </div>
-      <div className="flex items-center gap-1 text-amber-500">
-        {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
-      </div>
-    </CardHeader>
-    <CardContent>
-      <p className="text-sm text-gray-700">{review.comment}</p>
-    </CardContent>
-  </Card>
-);
+        <div className="flex items-center gap-1 text-amber-500">
+          {[...Array(5)].map((_, i) => <Star key={i} className={`h-4 w-4 ${i < review.rating ? 'fill-current' : ''}`} />)}
+        </div>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-gray-700">{review.comment}</p>
+      </CardContent>
+    </Card>
+  );
+};
 
-const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot) => void, isBooking: boolean }) => {
+// --- MODIFIED: BookingWidget ---
+const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot, duration: number, partySize: number) => void, isBooking: boolean }) => {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
+    const [duration, setDuration] = useState(1);
+    const [partySize, setPartySize] = useState(1);
+    
+    // --- FIX 1: Cap the max capacity for the dropdown at 6 ---
+    const maxCapacity = Math.min(place.maxCapacity || 1, 6);
+    // --- END FIX 1 ---
 
     const formatDate = (date: Date) => date.toISOString().split('T')[0];
 
-    const availableSlotsForDate = place.availableSlots?.filter(
-        slot => selectedDate && slot.date === formatDate(selectedDate) && slot.available
-    ) || [];
+    // --- FIX 2: Helper to check if a date is today ---
+    const isToday = (date: Date) => {
+      const today = new Date();
+      return date.getDate() === today.getDate() &&
+             date.getMonth() === today.getMonth() &&
+             date.getFullYear() === today.getFullYear();
+    };
+    // --- END FIX 2 ---
+
+    const slotsForDate = useMemo(() => {
+      return place.availableSlots?.filter(
+        slot => selectedDate && slot.date === formatDate(selectedDate)
+      ) || [];
+    }, [place.availableSlots, selectedDate]);
+
+    // Filter start times based on selected duration AND party size
+    const availableStartTimes = useMemo(() => {
+      const durationInSlots = duration * 2; // 1 hour = 2 slots
+
+      // --- FIX 3: Get current time if today ---
+      let now = null;
+      if (selectedDate && isToday(selectedDate)) {
+        const d = new Date();
+        now = `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}`;
+      }
+      // --- END FIX 3 ---
+      
+      return slotsForDate.filter((slot, index) => {
+        // --- FIX 4: Filter out past times ---
+        if (now && slot.startTime <= now) {
+          return false;
+        }
+        // --- END FIX 4 ---
+
+        // Check if this slot meets party size
+        if (slot.remainingCapacity < partySize) return false;
+
+        // Check if subsequent slots for the duration are all available
+        let canBook = true;
+        for (let i = 0; i < durationInSlots; i++) {
+          const nextSlot = slotsForDate[index + i];
+          // Check if slot exists and has enough capacity
+          if (!nextSlot || nextSlot.remainingCapacity < partySize) {
+            canBook = false;
+            break;
+          }
+        }
+        return canBook;
+      });
+    }, [slotsForDate, duration, partySize, selectedDate]); // <-- Re-run when selectedDate changes
 
     useEffect(() => {
         setSelectedSlot(null);
-    }, [selectedDate]);
+    }, [selectedDate, duration, partySize]);
+
+    // Generate options for party size select
+    const partySizeOptions = Array.from({ length: maxCapacity }, (_, i) => i + 1);
 
     return (
         <Card className="shadow-lg border-2 border-brand-orange bg-white">
@@ -78,51 +149,90 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
                       />
                     </div>
                 </div>
+
+                {/* --- Party Size & Duration Row --- */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Users className="h-4 w-4 text-brand-orange" />Party Size</Label>
+                    <Select value={partySize.toString()} onValueChange={(val) => setPartySize(Number(val))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select size" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {partySizeOptions.map(size => (
+                          <SelectItem key={size} value={size.toString()}>
+                            {size} {size > 1 ? 'People' : 'Person'}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div>
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Hourglass className="h-4 w-4 text-brand-orange" />Duration</Label>
+                    <Select value={duration.toString()} onValueChange={(val) => setDuration(Number(val))}>
+                      <SelectTrigger className="w-full">
+                        <SelectValue placeholder="Select duration" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="1">1 Hour</SelectItem>
+                        <SelectItem value="1.5">1.5 Hours</SelectItem>
+                        <SelectItem value="2">2 Hours</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                {/* --- END: Party Size & Duration Row --- */}
+
+
                 <div>
-                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-brand-orange" />Available Times</Label>
-                    {availableSlotsForDate.length > 0 ? (
-                        <div className="grid grid-cols-2 gap-2">
-                            {availableSlotsForDate.map((slot) => (
+                    <Label className="font-medium text-brand-burgundy mb-2 flex items-center gap-2"><Clock className="h-4 w-4 text-brand-orange" />Available Start Times</Label>
+                    {availableStartTimes.length > 0 ? (
+                        <div className="grid grid-cols-3 gap-2">
+                            {availableStartTimes.map((slot) => (
                             <Button
-                                key={slot.id}
-                                className={`h-auto p-2 flex flex-col items-center rounded-xl border-2 transition-transform ${selectedSlot?.id === slot.id ? 'shadow-lg scale-105' : ''}`}
-                                style={selectedSlot?.id === slot.id
+                                key={slot.startTime}
+                                variant="outline"
+                                className={`h-10 p-2 flex items-center justify-center rounded-xl border-2 transition-transform ${selectedSlot?.startTime === slot.startTime ? 'shadow-lg scale-105' : ''}`}
+                                style={selectedSlot?.startTime === slot.startTime
                                 ? { backgroundColor: '#DC6B19', color: '#FFF8DC', borderColor: '#6C0345' }
                                 : { backgroundColor: '#F7C566', color: '#6C0345', borderColor: '#DC6B19' }}
                                 onClick={() => setSelectedSlot(slot)}
                             >
                                 <span className="font-semibold text-sm">{slot.startTime}</span>
-                                <span className="text-xs opacity-80">to {slot.endTime}</span>
                             </Button>
                             ))}
                         </div>
                     ) : (
-                        <p className="text-center text-sm text-brand-orange py-4">No slots available for this date.</p>
+                        <p className="text-center text-sm text-brand-orange py-4">No slots available for this date, duration, and party size.</p>
                     )}
                 </div>
                  <Button
-                    onClick={() => selectedSlot && onConfirmBooking(selectedSlot)}
+                    onClick={() => selectedSlot && onConfirmBooking(selectedSlot, duration, partySize)}
                     disabled={!selectedSlot || isBooking}
                     size="lg" className="w-full h-12 text-lg font-bold bg-brand-orange text-brand-cream"
                 >
-                   {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? 'Confirm Booking' : 'Select a Slot')}
+                   {isBooking ? <Loader2 className="h-6 w-6 animate-spin" /> : (selectedSlot ? 'Confirm Booking' : 'Select a Start Time')}
                 </Button>
             </CardContent>
         </Card>
     );
 };
+// --- END MODIFICATION ---
 
 export default function PlaceDetailPage() {
   const router = useRouter();
   const { id } = router.query;
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   const [place, setPlace] = useState<StudyPlace | null>(null);
+  // ... (rest of state remains unchanged)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
   const mobileBookingSectionRef = useRef<HTMLDivElement>(null);
   const [isBookingWidgetVisible, setIsBookingWidgetVisible] = useState(false);
 
   useEffect(() => {
+    // ... (intersection observer unchanged)
     const observer = new IntersectionObserver(
       ([entry]) => {
         setIsBookingWidgetVisible(entry.isIntersecting);
@@ -147,6 +257,19 @@ export default function PlaceDetailPage() {
   }, []);
 
   useEffect(() => {
+    // ... (auth/role checks unchanged)
+    if (authLoading) return;
+    if (!isAuthenticated) {
+      router.push('/login');
+      return;
+    }
+
+    if (user?.role && user.role !== 'customer') {
+      toast.error("Owners cannot browse places. Redirecting to your dashboard.");
+      router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
+      return;
+    }
+
     if (id && isAuthenticated) {
       const fetchPlace = async () => {
         try {
@@ -158,21 +281,21 @@ export default function PlaceDetailPage() {
         }
       };
       fetchPlace();
-    } else if (!authLoading && !isAuthenticated) {
-        router.push('/login');
     }
-  }, [id, isAuthenticated, authLoading, router]);
+  }, [id, isAuthenticated, authLoading, router, user]);
 
   const handleGetDirections = () => {
+    // ... (unchanged)
     if (!place?.location?.lat || !place?.location?.lng) {
       toast.error("Location data is not available for directions.");
       return;
     }
-    const url = `http://googleusercontent.com/maps.google.com/2{place.location.lat},${place.location.lng}`;
+    const url = `https://www.google.com/maps/search/?api=1&query=${place.location.lat},${place.location.lng}`;
     window.open(url, '_blank', 'noopener,noreferrer');
   };
 
-  const handleConfirmBooking = async (slot: TimeSlot) => {
+  // --- MODIFIED: Handle Confirm Booking ---
+  const handleConfirmBooking = async (slot: TimeSlot, duration: number, partySize: number) => {
     if (!place || !user) return;
     setIsBooking(true);
     try {
@@ -181,8 +304,9 @@ export default function PlaceDetailPage() {
             userId: user.id,
             date: slot.date,
             startTime: slot.startTime,
-            endTime: slot.endTime,
-            amount: place.pricePerHour ? place.pricePerHour * 2 : 0,
+            duration: duration,
+            partySize: partySize, // <-- Pass partySize
+            amount: place.pricePerHour ? place.pricePerHour * duration * partySize : 0, // <-- Update amount
         };
 
         const response = await createBooking(bookingData);
@@ -190,17 +314,7 @@ export default function PlaceDetailPage() {
 
         toast.success("Booking confirmed!");
 
-        router.push({
-            pathname: '/confirmation',
-            query: {
-                placeName: place.name,
-                placeAddress: place.location.address,
-                date: booking.date,
-                startTime: booking.startTime,
-                endTime: booking.endTime,
-                ticketId: booking.ticketId,
-            },
-        });
+        router.push(`/confirmation?ticketId=${booking.ticketId}`);
     } catch (error: any) {
         const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
         toast.error(errorMessage);
@@ -212,6 +326,7 @@ export default function PlaceDetailPage() {
         setIsBooking(false);
     }
   };
+  // --- END MODIFICATION ---
 
   const hasReservations = place?.reservable && place?.availableSlots && place.availableSlots.length > 0;
 
@@ -224,27 +339,22 @@ export default function PlaceDetailPage() {
       <Head>
         <title>Spot2Go | {place.name}</title>
       </Head>
-      {place.images && <ImageCarouselModal images={place.images} open={isModalOpen} onOpenChange={setIsModalOpen} />}
+      {/* ... (rest of the JSX remains unchanged) ... */}
+       {place.images && <ImageCarouselModal images={place.images} open={isModalOpen} onOpenChange={setIsModalOpen} />}
 
       <div className="min-h-screen bg-brand-cream">
          <header className="p-4 bg-brand-burgundy border-b sticky top-0 z-30 shadow-md">
             <div className="max-w-screen-xl mx-auto flex justify-between items-center">
-              {/* --- MODIFIED: Use Logo Mark --- */}
-              <div onClick={() => router.push('/')} className="flex items-center gap-3">
+              <div onClick={() => router.push('/')} className="flex items-center gap-3 cursor-pointer">
                 <Image 
                   src="/logo-mark.png" 
                   alt="Spot2Go Logo"
                   width={50}
                   height={50}
                   className="object-contain"
-                  onClick={() => router.push('/')}
-                  
-            //       style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
-            // priority
                 />
                 <h1 className="text-xl font-bold text-brand-cream hidden sm:block">Spot2Go</h1>
               </div>
-              {/* --- END MODIFICATION --- */}
               <Button variant="ghost" onClick={() => router.push('/')} className="text-brand-cream hover:bg-brand-cream/10 border-brand-orange border">
                   <ArrowLeft className="h-4 w-4 mr-2" /> Back to places
               </Button>
@@ -276,7 +386,7 @@ export default function PlaceDetailPage() {
                       <h1 className="text-4xl font-bold text-brand-burgundy">{place.name}</h1>
                       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-brand-orange mt-2">
                           <Badge className="bg-brand-yellow text-brand-burgundy font-semibold">{place.type}</Badge>
-                          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'}</div>
+                          <div className="flex items-center gap-1"><Star className="h-4 w-4 fill-amber-500 text-amber-500" /> {place.rating || 'New'} ({place.reviews?.length || 0} reviews)</div>
                           {place.pricePerHour && place.pricePerHour > 0 && <span>${place.pricePerHour}.00 / hour (est.)</span>}
                       </div>
                       <div className="flex flex-wrap justify-between items-center mt-4">
@@ -289,7 +399,7 @@ export default function PlaceDetailPage() {
                   </div>
 
                   <Tabs defaultValue="about" className="w-full">
-                      <TabsList className="bg-white border"><TabsTrigger value="about">About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu">Menu</TabsTrigger>}<TabsTrigger value="reviews">Reviews</TabsTrigger></TabsList>
+                      <TabsList className="bg-white border"><TabsTrigger value="about"><Info className="h-4 w-4 mr-2"/>About</TabsTrigger>{place.menuItems && place.menuItems.length > 0 && <TabsTrigger value="menu"><Utensils className="h-4 w-4 mr-2"/>Menu</TabsTrigger>}<TabsTrigger value="reviews"><MessageSquare className="h-4 w-4 mr-2"/>Reviews ({place.reviews?.length || 0})</TabsTrigger></TabsList>
                       <TabsContent value="about" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">
                           <div className="space-y-6">
                               <h3 className="font-semibold text-xl text-brand-burgundy flex items-center gap-2"><Info />Description</h3>
