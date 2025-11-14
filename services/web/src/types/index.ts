@@ -78,7 +78,7 @@ export interface TimeSlot {
   endTime?: string; // <-- FIX: Added this optional property
   remainingCapacity: number; 
 }
-// --- END MODIFICATION ---
+
 
 export interface Review {
   id: string;
