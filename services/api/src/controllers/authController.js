@@ -137,7 +137,6 @@ const verifyEmail = async (req, res) => {
   }
 };
 
-// --- NEW FUNCTION TO RESEND OTP ---
 const resendVerificationOtp = async (req, res) => {
   const { email } = req.body;
   if (!email) {
@@ -153,16 +152,13 @@ const resendVerificationOtp = async (req, res) => {
       return res.status(400).json({ error: 'Email is already verified.' });
     }
 
-    // Generate a new OTP and expiry
     const otp = generateOTP();
-    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+    const expires = new Date(Date.now() + 10 * 60 * 1000); 
 
-    // Update the user
     user.emailVerificationToken = otp;
     user.emailVerificationExpires = expires;
     await user.save();
 
-    // Resend the email
     await sendEmail(email, 'emailVerificationOTP', { name: user.name, otp });
 
     res.json({ message: 'A new verification code has been sent to your email.' });
@@ -187,7 +183,8 @@ const requestPasswordReset = async (req, res) => {
 
     await user.save();
 
-    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    // --- FIX: Changed query param from 'token' to 'resetToken' ---
+    const resetLink = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?resetToken=${resetToken}`;
 
     await sendEmail(user.email, 'passwordResetRequest', {
       name: user.name,
@@ -202,12 +199,13 @@ const requestPasswordReset = async (req, res) => {
 };
 
 const resetPassword = async (req, res) => {
-  const { token, newPassword } = req.body;
+  // --- FIX: Destructure 'password' instead of 'newPassword' to match frontend ---
+  const { token, password } = req.body;
   try {
     const user = await User.findOne({
       where: {
         passwordResetToken: token,
-        passwordResetExpires: { [Op.gt]: Date.now() }, // <-- This now works
+        passwordResetExpires: { [Op.gt]: Date.now() }, 
       },
     });
 
@@ -215,7 +213,7 @@ const resetPassword = async (req, res) => {
       return res.status(400).json({ error: 'Password reset token is invalid or has expired.' });
     }
 
-    user.password = newPassword; // The hook will hash it
+    user.password = password; 
     user.passwordResetToken = null;
     user.passwordResetExpires = null;
 
@@ -237,5 +235,5 @@ module.exports = {
   verifyEmail,
   requestPasswordReset,
   resetPassword,
-  resendVerificationOtp, // <-- EXPORT THE NEW FUNCTION
+  resendVerificationOtp, 
 };

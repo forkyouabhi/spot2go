@@ -3,7 +3,6 @@ const { Place, MenuItem, Bundle, Booking, User } = require('../models');
 
 const createPlace = async (req, res) => {
   try {
-    // --- ADDED maxCapacity ---
     const { name, type, description, amenities, location, reservable, reservableHours, maxCapacity } = req.body;
     const ownerId = req.user.id;
     if (!req.files || req.files.length === 0) {
@@ -30,7 +29,7 @@ const createPlace = async (req, res) => {
       status: 'pending',
       reservable: reservable === 'true',
       reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
-      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1, // <-- SAVE maxCapacity
+      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1,
     });
     res.status(201).json({ message: 'Place submitted for approval!', place });
   } catch (err) {
@@ -43,7 +42,6 @@ const updateOwnerPlace = async (req, res) => {
   try {
     const { placeId } = req.params;
     const ownerId = req.user.id;
-    // --- ADDED maxCapacity ---
     const { name, type, description, amenities, location, reservable, reservableHours, maxCapacity } = req.body;
 
     const place = await Place.findOne({ where: { id: placeId, ownerId } });
@@ -76,8 +74,8 @@ const updateOwnerPlace = async (req, res) => {
       images: newImageUrls,
       reservable: reservable === 'true',
       reservableHours: reservable === 'true' && reservableHours ? JSON.parse(reservableHours) : null,
-      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1, // <-- UPDATE maxCapacity
-      status: 'pending', // Re-submit for approval
+      maxCapacity: reservable === 'true' && maxCapacity ? parseInt(maxCapacity, 10) : 1,
+      status: 'pending', 
     });
 
     res.status(200).json({ message: 'Place updated and re-submitted for approval!', place });
@@ -123,11 +121,9 @@ const getOwnerBookings = async (req, res) => {
     const ownerId = req.user.id;
 
     const bookings = await Booking.findAll({
-      // --- FIX: Explicitly include partySize ---
       attributes: [
         'id', 'date', 'startTime', 'endTime', 'status', 'ticketId', 'partySize', 'reviewed'
       ],
-      // --- END FIX ---
       include: [
         {
           model: Place,
@@ -185,11 +181,9 @@ const updateBookingStatus = async (req, res) => {
     await booking.save();
 
     const updatedBooking = await Booking.findByPk(bookingId, {
-      // --- FIX: Explicitly include partySize ---
       attributes: [
         'id', 'date', 'startTime', 'endTime', 'status', 'ticketId', 'partySize', 'reviewed'
       ],
-      // --- END FIX ---
       include: [
         { model: Place, as: 'place', attributes: ['name'] },
         { model: User, as: 'user', attributes: ['name', 'email', 'phone'] } 
@@ -241,13 +235,21 @@ const checkInByTicketId = async (req, res) => {
     booking.status = 'completed';
     await booking.save();
 
+    // --- FIX: Return the full updated booking object to sync with frontend state ---
+    const updatedBooking = await Booking.findByPk(booking.id, {
+      attributes: [
+        'id', 'date', 'startTime', 'endTime', 'status', 'ticketId', 'partySize', 'reviewed'
+      ],
+      include: [
+        { model: Place, as: 'place', attributes: ['name'] },
+        { model: User, as: 'user', attributes: ['name', 'email', 'phone'] } 
+      ]
+    });
+    // --- END FIX ---
+
     res.json({ 
       message: 'Check-in successful!',
-      booking: {
-        placeName: booking.place.name,
-        date: booking.date,
-        startTime: booking.startTime
-      }
+      booking: updatedBooking
     });
 
   } catch (err) {
@@ -255,6 +257,7 @@ const checkInByTicketId = async (req, res) => {
     res.status(500).json({ error: 'Failed to check in booking.' });
   }
 };
+
 const addMenuItem = async (req, res) => {
   try {
     const { placeId } = req.params;
@@ -263,7 +266,6 @@ const addMenuItem = async (req, res) => {
     if (!place) {
       return res.status(404).json({ error: 'Place not found or not owned by you.' });
     }
-    const { MenuItem } = require('../models');
     const item = await MenuItem.create({ placeId, name, price });
     res.status(201).json({ message: 'Menu item added', item });
   } catch (err) {
@@ -280,7 +282,6 @@ const addBundle = async (req, res) => {
     if (!place) {
       return res.status(404).json({ error: 'Place not found or not owned by you.' });
     }
-    const { Bundle } = require('../models');
     const bundle = await Bundle.create({ placeId, name, price });
     if (items && items.length > 0) {
       await bundle.addItems(items);

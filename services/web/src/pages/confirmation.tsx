@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
-import { CheckCircle, MapPin, Calendar, Clock, Download, User as UserIcon, Users } from 'lucide-react'; // <-- IMPORTED Users
+import { CheckCircle, MapPin, Calendar, Clock, Download, User as UserIcon, Users } from 'lucide-react'; 
 import { useAuth } from '../context/AuthContext';
 import { Loader2 } from 'lucide-react';
 import QRCode from 'react-qr-code';
@@ -24,7 +24,6 @@ export default function ConfirmationPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // ... (auth/role checks unchanged) ...
     if (authLoading) return; 
     if (!user) {
       router.replace('/login');
@@ -59,7 +58,6 @@ export default function ConfirmationPage() {
   }, [ticketId, router, user, authLoading]);
 
   const handleCalendarDownload = () => {
-    // ... (unchanged)
     if (booking) {
       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
       window.open(`${apiUrl}/bookings/${booking.id}/calendar?token=${localStorage.getItem('token')}`);
@@ -74,7 +72,7 @@ export default function ConfirmationPage() {
     );
   }
   
-  const { place, user: customer, date, startTime, endTime, partySize } = booking; // <-- Added partySize
+  const { place, user: customer, date, startTime, endTime, partySize } = booking; 
 
   return (
     <>
@@ -84,7 +82,6 @@ export default function ConfirmationPage() {
       <div className="min-h-screen bg-brand-cream p-4 md:p-8 flex items-center justify-center">
         <Card className="w-full max-w-lg bg-white border-2 border-brand-orange shadow-2xl animate-scale-in">
           <CardHeader className="text-center items-center">
-            {/* ... (unchanged) ... */}
             <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg">
               <CheckCircle className="h-12 w-12 text-white" />
             </div>
@@ -100,18 +97,19 @@ export default function ConfirmationPage() {
               <QRCode
                 size={256}
                 style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-                value={ticketId as string}
+                // --- FIX: Use booking.ticketId instead of ticketId (router query) ---
+                value={booking.ticketId || ''}
                 viewBox={`0 0 256 256`}
               />
             </div>
             <div className="text-center">
-              <p className="font-bold text-brand-burgundy text-lg tracking-wider">{ticketId}</p>
+              {/* --- FIX: Use booking.ticketId here as well --- */}
+              <p className="font-bold text-brand-burgundy text-lg tracking-wider">{booking.ticketId}</p>
             </div>
 
             {/* Information Card */}
             <Card className="bg-brand-cream/50 border-brand-yellow">
               <CardHeader className="flex flex-row items-center gap-4">
-                {/* ... (unchanged) ... */}
                 <ImageWithFallback
                   src={place?.images?.[0] || ''}
                   alt={place?.name || 'Study Spot'}
@@ -124,7 +122,6 @@ export default function ConfirmationPage() {
                   </CardDescription>
                 </div>
               </CardHeader>
-              {/* --- MODIFIED: Added Party Size --- */}
               <CardContent className="grid grid-cols-2 gap-4 text-brand-burgundy border-t border-brand-yellow pt-4">
                 <div className="flex items-center gap-2">
                   <UserIcon className="h-5 w-5 text-brand-orange" />
@@ -155,7 +152,6 @@ export default function ConfirmationPage() {
                   </div>
                 </div>
               </CardContent>
-              {/* --- END MODIFICATION --- */}
             </Card>
             <Button 
               onClick={handleCalendarDownload}

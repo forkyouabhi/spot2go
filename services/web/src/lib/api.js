@@ -57,7 +57,7 @@ export const getBoookmarkedPlaces = () => api.get('/customers/bookmarks/places')
 export const addBookmark = (placeId) => api.post('/customers/bookmarks', { placeId });
 export const removeBookmark = (placeId) => api.delete(`/customers/bookmarks/${placeId}`);
 export const createReview = (reviewData) => api.post('/customers/reviews', reviewData);
-export const getUserReviews = () => api.get('/customers/reviews'); // <-- THIS WAS ADDED
+export const getUserReviews = () => api.get('/customers/reviews');
 export const getBookingByTicketId = (ticketId) => api.get(`/customers/bookings/ticket/${ticketId}`);
 
 // --- Owner Endpoints ---

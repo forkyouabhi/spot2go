@@ -1,5 +1,5 @@
 // services/api/src/controllers/customerController.js
-const { Op } = require('sequelize');
+const { Op, Sequelize } = require('sequelize');
 const { Place, Booking, MenuItem, User, UserBookmark, Review, sequelize } = require('../models');
 const { sendEmail } = require('../utils/emailService');
 
@@ -35,20 +35,53 @@ const generateTimeSlots = (start, end) => {
 
 const listNearbyPlaces = async (req, res) => {
   try {
-    // --- FIX: Optimized attributes and used explicit aliasing ---
+    const { lat, lng } = req.query;
+
+    // Base attributes
+    let attributes = [
+      'id', 'name', 'type', 'amenities', 'location', 'images', 
+      'description', 'rating', 
+      ['review_count', 'reviewCount'], 
+      ['price_per_hour', 'pricePerHour'], 
+      'reservable'
+    ];
+
+    // Default order
+    let order = [['created_at', 'DESC']];
+
+    // If coordinates are provided, calculate distance
+    if (lat && lng) {
+      // Haversine formula adapting to JSONB location field
+      // Extracts location->>'lat' and location->>'lng' and casts to float
+      const distanceLiteral = Sequelize.literal(`(
+          6371 * acos(
+            cos(radians(${parseFloat(lat)})) * cos(radians(CAST("Place"."location"->>'lat' AS DOUBLE PRECISION))) * cos(radians(CAST("Place"."location"->>'lng' AS DOUBLE PRECISION)) - radians(${parseFloat(lng)})) + 
+            sin(radians(${parseFloat(lat)})) * sin(radians(CAST("Place"."location"->>'lat' AS DOUBLE PRECISION)))
+          )
+      )`);
+
+      attributes.push([distanceLiteral, 'distance']);
+      
+      // Override order to show closest places first
+      order = [[Sequelize.col('distance'), 'ASC']];
+    }
+
     const places = await Place.findAll({
-      attributes: [
-        'id', 'name', 'type', 'amenities', 'location', 'images', 
-        'description', 'rating', 
-        ['review_count', 'reviewCount'], 
-        ['price_per_hour', 'pricePerHour'], 
-        'reservable'
-      ],
+      attributes: attributes,
       where: { status: 'approved' },
-      order: [['created_at', 'DESC']],
+      order: order,
     });
-    // --- END FIX ---
-    res.json(places);
+
+    // Format distance (it comes back as a number from the query)
+    const formattedPlaces = places.map(place => {
+      const p = place.toJSON();
+      return {
+        ...p,
+        distance: p.distance ? parseFloat(p.distance).toFixed(1) : null
+      };
+    });
+
+    res.json(formattedPlaces);
   } catch (err) {
     console.error('Error fetching places for customer:', err);
     res.status(500).json({ error: 'Failed to fetch places' });
@@ -56,7 +89,7 @@ const listNearbyPlaces = async (req, res) => {
 };
 
 const createReview = async (req, res) => {
-  // ... (unchanged)
+  
   const t = await sequelize.transaction();
   try {
     const { bookingId, rating, comment } = req.body; 

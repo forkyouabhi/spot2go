@@ -10,7 +10,7 @@ import { resetPassword } from '../lib/api';
 import { useAuth } from '../context/AuthContext';
 import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import Head from 'next/head';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
@@ -20,16 +20,17 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-   const [showPassword, setShowPassword] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   useEffect(() => {
     if (router.isReady) {
-      const queryToken = router.query.token as string;
+      // --- FIX: Look for resetToken instead of token ---
+      const queryToken = router.query.resetToken as string;
       if (queryToken) {
         setToken(queryToken);
       } else {
+        // Set error state but DO NOT toast on load to prevent spam/double toasts
         setError("Invalid or missing reset token. Please request a new one.");
-        toast.error("Invalid or missing reset token.");
       }
     }
   }, [router.isReady, router.query]);
@@ -56,6 +57,7 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
+      // API call remains the same as your API client aligns with the updated backend
       const response = await resetPassword({ token, password });
       toast.success('Password reset successfully! You are now logged in.');
 
@@ -86,19 +88,17 @@ export default function ResetPasswordPage() {
 
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
-             {/* --- MODIFIED: Use Logo Image --- */}
              <div className="text-center space-y-4 mb-8">
               <Image 
-                src="/logo-full.png" // Assumes 'logo-full.png' is in /public
+                src="/logo-full.png" 
                 alt="Spot2Go Logo"
                 width={250}
                 height={67}
                 className="object-contain mx-auto"
-                style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                style={{ filter: 'brightness(0) invert(1)' }} 
                 priority
               />
             </div>
-            {/* --- END MODIFICATION --- */}
 
             <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
               <CardHeader className="text-center space-y-4 pb-6">

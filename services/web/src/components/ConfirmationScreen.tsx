@@ -1,3 +1,4 @@
+// services/web/src/components/ConfirmationScreen.tsx
 import { StudyPlace, TimeSlot } from '../types';
 import { Button } from './ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
@@ -9,7 +10,7 @@ interface ConfirmationScreenProps {
   slot: TimeSlot;
   ticketId: string;
   onGoHome: () => void;
-  partySize?: number; // Optional party size prop
+  partySize?: number; 
 }
 
 export function ConfirmationScreen({ place, slot, ticketId, onGoHome, partySize }: ConfirmationScreenProps) {
@@ -46,7 +47,6 @@ END:VCALENDAR`;
         style={{ borderWidth: '2px', borderColor: '#DC6B19' }}
       >
         <CardHeader className="text-center items-center space-y-4">
-          {/* Success Icon */}
           <div className="w-20 h-20 bg-green-500 rounded-full flex items-center justify-center shadow-lg animate-in zoom-in duration-300">
             <CheckCircle className="h-12 w-12 text-white" />
           </div>
@@ -74,13 +74,13 @@ END:VCALENDAR`;
             <QRCode
               size={256}
               style={{ height: "auto", maxWidth: "100%", width: "100%" }}
-              value={ticketId}
+              // --- FIX: Fallback to empty string to prevent crash ---
+              value={ticketId || ''}
               viewBox="0 0 256 256"
               fgColor="#6C0345"
             />
           </div>
 
-          {/* Ticket ID */}
           <div className="text-center">
             <p className="text-xs uppercase tracking-wider mb-1" style={{ color: '#DC6B19' }}>
               Ticket ID
@@ -90,10 +90,8 @@ END:VCALENDAR`;
             </p>
           </div>
 
-          {/* Information Card */}
           <Card style={{ backgroundColor: '#FFF8DC80', borderColor: '#F4D06F' }}>
             <CardHeader className="flex flex-row items-center gap-4 pb-4">
-              {/* Place Image */}
               {place.images && place.images[0] && (
                 <img
                   src={place.images[0]}
@@ -121,7 +119,6 @@ END:VCALENDAR`;
               className="grid grid-cols-2 gap-4 border-t pt-4" 
               style={{ borderColor: '#F4D06F', color: '#6C0345' }}
             >
-              {/* Date */}
               <div className="flex items-center gap-2">
                 <Calendar className="h-5 w-5" style={{ color: '#DC6B19' }} />
                 <div>
@@ -130,7 +127,6 @@ END:VCALENDAR`;
                 </div>
               </div>
 
-              {/* Time */}
               <div className="flex items-center gap-2">
                 <Clock className="h-5 w-5" style={{ color: '#DC6B19' }} />
                 <div>
@@ -142,7 +138,6 @@ END:VCALENDAR`;
                 </div>
               </div>
 
-              {/* Party Size (if provided) */}
               {partySize && (
                 <div className="flex items-center gap-2 col-span-2">
                   <Users className="h-5 w-5" style={{ color: '#DC6B19' }} />
@@ -157,7 +152,6 @@ END:VCALENDAR`;
             </CardContent>
           </Card>
 
-          {/* Calendar Download Button */}
           <Button 
             onClick={handleCalendarDownload}
             variant="outline" 
@@ -172,7 +166,6 @@ END:VCALENDAR`;
             Add to Calendar (.ics)
           </Button>
 
-          {/* Back to Home Button */}
           <Button 
             onClick={onGoHome}
             className="w-full h-12 text-lg font-semibold text-white transition-all hover:opacity-90"
