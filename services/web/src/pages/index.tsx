@@ -9,7 +9,6 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Card, CardContent } from '../components/ui/card';
 import { MapPin, Search, Building2, Loader2, Bookmark, Star, Clock, ArrowRight } from 'lucide-react';
-import { Avatar, AvatarFallback } from '../components/ui/avatar';
 import { ImageWithFallback } from '../components/figma/ImageWithFallback';
 import { useRouter } from 'next/router';
 import Link from 'next/link';
@@ -29,17 +28,16 @@ export default function HomePage() {
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
-      const fetchPlaces = async () => {
+      
+      // Function to fetch places, optionally with coordinates
+      const fetchPlaces = async (lat?: number, lng?: number) => {
         setDataLoading(true);
         try {
-          const response = await getPlaces();
+          const response = await getPlaces(lat, lng);
           const placesData = Array.isArray(response.data) ? response.data : [];
           
-          // --- THIS IS THE FIX: Removed mock data generation ---
           setAllPlaces(placesData);
           setFilteredPlaces(placesData);
-          // --- END FIX ---
-
         } catch (error) {
           toast.error('Could not fetch study spots.');
           console.error("API Error:", error);
@@ -49,7 +47,25 @@ export default function HomePage() {
           setDataLoading(false);
         }
       };
-      fetchPlaces();
+
+      // Trigger Geolocation
+      if (navigator.geolocation) {
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            // Permission granted
+            const { latitude, longitude } = position.coords;
+            fetchPlaces(latitude, longitude);
+          },
+          (error) => {
+            // Permission denied or error
+            console.warn("Location permission denied or unavailable:", error);
+            fetchPlaces(); // Fetch without location
+          }
+        );
+      } else {
+        // Geolocation not supported
+        fetchPlaces();
+      }
     }
   }, [isAuthenticated, authLoading]);
 
@@ -170,7 +186,6 @@ export default function HomePage() {
                   </p>
                 ) : filteredPlaces.map(place => {
                   const isBookmarked = bookmarks.includes(place.id.toString());
-                  const ownerInitial = place.owner?.name?.charAt(0)?.toUpperCase() || 'S';
 
                   return (
                     <Link href={`/places/${place.id}`} key={place.id} legacyBehavior>
@@ -206,10 +221,12 @@ export default function HomePage() {
                                 <Star className="h-4 w-4 fill-amber-500" /> {place.rating || 'New'}
                               </span>
                               
-                              {/* This will now be empty if distance isn't provided, which is correct */}
-                              <span className="text-brand-orange font-medium">
-                                {place.distance}
-                              </span>
+                              {/* DISPLAY DISTANCE WITH KM */}
+                              {place.distance && (
+                                <span className="flex items-center gap-1 text-brand-orange font-medium">
+                                  <MapPin className="h-4 w-4" /> {place.distance} km
+                                </span>
+                              )}
                               
                               {place.pricePerHour && place.pricePerHour > 0 && (
                                 <span className="flex items-center gap-1 text-brand-burgundy font-semibold">
