@@ -9,21 +9,27 @@ import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
-import { ArrowLeft, Loader2 } from 'lucide-react';
+import { ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { FcGoogle } from 'react-icons/fc';
-import { Checkbox } from "../components/ui/checkbox"; // Import Checkbox
-import { TermsAndConditions } from "../components/TermsAndConditions"; // Import Terms Modal
+// --- Imports for Terms & Checkbox ---
+import { Checkbox } from "../components/ui/checkbox";
+import { TermsAndConditions } from "../components/TermsAndConditions";
 
 export default function SignupPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   const [loading, setLoading] = useState(false);
+  
+  // Form State
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [name, setName] = useState('');
-  // --- ADDED: State for Terms Agreement ---
-  const [agreedToTerms, setAgreedToTerms] = useState(false);
+  
+  // UI State
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false); // State for checkbox
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -34,15 +40,23 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    // Validate Terms
     if (!agreedToTerms) {
-        toast.error("You must agree to the Terms and Conditions to sign up.");
+        toast.error("You must agree to the Terms and Conditions to create an account.");
         return;
+    }
+    
+    // Validate passwords match
+    if (password !== confirmPassword) {
+      toast.error("Passwords do not match.");
+      return;
     }
 
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters long.");
       return;
     }
+
     setLoading(true);
     try {
       const response = await register(name, email, password, 'customer');
@@ -58,8 +72,9 @@ export default function SignupPage() {
   };
 
   const handleThirdPartyAuth = (provider: string) => {
+    // Optional: Enforce terms for social login too
     if (!agreedToTerms) {
-        toast.error("You must agree to the Terms and Conditions to sign up.");
+        toast.error("You must agree to the Terms and Conditions.");
         return;
     }
     window.location.href = `${process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000'}/api/auth/${provider}`;
@@ -70,25 +85,23 @@ export default function SignupPage() {
       <Head>
         <title>Spot2Go | Sign Up</title>
       </Head>
-      <div className="min-h-screen relative flex flex-col p-4 md:p-6 auth-background">
+      <div className="min-h-screen relative flex flex-col items-center justify-center p-4 md:p-6 auth-background">
 
-        {/* 1. Back Button (in flow) */}
-        <div className="w-full max-w-lg mx-auto z-10 mb-4">
-          <Button 
-            variant="ghost" 
-            onClick={() => router.push('/')}
-            className="p-3 rounded-xl border-2 transition-button"
-            style={{ color: '#FFF8DC', borderColor: '#F7C566', backgroundColor: 'rgba(255, 248, 220, 0.1)' }}
-          >
-            <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Home
-          </Button>
-        </div>
+        {/* Centered Card with Relative Positioning */}
+        <Card className="w-full max-w-lg bg-brand-cream border-2 border-brand-orange shadow-2xl z-10 animate-fade-in-up relative">
+            
+            {/* Back Button moved inside the Card (Top Left) */}
+            <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => router.push('/')}
+                className="absolute top-4 left-4 text-brand-burgundy hover:bg-brand-yellow/20 transition-colors rounded-full"
+                aria-label="Back to Home"
+            >
+                <ArrowLeft className="h-6 w-6" />
+            </Button>
 
-        {/* 2. Centered Card */}
-        <div className="flex-grow flex items-center justify-center py-2">
-          <Card className="w-full max-w-lg bg-brand-cream border-2 border-brand-orange shadow-2xl z-10 animate-fade-in-up">
-            <CardHeader className="text-center">
+            <CardHeader className="text-center pt-10">
               <Image 
                 src="/logo-full.png"
                 alt="Spot2Go Logo"
@@ -101,12 +114,10 @@ export default function SignupPage() {
             </CardHeader>
 
             <CardContent>
-              {/* --- Google Sign-in --- */}
               <Button 
                 variant="outline" 
-                className="w-full h-11 text-brand-burgundy border-brand-orange hover:bg-brand-yellow/50 disabled:opacity-50"
+                className="w-full h-11 text-brand-burgundy border-brand-orange hover:bg-brand-yellow/50"
                 onClick={() => handleThirdPartyAuth('google')}
-                // Optional: Disable if terms not agreed, but typical UX allows click then toast error
               >
                 <FcGoogle className="h-5 w-5 mr-2" />
                 Sign up with Google
@@ -146,19 +157,49 @@ export default function SignupPage() {
                     placeholder="you@example.com" 
                   />
                 </div>
+                
+                {/* Password Field */}
                 <div className="space-y-2">
                   <Label htmlFor="password" className="text-brand-burgundy">Password</Label>
-                  <Input 
-                    id="password" 
-                    type="password" 
-                    value={password}
-                    onChange={e => setPassword(e.target.value)}
-                    required 
-                    placeholder="8+ characters" 
-                  />
+                  <div className="relative">
+                    <Input 
+                      id="password" 
+                      type={showPassword ? "text" : "password"} 
+                      value={password}
+                      onChange={e => setPassword(e.target.value)}
+                      required 
+                      placeholder="8+ characters" 
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      className="absolute right-0 top-0 h-full px-3 text-brand-orange hover:bg-transparent hover:text-brand-burgundy"
+                      onClick={() => setShowPassword(!showPassword)}
+                    >
+                      {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </Button>
+                  </div>
                 </div>
 
-                {/* --- ADDED: Terms and Conditions Checkbox --- */}
+                {/* Confirm Password Field */}
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword" className="text-brand-burgundy">Confirm Password</Label>
+                  <div className="relative">
+                    <Input 
+                      id="confirmPassword" 
+                      type={showPassword ? "text" : "password"} 
+                      value={confirmPassword}
+                      onChange={e => setConfirmPassword(e.target.value)}
+                      required 
+                      placeholder="Re-enter password" 
+                      className="pr-10"
+                    />
+                  </div>
+                </div>
+
+                {/* --- Terms Checkbox --- */}
                 <div className="flex items-start space-x-2 pt-2">
                   <Checkbox 
                     id="terms"
@@ -179,12 +220,10 @@ export default function SignupPage() {
                     .
                   </label>
                 </div>
-                {/* --------------------------------------------- */}
                 
                 <Button 
                   type="submit" 
-                  // Disable button if terms are not agreed
-                  disabled={loading || !agreedToTerms}
+                  disabled={loading || !agreedToTerms} // Disable if terms not agreed
                   className="w-full h-12 text-lg font-semibold bg-brand-burgundy hover:bg-brand-burgundy/90 text-brand-cream disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Create Account"}
@@ -192,10 +231,9 @@ export default function SignupPage() {
               </form>
             </CardContent>
           </Card>
-        </div>
 
-        {/* 3. Bottom Links (in flow) */}
-        <div className="w-full max-w-lg mx-auto z-10 text-center p-4 space-y-2">
+        {/* Bottom Links */}
+        <div className="w-full max-w-lg mx-auto z-10 text-center p-4 space-y-2 mt-4">
           <p className="text-sm font-medium text-brand-yellow">
             Already have an account?
             <Link href="/login" className="font-semibold text-brand-yellow hover:text-white underline ml-1">
