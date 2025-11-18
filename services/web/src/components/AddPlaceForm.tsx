@@ -13,7 +13,6 @@ import { addPlace, updateOwnerPlace } from "../lib/api";
 import { StudyPlace } from "../types";
 import { PlusCircle, Loader2, Wifi, Coffee, ParkingCircle, Plug, Users, Save, Clock } from "lucide-react";
 
-// Dynamically import the MapPicker to avoid SSR issues with Leaflet
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
 const AMENITIES = [
