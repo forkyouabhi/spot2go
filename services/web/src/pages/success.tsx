@@ -1,5 +1,5 @@
 // services/web/src/pages/success.tsx
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext'; // Import useAuth
 import { Loader2 } from 'lucide-react';
@@ -8,20 +8,26 @@ import { toast } from 'sonner';
 
 export default function AuthSuccessPage() {
     const router = useRouter();
-    const { handleTokenUpdate } = useAuth(); // Use the context function
+    // --- FIX: Get handleAuthSuccess directly ---
+    const { handleAuthSuccess } = useAuth(); 
     const { token } = router.query;
+    const [processed, setProcessed] = useState(false); // Flag to prevent multiple runs
 
     useEffect(() => {
-        if (typeof token === 'string' && token) {
-            // Use the handleTokenUpdate which already calls handleAuthSuccess
-            // It will set the token, decode user, and redirect
-            handleTokenUpdate(token);
-        } else if (router.isReady && !token) {
-           // If no token, redirect to login
-           toast.error("Authentication failed.");
-           router.push('/login');
+        // Only run this logic once when the component is ready and not already processed
+        if (router.isReady && !processed) {
+            if (typeof token === 'string' && token) {
+                setProcessed(true); // Mark as processed
+                // Call handleAuthSuccess directly. It will handle redirecting.
+                handleAuthSuccess(token);
+            } else {
+               // If no token, this is an invalid visit to this page
+               setProcessed(true); // Mark as processed
+               toast.error("Authentication failed.");
+               router.push('/login');
+            }
         }
-    }, [token, router, handleTokenUpdate]);
+    }, [token, router.isReady, handleAuthSuccess, processed]); // Added 'processed' to deps
 
     return (
         <>

@@ -7,3 +7,9 @@ dist
 /.next/
 
 /services/api/src/config/step2go_firebase.json
+
+# PWA files
+/public/sw.js
+/public/sw.js.map
+/public/workbox-*.js
+/public/workbox-*.js.map
