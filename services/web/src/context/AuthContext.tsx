@@ -36,6 +36,7 @@ interface AuthContextType {
   ) => Promise<any>; 
   logout: () => void;
   handleTokenUpdate: (token: string) => void;
+  handleAuthSuccess: (token: string, redirect?: boolean) => User; // Expose this
   addBookmark: (placeId: string) => Promise<void>;
   removeBookmark: (placeId: string) => Promise<void>;
 }
@@ -55,7 +56,7 @@ interface AuthProviderProps {
 }
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null); // <-- Uses imported User type
+  const [user, setUser] = useState<User | null>(null);
   const [bookmarks, setBookmarks] = useState<string[]>([]); 
   const [loading, setLoading] = useState(true);
   const router = useRouter();
@@ -63,38 +64,33 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const fetchBookmarks = useCallback(async () => {
     try {
       const response = await getUserBookmarks();
-      setBookmarks(response.data || []); // API returns string[]
+      setBookmarks(response.data || []);
     } catch (error) {
       console.error("Failed to fetch bookmarks", error);
-      // Don't toast here, it's a background task
     }
   }, []);
 
   const handleAuthSuccess = useCallback((token: string, redirect: boolean = true) => {
     localStorage.setItem('token', token);
     setAuthToken(token);
-
     
     const decoded = jwtDecode<JwtPayload>(token);
     
     const fullUser: User = {
       id: decoded.id,
       name: decoded.name,
-      email: decoded.email, // <-- Now explicitly included
+      email: decoded.email,
       role: decoded.role,
       status: decoded.status,
-      createdAt: decoded.createdAt || decoded.created_at, // Handle both
-      dateJoined: decoded.createdAt || decoded.created_at, // Use createdAt for dateJoined
-
-      // Add optional fields from JWT if they exist
+      createdAt: decoded.createdAt || decoded.created_at,
+      dateJoined: decoded.createdAt || decoded.created_at,
       phone: decoded.phone,
       provider: decoded.provider,
       settings: undefined
     };
     setUser(fullUser);
     
-
-    if (fullUser.role === 'customer') { // Fetch bookmarks only for customers
+    if (fullUser.role === 'customer') {
       fetchBookmarks();
     }
 
@@ -105,27 +101,25 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return fullUser;
   }, [router, fetchBookmarks]); 
 
+  // This function is for non-redirect updates (e.g., profile edit)
   const handleTokenUpdate = useCallback((token: string) => {
     handleAuthSuccess(token, false);
   }, [handleAuthSuccess]);
 
   useEffect(() => {
     const processToken = () => {
-      const urlToken = router.query.token as string;
-      if (urlToken) {
-        handleAuthSuccess(urlToken, true);
-        return; 
-      }
+      // --- FIX: REMOVED logic that checked router.query.token ---
+      // This useEffect is now ONLY responsible for checking localStorage on load
 
       const localToken = localStorage.getItem('token');
       if (localToken) {
         try {
-          // --- FIX 5: Decode as JwtPayload here too ---
           const decoded = jwtDecode<JwtPayload>(localToken);
           if (decoded.exp * 1000 > Date.now()) {
-           
+            // Log in, but DO NOT redirect, just load state
             handleAuthSuccess(localToken, false); 
           } else {
+            // Token is expired
             localStorage.removeItem('token');
             setUser(null);
           }
@@ -140,14 +134,16 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       setLoading(false);
     };
 
+    // We no longer depend on router.query.token
     if (router.isReady) {
       processToken();
     }
-  }, [router.isReady, router.query.token, handleAuthSuccess]);
+  }, [router.isReady, handleAuthSuccess]); // <-- Dependency array updated
   
   const login = async (email: string, password: string): Promise<User> => {
     try {
       const response = await loginUser({ email, password });
+      // handleAuthSuccess will redirect by default
       return handleAuthSuccess(response.data.token);
     } catch (error: any) {
       
@@ -159,7 +155,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   };
     
-  // --- MODIFIED: register function no longer logs in ---
   const register = async (
     name: string, 
     email: string, 
@@ -168,7 +163,6 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     phone?: string,
     businessLocation?: string
   ): Promise<any> => {
-    // It just calls the API and returns the response (e.g., { message, email })
     const response = await registerUser({ name, email, password, role, phone, businessLocation });
     return response.data;
   };
@@ -176,16 +170,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const logout = () => {
     localStorage.removeItem('token');
     setUser(null);
-    setBookmarks([]); // <-- 6. CLEAR BOOKMARKS ON LOGOUT
+    setBookmarks([]);
     setAuthToken(null);
     router.push('/login');
   };
 
-  // --- 7. IMPLEMENT BOOKMARK HANDLERS ---
   const addBookmark = async (placeId: string) => {
     try {
       const response = await apiAddBookmark(placeId);
-      // Ensure we're using strings for comparison
       setBookmarks((prev) => [...prev, response.data.placeId.toString()]);
       toast.success("Bookmarked!");
     } catch (error) {
@@ -212,6 +204,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     register,
     logout,
     handleTokenUpdate,
+    handleAuthSuccess, 
     addBookmark, 
     removeBookmark,
   };

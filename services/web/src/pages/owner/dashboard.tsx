@@ -16,17 +16,17 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'; 
 import { 
   PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, MapPin, Loader2, Mail, Users, CalendarDays, Phone,
-  UserCheck, UserX, QrCode, Scan
+  UserCheck, UserX, QrCode, Scan, AlertTriangle
 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import Image from 'next/image';
 
-// --- FIX: Cast to 'any' to resolve TypeScript build error with alpha library ---
+// Dynamically import QrReader with SSR disabled
+// Cast to 'any' to prevent TypeScript errors with the alpha library types
 const QrReader = dynamic(() => import('react-qr-scanner'), {
   ssr: false,
-  loading: () => <div className="h-64 w-full bg-gray-100 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-gray-400"/></div>
+  loading: () => <div className="h-64 w-full bg-gray-800 flex items-center justify-center text-white"><Loader2 className="h-8 w-8 animate-spin"/></div>
 }) as any; 
-// ----------------------------------------------------------------------------
 
 const PendingVerification = ({ onLogout }: { onLogout: () => void }) => (
   <div className="min-h-screen bg-brand-cream">
@@ -87,6 +87,7 @@ export default function OwnerDashboard() {
   // --- SCANNER STATE ---
   const [isScannerOpen, setIsScannerOpen] = useState(false);
   const [isProcessingScan, setIsProcessingScan] = useState(false);
+  const [isSecureContext, setIsSecureContext] = useState(true);
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || user?.role !== 'owner' || user?.status !== 'active') return;
@@ -114,6 +115,17 @@ export default function OwnerDashboard() {
       }
     }
   }, [isAuthenticated, loading, user, router, fetchData]);
+
+  // Check for secure context when opening scanner
+  useEffect(() => {
+    if (isScannerOpen && typeof window !== 'undefined') {
+       const isSecure = window.isSecureContext;
+       setIsSecureContext(isSecure);
+       if (!isSecure) {
+         toast.error("Camera requires a secure connection (HTTPS or localhost).");
+       }
+    }
+  }, [isScannerOpen]);
 
   const handleOpenManageModal = async (place: StudyPlace) => {
     try {
@@ -170,7 +182,6 @@ export default function OwnerDashboard() {
       } catch (error: any) {
         // Prevent toast spam if scanning same invalid code multiple times rapidly
         const errorMsg = error.response?.data?.error || "Invalid Ticket or Scan Failed.";
-        // Only toast if it's NOT an "already checked in" error to avoid annoyance during scanning
         if(!errorMsg.includes("already")) {
              toast.error(errorMsg);
         } else {
@@ -184,8 +195,8 @@ export default function OwnerDashboard() {
   };
 
   const handleScanError = (err: any) => {
-    console.error(err);
-    // Don't toast on every frame error
+    console.error("QR Scan Error:", err);
+    // Note: Permission errors usually appear here
   };
 
   const dashboardStats = useMemo(() => {
@@ -480,13 +491,25 @@ export default function OwnerDashboard() {
                 </DialogDescription>
             </DialogHeader>
             <div className="w-full overflow-hidden rounded-lg border border-gray-700 bg-black relative">
-                {/* The QR Reader Component - Removed 'delay' to fix error */}
+               
+               {/* Warning if not HTTPS */}
+               {!isSecureContext && (
+                  <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-xs p-2 z-50 flex items-center justify-center gap-2">
+                     <AlertTriangle className="h-4 w-4"/> Camera requires HTTPS or Localhost
+                  </div>
+               )}
+                
                 <QrReader
+                    delay={300}
                     onError={handleScanError}
                     onScan={handleScan}
                     style={{ width: '100%' }}
-                    constraints={{ facingMode: 'environment' }} // Prefer rear camera
+                    constraints={{
+                       audio: false, // explicitly disable audio
+                       video: { facingMode: 'environment' }
+                    }}
                 />
+                
                 {/* Overlay guides */}
                 <div className="absolute inset-0 border-2 border-brand-orange/50 rounded-lg pointer-events-none"></div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-brand-orange rounded-lg shadow-[0_0_15px_rgba(220,107,25,0.5)] pointer-events-none"></div>
