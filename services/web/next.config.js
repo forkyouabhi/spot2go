@@ -1,19 +1,10 @@
-const withPWA = require("@ducanh2912/next-pwa").default({
-  dest: "public",
-  cacheOnFrontEndNav: true,
-  aggressiveFrontEndNavCaching: true,
-  reloadOnOnline: true,
-  swcMinify: true,
-  disable: process.env.NODE_ENV === "development", // Disable PWA in dev mode
-  workboxOptions: {
-    disableDevLogs: true,
-  },
-});
-
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // Add any other Next.js configs you have here
-};
+  experimental: {
+    // Only if you are on a compatible version, otherwise remove
+    optimizePackageImports: ['lucide-react', '@radix-ui/react-icons'],
+  },
+}
 
-module.exports = withPWA(nextConfig);
+module.exports = nextConfig
