@@ -1,12 +1,15 @@
-version: '3.8'
 services:
   api:
     build: ./services/api
     ports:
       - '4000:4000'
+    # FIX: Point to the newly created .env file
     env_file:
-      - ./services/api/.env.example
+      - ./services/api/.env
   web:
     build: ./services/web
     ports:
       - '3000:3000'
+    environment:
+      # Use the Docker service name 'api' for internal container communication
+      NEXT_PUBLIC_API_URL: http://api:4000/api
