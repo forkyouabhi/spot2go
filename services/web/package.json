@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --turbopack",
-    "build": "next build",
+    "build": "next build --webpack",
     "start": "next start",
     "lint": "next lint"
   },
@@ -76,10 +76,13 @@
     "@vitejs/plugin-react-swc": "^4.1.0",
     "autoprefixer": "^10.4.21",
     "cross-env": "^10.0.0",
-    "eslint": "^8",
-    "eslint-config-next": "14.2.5",
+    "eslint": "^9.14.0",
+    "eslint-config-next": "16.0.1",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.18",
     "typescript": "^5"
+  },
+  "overrides": {
+    "glob": "^11.0.4"
   }
 }
