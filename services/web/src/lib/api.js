@@ -5,35 +5,28 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api';
 
 const api = axios.create({
   baseURL: API_URL,
+  withCredentials: true, // <--- CRITICAL: Allows cookies to be sent/received
 });
 
-// Request interceptor to automatically attach the token
-api.interceptors.request.use(
-  (config) => {
-    if (typeof window !== 'undefined') {
-        const token = localStorage.getItem('token');
-        if (token) {
-          config.headers['Authorization'] = `Bearer ${token}`;
-        }
-    }
-    return config;
-  },
+// Remove the manual interceptor if it relies solely on localStorage.
+// The cookie is handled automatically by the browser now.
+// We keep a simple error handler.
+api.interceptors.response.use(
+  (response) => response,
   (error) => {
+    // Optional: centralized error logging
     return Promise.reject(error);
   }
 );
 
 export const setAuthToken = (token) => {
-  if (token) {
-    api.defaults.headers.common['Authorization'] = `Bearer ${token}`;
-  } else {
-    delete api.defaults.headers.common['Authorization'];
-  }
+  // No-op: Tokens are now managed via HttpOnly cookies
 };
 
 // --- Auth Endpoints ---
+// Note: We use the new direct login controller, not passport local strategy route if you changed authController
 export const registerUser = (userData) => api.post('/auth/register', userData);
-export const loginUser = (credentials) => api.post('/auth/login', credentials);
+export const loginUser = (credentials) => api.post('/auth/login', credentials); 
 export const verifyEmail = (data) => api.post('/auth/verify-email', data);
 export const resendOtp = (emailData) => api.post('/auth/resend-otp', emailData);
 export const requestPasswordReset = (emailData) => api.post('/auth/request-password-reset', emailData);
@@ -52,7 +45,7 @@ export const getPlaces = (lat, lng) => {
 export const getPlaceById = (placeId) => api.get(`/customers/places/${placeId}`);
 export const getUserBookings = () => api.get('/customers/bookings');
 export const createBooking = (bookingData) => api.post('/customers/bookings', bookingData);
-export const getUserBookmarks = () => api.get('/customers/bookmarks'); // Gets list of IDs
+export const getUserBookmarks = () => api.get('/customers/bookmarks');
 export const getBoookmarkedPlaces = () => api.get('/customers/bookmarks/places'); 
 export const addBookmark = (placeId) => api.post('/customers/bookmarks', { placeId });
 export const removeBookmark = (placeId) => api.delete(`/customers/bookmarks/${placeId}`);
@@ -82,6 +75,5 @@ export const rejectPlace = (placeId) => api.put(`/admin/places/${placeId}/status
 export const getAdminPlaceStats = () => api.get('/admin/places/stats');
 export const getPendingOwners = () => api.get('/admin/owners/pending');
 export const updateOwnerStatus = (userId, status) => api.put(`/admin/owners/${userId}/status`, { status });
-
 
 export default api;

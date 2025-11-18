@@ -14,17 +14,44 @@ import { useRouter } from 'next/router';
 import Link from 'next/link';
 import { LandingPage } from '../components/LandingPage';
 import Head from 'next/head';
+import { GetServerSideProps } from 'next'; // <-- NEW IMPORT
 
 const PLACE_TYPES = ['All', 'cafe', 'library', 'coworking', 'university'];
 
-export default function HomePage() {
+// --- NEW/MODIFIED: getServerSideProps for initial data fetch (PERFORMANCE FIX) ---
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  let initialPlaces: StudyPlace[] = [];
+
+  try {
+    // Fetch generic list of places on the server before rendering
+    const response = await getPlaces(); 
+    initialPlaces = Array.isArray(response.data) ? response.data : [];
+  } catch (error) {
+    console.error("SSR failed to fetch initial places:", error);
+  }
+
+  return {
+    props: {
+      initialPlaces,
+    },
+  };
+};
+// --- END NEW/MODIFIED ---
+
+// --- MODIFIED: Component signature to accept SSR props ---
+export default function HomePage({ initialPlaces }: { initialPlaces: StudyPlace[] }) {
   const { user, isAuthenticated, loading: authLoading, bookmarks, addBookmark, removeBookmark } = useAuth();
   const router = useRouter();
-  const [allPlaces, setAllPlaces] = useState<StudyPlace[]>([]);
-  const [filteredPlaces, setFilteredPlaces] = useState<StudyPlace[]>([]);
+  
+  // Initialize state with server-fetched data
+  const [allPlaces, setAllPlaces] = useState<StudyPlace[]>(initialPlaces);
+  const [filteredPlaces, setFilteredPlaces] = useState<StudyPlace[]>(initialPlaces);
+  
   const [selectedType, setSelectedType] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
-  const [dataLoading, setDataLoading] = useState(true);
+  
+  // dataLoading reflects only the geolocation re-fetch (if needed)
+  const [dataLoading, setDataLoading] = useState(false); 
 
   useEffect(() => {
     if (!authLoading && isAuthenticated) {
@@ -48,26 +75,34 @@ export default function HomePage() {
         }
       };
 
-      // Trigger Geolocation
+      // Trigger Geolocation refetch
       if (navigator.geolocation) {
         navigator.geolocation.getCurrentPosition(
           (position) => {
-            // Permission granted
+            // Permission granted: re-fetch with location
             const { latitude, longitude } = position.coords;
             fetchPlaces(latitude, longitude);
           },
           (error) => {
-            // Permission denied or error
+            // Permission denied or error: fetch generic data if SSR missed it
             console.warn("Location permission denied or unavailable:", error);
-            fetchPlaces(); // Fetch without location
+            if (initialPlaces.length === 0) {
+               fetchPlaces();
+            } else {
+               setDataLoading(false);
+            }
           }
         );
       } else {
-        // Geolocation not supported
-        fetchPlaces();
+        // Geolocation not supported - only fetch if SSR missed it
+        if (initialPlaces.length === 0) {
+           fetchPlaces();
+        } else {
+           setDataLoading(false);
+        }
       }
     }
-  }, [isAuthenticated, authLoading]);
+  }, [isAuthenticated, authLoading, initialPlaces.length]);
 
   useEffect(() => {
     let currentFiltered = allPlaces;

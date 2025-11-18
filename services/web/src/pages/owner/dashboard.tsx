@@ -1,13 +1,13 @@
 // services/web/src/pages/owner/dashboard.tsx
 import { useRouter } from 'next/router';
 import { useEffect, useState, useCallback, useMemo } from 'react';
-import dynamic from 'next/dynamic'; // Import dynamic for client-side only libraries
+import dynamic from 'next/dynamic'; 
 import { useAuth } from '../../context/AuthContext';
 import { getOwnerPlaces, getOwnerPlaceById, getOwnerBookings, updateBookingStatus, checkInByTicket } from '../../lib/api'; 
 import { AddPlaceWizard } from '../../components/AddPlaceWizard';
 import { ManageMenu } from '../../components/ManageMenu';
 import { toast } from 'sonner';
-import { StudyPlace, Booking, User } from '../../types'; 
+import { StudyPlace, Booking } from '../../types'; 
 import { Badge } from '../../components/ui/badge';
 import { Button } from '../../components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '../../components/ui/card';
@@ -16,18 +16,21 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table'; 
 import { 
   PlusCircle, Clock, CheckCircle, XCircle, Building2, LogOut, Utensils, Edit, MapPin, Loader2, Mail, Users, CalendarDays, Phone,
-  UserCheck, UserX, QrCode, Scan, AlertTriangle
+  UserCheck, UserX, QrCode, Scan, AlertTriangle, ShieldAlert
 } from 'lucide-react';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import Image from 'next/image';
 
-// Dynamically import QrReader with SSR disabled
-// Cast to 'any' to prevent TypeScript errors with the alpha library types
-const QrReader = dynamic(() => import('react-qr-scanner'), {
-  ssr: false,
-  loading: () => <div className="h-64 w-full bg-gray-800 flex items-center justify-center text-white"><Loader2 className="h-8 w-8 animate-spin"/></div>
-}) as any; 
+// Use dynamic import for the scanner to avoid SSR
+const Scanner = dynamic(
+  () => import('@yudiel/react-qr-scanner').then((mod) => mod.Scanner),
+  { 
+    ssr: false,
+    loading: () => <div className="h-full w-full bg-black flex items-center justify-center text-white"><Loader2 className="h-8 w-8 animate-spin"/></div>
+  }
+);
 
+// --- Pending Verification Component ---
 const PendingVerification = ({ onLogout }: { onLogout: () => void }) => (
   <div className="min-h-screen bg-brand-cream">
      <header className="w-full bg-brand-burgundy shadow-md sticky top-0 z-20">
@@ -51,21 +54,32 @@ const PendingVerification = ({ onLogout }: { onLogout: () => void }) => (
         </div>
       </header>
       <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
-        <Card className="text-center p-12 border-2 border-dashed border-brand-yellow bg-white shadow-lg">
+        <Card className="text-center p-12 border-2 border-dashed border-brand-yellow bg-white shadow-lg max-w-2xl mx-auto">
             <CardHeader>
-                <div className="mx-auto bg-brand-yellow rounded-full h-16 w-16 flex items-center justify-center">
-                    <Mail className="h-10 w-10 text-brand-burgundy" />
+                <div className="mx-auto bg-yellow-100 rounded-full h-20 w-20 flex items-center justify-center mb-2">
+                    <MapPin className="h-10 w-10 text-brand-orange" />
                 </div>
                 <CardTitle className="text-2xl font-bold text-brand-burgundy mt-4">
-                    Account Pending Verification
+                    Location Verification Pending
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-                <p className="text-brand-orange text-lg">
-                    Thank you for registering! Your account is currently under review by our admin team.
+            <CardContent className="space-y-6">
+                <p className="text-gray-700 text-lg">
+                    Thank you for registering! We are currently verifying your business location and details.
                 </p>
-                <p className="text-brand-burgundy">
-                    You will receive an email as soon as your account is approved. After approval, you will be able to add and manage your study spots here.
+                
+                <div className="bg-blue-50 p-4 rounded-lg text-left border border-blue-100">
+                  <h4 className="font-semibold text-blue-900 flex items-center gap-2 mb-2">
+                    <ShieldAlert className="h-4 w-4"/> Why do we verify?
+                  </h4>
+                  <ul className="list-disc list-inside text-blue-800 text-sm space-y-1">
+                    <li>To confirm your business exists at the stated location.</li>
+                    <li>To ensure a safe and reliable experience for students.</li>
+                  </ul>
+                </div>
+
+                <p className="text-sm text-gray-500">
+                    This process typically takes 24-48 hours. You will receive an email immediately upon approval.
                 </p>
             </CardContent>
         </Card>
@@ -86,8 +100,9 @@ export default function OwnerDashboard() {
 
   // --- SCANNER STATE ---
   const [isScannerOpen, setIsScannerOpen] = useState(false);
+  const [mountScanner, setMountScanner] = useState(false); // Delay mounting
   const [isProcessingScan, setIsProcessingScan] = useState(false);
-  const [isSecureContext, setIsSecureContext] = useState(true);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
     if (!isAuthenticated || user?.role !== 'owner' || user?.status !== 'active') return;
@@ -116,14 +131,23 @@ export default function OwnerDashboard() {
     }
   }, [isAuthenticated, loading, user, router, fetchData]);
 
-  // Check for secure context when opening scanner
+  // --- FIX: Scanner Lifecycle ---
   useEffect(() => {
-    if (isScannerOpen && typeof window !== 'undefined') {
-       const isSecure = window.isSecureContext;
-       setIsSecureContext(isSecure);
-       if (!isSecure) {
-         toast.error("Camera requires a secure connection (HTTPS or localhost).");
-       }
+    if (isScannerOpen) {
+        // 1. Check if the browser supports camera API
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setCameraError("Camera API is not supported in this browser or context (HTTP). Try Localhost or HTTPS.");
+            return;
+        }
+        
+        setCameraError(null);
+        // 2. Delay mounting the scanner component by 300ms
+        // This ensures the Dialog animation is finished and the container has real dimensions
+        const timer = setTimeout(() => setMountScanner(true), 300);
+        return () => clearTimeout(timer);
+    } else {
+        setMountScanner(false);
+        setIsProcessingScan(false);
     }
   }, [isScannerOpen]);
 
@@ -158,29 +182,29 @@ export default function OwnerDashboard() {
     try {
       const response = await updateBookingStatus(bookingId, status);
       toast.success(`Booking marked as ${status}.`);
-      // Update local state efficiently
       setBookings(prev => prev.map(b => b.id === bookingId ? response.data.booking : b));
     } catch (error) {
       toast.error("Failed to update booking status.");
     }
   };
 
-  // --- SCANNER HANDLER ---
-  const handleScan = async (data: any) => {
-    if (data && !isProcessingScan) {
-      // react-qr-scanner returns an object { text: '...' } or string depending on version
-      const ticketId = data?.text || data;
+  const handleScan = async (detectedCodes: any[]) => {
+    if (detectedCodes && detectedCodes.length > 0 && !isProcessingScan) {
+      const ticketId = detectedCodes[0].rawValue;
+      
       if (!ticketId) return;
 
       setIsProcessingScan(true);
       try {
+        // Play a beep sound (optional, browser might block)
+        // const audio = new Audio('/beep.mp3');
+        // audio.play().catch(() => {});
+
         const response = await checkInByTicket(ticketId);
         toast.success("Ticket Checked In Successfully! ✅");
-        // Update the list immediately with the returned booking
         setBookings(prev => prev.map(b => b.ticketId === ticketId ? response.data.booking : b));
-        setIsScannerOpen(false); // Close scanner on success
+        setIsScannerOpen(false); 
       } catch (error: any) {
-        // Prevent toast spam if scanning same invalid code multiple times rapidly
         const errorMsg = error.response?.data?.error || "Invalid Ticket or Scan Failed.";
         if(!errorMsg.includes("already")) {
              toast.error(errorMsg);
@@ -188,7 +212,6 @@ export default function OwnerDashboard() {
              toast.info("This ticket is already checked in.");
         }
       } finally {
-        // Add a small delay before allowing next scan attempt to prevent double-submission
         setTimeout(() => setIsProcessingScan(false), 2000);
       }
     }
@@ -196,7 +219,11 @@ export default function OwnerDashboard() {
 
   const handleScanError = (err: any) => {
     console.error("QR Scan Error:", err);
-    // Note: Permission errors usually appear here
+    if (err?.name === 'NotAllowedError') {
+        setCameraError("Camera permission denied. Please allow access in your browser settings.");
+    } else if (err?.name === 'NotFoundError') {
+        setCameraError("No camera device found.");
+    }
   };
 
   const dashboardStats = useMemo(() => {
@@ -246,7 +273,16 @@ export default function OwnerDashboard() {
   }
 
   if (user.status === 'rejected') {
-    return <div className="min-h-screen flex items-center justify-center bg-brand-cream">Your account application was rejected. Please contact support.</div>;
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-brand-cream">
+        <Card className="w-full max-w-md p-6 text-center border-2 border-red-200">
+           <XCircle className="h-12 w-12 text-red-500 mx-auto mb-4"/>
+           <h2 className="text-xl font-bold text-brand-burgundy">Account Rejected</h2>
+           <p className="text-gray-600 mt-2 mb-6">Your account application was not approved. Please contact support for more information.</p>
+           <Button onClick={logout} variant="outline">Logout</Button>
+        </Card>
+      </div>
+    );
   }
 
   return (
@@ -267,7 +303,6 @@ export default function OwnerDashboard() {
               </div>
             </div>
             <div className="flex items-center gap-2 md:gap-4">
-               {/* --- SCAN BUTTON (Visible on all screens) --- */}
                <Button 
                 onClick={() => setIsScannerOpen(true)}
                 className="bg-brand-yellow text-brand-burgundy hover:bg-yellow-400 font-semibold"
@@ -293,7 +328,6 @@ export default function OwnerDashboard() {
       </header>
 
       <main className="p-4 md:p-8 max-w-screen-xl mx-auto">
-        {/* Stats Section */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
           <Card className="border-2 border-brand-orange bg-white shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-brand-burgundy">Total Places</CardTitle><Building2 className="h-5 w-5 text-brand-orange" /></CardHeader><CardContent><div className="text-2xl font-bold text-brand-burgundy">{dashboardStats.places.total}</div></CardContent></Card>
           <Card className="border-2 border-green-500 bg-white shadow-lg"><CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2"><CardTitle className="text-sm font-medium text-brand-burgundy">Approved Places</CardTitle><CheckCircle className="h-5 w-5 text-green-500" /></CardHeader><CardContent><div className="text-2xl font-bold text-brand-burgundy">{dashboardStats.places.approved}</div></CardContent></Card>
@@ -351,7 +385,6 @@ export default function OwnerDashboard() {
                  <div className="flex justify-center p-12"><Loader2 className="h-8 w-8 animate-spin text-brand-orange" /></div>
               ) : bookings.length > 0 ? (
                 <>
-                  {/* --- MOBILE VIEW: CARD LIST (Visible on small screens) --- */}
                   <div className="md:hidden flex flex-col gap-4">
                     {bookings.map((booking) => (
                        <Card key={booking.id} className="border-2 border-brand-yellow bg-white shadow-sm">
@@ -397,7 +430,6 @@ export default function OwnerDashboard() {
                     ))}
                   </div>
 
-                  {/* --- DESKTOP VIEW: TABLE (Visible on medium+ screens) --- */}
                   <Card className="hidden md:block border-2 border-brand-yellow bg-white overflow-hidden shadow-lg">
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
@@ -483,39 +515,60 @@ export default function OwnerDashboard() {
 
       {/* --- SCANNER MODAL --- */}
       <Dialog open={isScannerOpen} onOpenChange={setIsScannerOpen}>
-        <DialogContent className="sm:max-w-md bg-black border-brand-orange border-2 text-white">
+        <DialogContent className="sm:max-w-md bg-black border-brand-orange border-2 text-white p-6">
             <DialogHeader>
                 <DialogTitle className="flex items-center gap-2 text-white"><Scan className="h-6 w-6 text-brand-orange"/> Scan Ticket QR</DialogTitle>
                 <DialogDescription className="text-gray-400">
-                    Point your camera at the customer's ticket QR code to check them in.
+                    Point your camera at the customer's ticket QR code.
                 </DialogDescription>
             </DialogHeader>
-            <div className="w-full overflow-hidden rounded-lg border border-gray-700 bg-black relative">
+            
+            <div className="w-full h-[350px] bg-black relative overflow-hidden rounded-lg border border-gray-700">
                
-               {/* Warning if not HTTPS */}
-               {!isSecureContext && (
-                  <div className="absolute top-0 left-0 w-full bg-red-600 text-white text-xs p-2 z-50 flex items-center justify-center gap-2">
-                     <AlertTriangle className="h-4 w-4"/> Camera requires HTTPS or Localhost
+               {/* Error Display */}
+               {cameraError && (
+                  <div className="absolute inset-0 z-50 flex flex-col items-center justify-center bg-black text-white p-4 text-center">
+                     <AlertTriangle className="h-12 w-12 text-red-500 mb-4"/>
+                     <h3 className="font-bold text-lg">Camera Unavailable</h3>
+                     <p className="text-gray-400 text-sm mt-2">{cameraError}</p>
                   </div>
                )}
-                
-                <QrReader
-                    delay={300}
-                    onError={handleScanError}
-                    onScan={handleScan}
-                    style={{ width: '100%' }}
-                    constraints={{
-                       audio: false, // explicitly disable audio
-                       video: { facingMode: 'environment' }
-                    }}
-                />
-                
-                {/* Overlay guides */}
-                <div className="absolute inset-0 border-2 border-brand-orange/50 rounded-lg pointer-events-none"></div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 border-2 border-brand-orange rounded-lg shadow-[0_0_15px_rgba(220,107,25,0.5)] pointer-events-none"></div>
+
+               {/* Scanner Component (Delayed Mount) */}
+               {mountScanner && !cameraError && (
+                    <Scanner
+                        onScan={handleScan}
+                        onError={handleScanError}
+                        constraints={{ facingMode: 'environment' }} 
+                        components={{
+                            
+                            onOff: true,
+                            torch: false,
+                            
+                        }}
+                        styles={{
+                            container: { width: '100%', height: '100%' },
+                            video: { objectFit: 'cover' }
+                        }}
+                    />
+               )}
+               
+               {/* Loading State */}
+               {!mountScanner && !cameraError && (
+                   <div className="flex items-center justify-center h-full">
+                       <Loader2 className="h-8 w-8 text-brand-orange animate-spin"/>
+                   </div>
+               )}
             </div>
-            <div className="text-center text-sm text-gray-400 mt-2">
-                {isProcessingScan ? <span className="flex items-center justify-center gap-2 text-brand-orange"><Loader2 className="h-4 w-4 animate-spin"/> Checking Ticket...</span> : "Waiting for code..."}
+
+            <div className="text-center text-sm text-gray-400 mt-2 h-6">
+                {isProcessingScan ? (
+                    <span className="flex items-center justify-center gap-2 text-brand-orange font-medium">
+                        <Loader2 className="h-4 w-4 animate-spin"/> Verifying Ticket...
+                    </span>
+                ) : (
+                    "Waiting for code..."
+                )}
             </div>
         </DialogContent>
       </Dialog>

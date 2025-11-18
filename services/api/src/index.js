@@ -1,36 +1,44 @@
-// FIX: Load environment variables at the absolute top of the application
+// services/api/src/index.js
 require('dotenv').config();
-
 const express = require('express');
 const passport = require('passport');
 const cors = require('cors');
+const cookieParser = require('cookie-parser'); // <--- IMPORT THIS
+const path = require('path');
+
 require('./config/passport');
-require('./models'); // Initializes Sequelize and syncs models
+require('./models'); 
 
 const routes = require('./routes');
 
 const app = express();
-app.use(cors());
+
+app.use(cors({
+  origin: 'http://localhost:3000', 
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization']
+}));
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(cookieParser()); // <--- ADD THIS HERE
 app.use(passport.initialize());
 
-// Mount all routes
-app.use('/api', routes); // Using a /api prefix for all routes
-app.use('/', routes); // Serve static files from the uploads directory
-// Health check
+app.use('/api', routes); 
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+
 app.get('/health', (req, res) => res.json({ status: 'ok', message: 'Spot2Go API running' }));
 
-// 404 handler for routes not found
 app.use((req, res, next) => {
+  console.log(`404 Error: ${req.method} ${req.originalUrl}`);
   res.status(404).json({ error: 'Route not found' });
 });
 
-// Global error handler
 app.use((err, req, res, next) => {
-  console.error(err.stack);
+  console.error("Server Error:", err.stack);
   res.status(500).json({ error: 'Something went wrong!' });
 });
 
 const PORT = process.env.PORT || 4000;
-app.listen(PORT, () => console.log(`🚀 Spot2Go API running on port ${PORT}`));
+app.listen(PORT, () => console.log(`🚀 Spot2Go API running on http://localhost:${PORT}`));

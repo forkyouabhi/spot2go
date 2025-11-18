@@ -36,10 +36,10 @@ import {
   UploadCloud,
   Image as ImageIcon,
   ArrowLeft,
+  Search, 
 } from "lucide-react";
 import React from "react";
 
-// Dynamically import the MapPicker to avoid SSR issues with Leaflet
 const MapPicker = dynamic(() => import("./MapPicker"), { ssr: false });
 
 const AMENITIES: { label: string; icon: ReactElement }[] = [
@@ -58,6 +58,9 @@ interface AddPlaceWizardProps {
 export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) {
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  // New state for address searching
+  const [isSearchingAddress, setIsSearchingAddress] = useState(false); 
+  
   const isEditMode = !!initialData;
 
   // --- Form State ---
@@ -77,8 +80,9 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
     start: "09:00",
     end: "17:00",
   });
+  // --- NEW: Max Capacity State ---
+  const [maxCapacity, setMaxCapacity] = useState(1);
 
-  // --- Populate form if in edit mode ---
   useEffect(() => {
     if (initialData) {
       setName(initialData.name || "");
@@ -92,21 +96,23 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
           : null
       );
       setExistingImages(initialData.images || []);
-      setImagePreviews(initialData.images || []); // Show existing images as previews
+      setImagePreviews(initialData.images || []);
       setReservable(initialData.reservable || false);
       if (initialData.reservableHours) {
         setReservableHours(initialData.reservableHours);
       }
+      // --- NEW: Initialize Max Capacity ---
+      if (initialData.maxCapacity) {
+        setMaxCapacity(initialData.maxCapacity);
+      }
     }
   }, [initialData]);
 
-  // --- Event Handlers ---
   const handleImagesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files) {
-      const files = Array.from(e.target.files).slice(0, 5); // Limit to 5
+      const files = Array.from(e.target.files).slice(0, 5);
       setImages(files);
       
-      // Clean up old object URLs
       imagePreviews.forEach(url => {
         if (url.startsWith('blob:')) URL.revokeObjectURL(url);
       });
@@ -124,21 +130,46 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
     );
   };
 
+  const handleManualAddressSearch = async () => {
+    if (!address.trim()) return;
+    
+    setIsSearchingAddress(true);
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(address)}&limit=1`
+      );
+      const data = await response.json();
+      
+      if (data && data.length > 0) {
+        const { lat, lon } = data[0];
+        const newLocation = { lat: parseFloat(lat), lng: parseFloat(lon) };
+        setLocation(newLocation);
+        toast.success("Location found! Map updated.");
+      } else {
+        toast.error("Address not found. Try moving the map manually.");
+      }
+    } catch (error) {
+      toast.error("Could not find location.");
+    } finally {
+      setIsSearchingAddress(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (images.length === 0 && !isEditMode) {
       toast.error("At least one image is required.");
-      setStep(2); // Go back to image step
+      setStep(2);
       return;
     }
     if (!type) {
       toast.error("Spot Type is required.");
-      setStep(1); // Go back to basics step
+      setStep(1);
       return;
     }
     if (!location) {
       toast.error("Location is required.");
-      return; // Stay on step 3
+      return;
     }
 
     setLoading(true);
@@ -155,6 +186,8 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
     formData.append("reservable", String(reservable));
     if (reservable) {
       formData.append("reservableHours", JSON.stringify(reservableHours));
+      // --- NEW: Append Max Capacity ---
+      formData.append("maxCapacity", maxCapacity.toString());
     }
     images.forEach((image) => formData.append("images", image));
 
@@ -371,7 +404,7 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
             htmlFor="address"
             className="text-brand-burgundy font-semibold"
           >
-            Pick Location on Map
+            Pick Location on Map (or type below)
           </Label>
           <div className="h-64 w-full rounded-xl overflow-hidden border-2 border-brand-orange z-0">
             <MapPicker
@@ -380,13 +413,25 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
               setAddress={setAddress}
             />
           </div>
-          <Input
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Address will be auto-filled from map..."
-            className="mt-2 h-11"
-          />
+          
+          <div className="flex gap-2 mt-2">
+            <Input
+              id="address"
+              value={address}
+              onChange={(e) => setAddress(e.target.value)}
+              placeholder="Enter address (e.g., 123 Main St)"
+              className="h-11 flex-grow"
+              onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleManualAddressSearch())}
+            />
+            <Button 
+              type="button" 
+              onClick={handleManualAddressSearch}
+              disabled={isSearchingAddress}
+              className="bg-brand-yellow text-brand-burgundy hover:bg-yellow-400 h-11 px-4"
+            >
+              {isSearchingAddress ? <Loader2 className="h-4 w-4 animate-spin"/> : <Search className="h-4 w-4"/>}
+            </Button>
+          </div>
         </div>
 
         <Card className="border-2 border-brand-orange bg-white p-4 shadow-sm">
@@ -452,6 +497,29 @@ export function AddPlaceWizard({ onSuccess, initialData }: AddPlaceWizardProps) 
                   }
                   className="h-11"
                 />
+              </div>
+
+              {/* --- NEW: Max Capacity Input --- */}
+              <div className="col-span-2">
+                <Label
+                  htmlFor="maxCapacity"
+                  className="text-brand-burgundy flex items-center gap-1 mb-1"
+                >
+                  <Users className="h-4 w-4" />
+                  Max Capacity (Concurrent Users)
+                </Label>
+                <Input
+                  id="maxCapacity"
+                  type="number"
+                  min="1"
+                  value={maxCapacity}
+                  onChange={(e) => setMaxCapacity(parseInt(e.target.value) || 1)}
+                  className="h-11"
+                  placeholder="e.g. 20"
+                />
+                <p className="text-xs text-gray-500 mt-1">
+                  Total number of people who can book a spot at the same time.
+                </p>
               </div>
             </div>
           )}

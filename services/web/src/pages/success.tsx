@@ -1,33 +1,35 @@
 // services/web/src/pages/success.tsx
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
-import { useAuth } from '../context/AuthContext'; // Import useAuth
+import { useAuth } from '../context/AuthContext'; 
 import { Loader2 } from 'lucide-react';
 import Head from 'next/head';
 import { toast } from 'sonner';
 
 export default function AuthSuccessPage() {
     const router = useRouter();
-    // --- FIX: Get handleAuthSuccess directly ---
-    const { handleAuthSuccess } = useAuth(); 
+    // FIX: Removed handleAuthSuccess from destructuring
+    // const { handleAuthSuccess } = useAuth(); 
     const { token } = router.query;
     const [processed, setProcessed] = useState(false); // Flag to prevent multiple runs
 
     useEffect(() => {
         // Only run this logic once when the component is ready and not already processed
         if (router.isReady && !processed) {
+            setProcessed(true); // Mark as processed
+            
             if (typeof token === 'string' && token) {
-                setProcessed(true); // Mark as processed
-                // Call handleAuthSuccess directly. It will handle redirecting.
-                handleAuthSuccess(token);
+                // WARN: Client-side token handling is insecure. Redirecting home, assuming server set cookie.
+                // handleAuthSuccess(token); // REMOVED
+                toast.success("Authentication successful.");
+                router.replace('/'); 
             } else {
                // If no token, this is an invalid visit to this page
-               setProcessed(true); // Mark as processed
-               toast.error("Authentication failed.");
+               toast.error("Authentication failed. Please log in.");
                router.push('/login');
             }
         }
-    }, [token, router.isReady, handleAuthSuccess, processed]); // Added 'processed' to deps
+    }, [token, router.isReady, processed, router]); 
 
     return (
         <>

@@ -1,24 +1,10 @@
 // services/web/src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { setAuthToken, registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
-import { jwtDecode } from 'jwt-decode';
+import { registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
+import axios from 'axios';
 import { toast } from "sonner"; 
 import { User } from '../types';
-
-interface JwtPayload {
-  id: string;
-  email: string; 
-  name: string;
-  role: 'customer' | 'owner' | 'admin';
-  status: 'active' | 'pending_verification' | 'rejected';
-  createdAt: string; 
-  created_at: string; // Handle legacy field
-  phone?: string;
-  provider?: 'google' | 'apple' | 'email';
-  exp: number;
-  iat: number;
-}
 
 interface AuthContextType {
   user: User | null; 
@@ -35,10 +21,10 @@ interface AuthContextType {
     businessLocation?: string
   ) => Promise<any>; 
   logout: () => void;
-  handleTokenUpdate: (token: string) => void;
-  handleAuthSuccess: (token: string, redirect?: boolean) => User; // Expose this
   addBookmark: (placeId: string) => Promise<void>;
   removeBookmark: (placeId: string) => Promise<void>;
+  // --- NEW: Allow manual user setting for auto-login flows ---
+  setAuthenticatedUser: (user: User) => void;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -66,92 +52,68 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await getUserBookmarks();
       setBookmarks(response.data || []);
     } catch (error) {
-      console.error("Failed to fetch bookmarks", error);
+      console.warn("Could not fetch bookmarks (user might not be logged in or session expired).");
+      setBookmarks([]);
     }
   }, []);
-
-  const handleAuthSuccess = useCallback((token: string, redirect: boolean = true) => {
-    localStorage.setItem('token', token);
-    setAuthToken(token);
-    
-    const decoded = jwtDecode<JwtPayload>(token);
-    
-    const fullUser: User = {
-      id: decoded.id,
-      name: decoded.name,
-      email: decoded.email,
-      role: decoded.role,
-      status: decoded.status,
-      createdAt: decoded.createdAt || decoded.created_at,
-      dateJoined: decoded.createdAt || decoded.created_at,
-      phone: decoded.phone,
-      provider: decoded.provider,
-      settings: undefined
-    };
-    setUser(fullUser);
-    
-    if (fullUser.role === 'customer') {
-      fetchBookmarks();
+  
+  const checkSessionAndLoadUser = useCallback(async () => {
+    const localUserString = localStorage.getItem('user');
+    if (!localUserString) {
+      setUser(null);
+      setLoading(false);
+      return;
     }
-
-    if (redirect) {
-      const targetPath = decoded.role === 'owner' ? '/owner/dashboard' : decoded.role === 'admin' ? '/admin/dashboard' : '/';
-      router.replace(targetPath);
+    
+    try {
+      const localUser = JSON.parse(localUserString) as User;
+      setUser(localUser);
+      
+      if (localUser.role === 'customer') {
+          await fetchBookmarks();
+      }
+      
+    } catch (error) {
+        console.log("Session invalid. Clearing local user data.");
+        localStorage.removeItem('user');
+        setUser(null);
+        setBookmarks([]);
+    } finally {
+      setLoading(false);
     }
-    return fullUser;
-  }, [router, fetchBookmarks]); 
-
-  // This function is for non-redirect updates (e.g., profile edit)
-  const handleTokenUpdate = useCallback((token: string) => {
-    handleAuthSuccess(token, false);
-  }, [handleAuthSuccess]);
+  }, [fetchBookmarks]); 
 
   useEffect(() => {
-    const processToken = () => {
-      // --- FIX: REMOVED logic that checked router.query.token ---
-      // This useEffect is now ONLY responsible for checking localStorage on load
-
-      const localToken = localStorage.getItem('token');
-      if (localToken) {
-        try {
-          const decoded = jwtDecode<JwtPayload>(localToken);
-          if (decoded.exp * 1000 > Date.now()) {
-            // Log in, but DO NOT redirect, just load state
-            handleAuthSuccess(localToken, false); 
-          } else {
-            // Token is expired
-            localStorage.removeItem('token');
-            setUser(null);
-          }
-        } catch (error) {
-          console.error("Invalid token:", error);
-          localStorage.removeItem('token');
-          setUser(null);
-        }
-      } else {
-        setUser(null);
-      }
-      setLoading(false);
-    };
-
-    // We no longer depend on router.query.token
     if (router.isReady) {
-      processToken();
+      checkSessionAndLoadUser();
     }
-  }, [router.isReady, handleAuthSuccess]); // <-- Dependency array updated
+  }, [router.isReady, checkSessionAndLoadUser]); 
   
+  // --- NEW: Implementation of setAuthenticatedUser ---
+  const setAuthenticatedUser = (newUser: User) => {
+    setUser(newUser);
+    localStorage.setItem('user', JSON.stringify(newUser));
+    // Optionally fetch bookmarks if it's a customer
+    if (newUser.role === 'customer') {
+        fetchBookmarks();
+    }
+  };
+
   const login = async (email: string, password: string): Promise<User> => {
     try {
       const response = await loginUser({ email, password });
-      // handleAuthSuccess will redirect by default
-      return handleAuthSuccess(response.data.token);
-    } catch (error: any) {
+      const user = response.data.user;
       
-      if (error.response?.data?.needsVerification) {
-        toast.error(error.response.data.error);
-        router.push(`/verify-email?email=${email}`);
+      setAuthenticatedUser(user); // Use the shared setter
+
+      const targetPath = user.role === 'owner' ? '/owner/dashboard' : user.role === 'admin' ? '/admin/dashboard' : '/';
+      router.replace(targetPath);
+      return user;
+    } catch (error: any) {
+      if (axios.isAxiosError(error) && error.response?.data?.needsVerification) {
+        throw error; 
       }
-      throw error; // Re-throw for the form to handle
+      throw error;
     }
   };
     
@@ -168,10 +130,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   };
 
   const logout = () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem('user');
     setUser(null);
     setBookmarks([]);
-    setAuthToken(null);
     router.push('/login');
   };
 
@@ -203,10 +164,9 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     login,
     register,
     logout,
-    handleTokenUpdate,
-    handleAuthSuccess, 
     addBookmark, 
     removeBookmark,
+    setAuthenticatedUser, // Export the new function
   };
 
   return (

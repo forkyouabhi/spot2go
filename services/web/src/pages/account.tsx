@@ -2,7 +2,7 @@
 import React, { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { getUserBookings, getBoookmarkedPlaces, getUserReviews } from '../lib/api'; // <-- IMPORTED getUserReviews
+import { getUserBookings, getBoookmarkedPlaces, getUserReviews } from '../lib/api'; 
 import { AccountScreen } from '../components/AccountScreen';
 import { toast } from 'sonner';
 import { Booking, StudyPlace, Review, User } from '../types';
@@ -19,8 +19,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card'
 import { Button } from '../components/ui/button';
 import { Star, MapPin } from 'lucide-react';
 
-// --- NEW: Review Card Component ---
-// A small component to render the reviews in the new tab
+// --- Review Card Component (Unchanged) ---
 const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavigateToPlace: (placeId: string) => void }) => {
   const userName = review.user?.name || 'A User';
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
@@ -60,8 +59,6 @@ const ReviewItemCard = ({ review, onNavigateToPlace }: { review: Review, onNavig
     </Card>
   );
 };
-// --- END NEW COMPONENT ---
-
 
 export default function AccountPage() {
   const router = useRouter();
@@ -69,21 +66,25 @@ export default function AccountPage() {
   
   const [bookings, setBookings] = useState<Booking[]>([]);
   const [bookmarkedPlaces, setBookmarkedPlaces] = useState<StudyPlace[]>([]); 
-  const [reviews, setReviews] = useState<Review[]>([]); // <-- NEW
+  const [reviews, setReviews] = useState<Review[]>([]); 
   const [loadingData, setLoadingData] = useState(true);
   const [reviewingBooking, setReviewingBooking] = useState<Booking | null>(null); 
 
-  // --- NEW: State for lazy loading ---
+  // State for lazy loading
   const [activeTab, setActiveTab] = useState('bookings');
   const [hasFetchedBookmarks, setHasFetchedBookmarks] = useState(false);
   const [hasFetchedReviews, setHasFetchedReviews] = useState(false);
-  // --- END NEW STATE ---
+
+  // --- FIX: Handle 401 errors silently in all fetchers ---
 
   const fetchUserBookings = useCallback(async () => {
     try {
       const response = await getUserBookings();
       setBookings(response.data);
-    } catch (error) {
+    } catch (error: any) {
+      // If it's 401, the auth effect will handle the redirect. Don't log error.
+      if (error.response?.status === 401) return;
+      
       toast.error('Could not fetch your bookings.');
       console.error('Failed to fetch bookings:', error);
     }
@@ -93,26 +94,31 @@ export default function AccountPage() {
     try {
       const response = await getBoookmarkedPlaces();
       setBookmarkedPlaces(response.data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 401) return;
+      
       toast.error('Could not fetch your bookmarks.');
       console.error('Failed to fetch bookmarks:', error);
     }
   }, []);
 
-  // --- NEW: Callback for fetching reviews ---
   const fetchUserReviews = useCallback(async () => {
     try {
       const response = await getUserReviews();
       setReviews(response.data);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 401) return;
+      
       toast.error('Could not fetch your reviews.');
       console.error('Failed to fetch reviews:', error);
     }
   }, []);
-  // --- END NEW CALLBACK ---
+
+  // --- End Fetchers ---
 
   useEffect(() => {
     if (authLoading) return;
+    
     if (!isAuthenticated) {
       router.replace('/login');
       return;
@@ -125,20 +131,22 @@ export default function AccountPage() {
       return; 
     }
 
-    // --- MODIFIED: Fetch *only* initial data (bookings) ---
     const fetchInitialData = async () => {
       setLoadingData(true);
-      await fetchUserBookings(); // Only fetch bookings on load
+      await fetchUserBookings(); 
       setLoadingData(false);
     };
 
-    fetchInitialData();
-    // --- END MODIFICATION ---
+    // Only fetch if we actually have a user object
+    if (user) {
+      fetchInitialData();
+    }
   }, [isAuthenticated, authLoading, router, fetchUserBookings, user]);
 
-  // --- NEW: useEffect to handle lazy-loading tabs ---
+  // Lazy-loading tabs effect
   useEffect(() => {
-    // This runs when the activeTab state changes
+    if (!isAuthenticated) return; 
+
     if (activeTab === 'bookmarks' && !hasFetchedBookmarks) {
       fetchBookmarkedPlaces();
       setHasFetchedBookmarks(true);
@@ -148,26 +156,22 @@ export default function AccountPage() {
       fetchUserReviews();
       setHasFetchedReviews(true);
     }
-  }, [activeTab, hasFetchedBookmarks, hasFetchedReviews, fetchBookmarkedPlaces, fetchUserReviews]);
-  // --- END NEW EFFECT ---
+  }, [activeTab, hasFetchedBookmarks, hasFetchedReviews, fetchBookmarkedPlaces, fetchUserReviews, isAuthenticated]);
 
   const handleReviewSubmitted = (newReview: Review) => {
     fetchUserBookings(); 
     setReviewingBooking(null);
-    // Add the new review to the state to avoid a full refetch
     setReviews(prev => [newReview, ...prev]);
-    setHasFetchedReviews(true); // Mark as fetched
+    setHasFetchedReviews(true); 
   };
 
   const handleNavigateToPlace = (placeId: string) => {
     router.push(`/places/${placeId}`);
   };
 
-  // --- THIS IS THE FIX ---
   const handleNavigateToTicket = (ticketId: string) => {
     router.push(`/confirmation?ticketId=${ticketId}`);
   };
-  // --- END FIX ---
 
   if (authLoading || (isAuthenticated && (loadingData || user?.role !== 'customer'))) {
     return (
@@ -198,12 +202,10 @@ export default function AccountPage() {
         onLogout={logout}
         onReview={(booking) => setReviewingBooking(booking)} 
         onNavigateToPlace={handleNavigateToPlace}
-        onNavigateToTicket={handleNavigateToTicket} // <-- PASS THE NEW PROP
-        // --- PASS NEW PROPS ---
-        reviews={reviews} // Pass reviews down
+        onNavigateToTicket={handleNavigateToTicket} 
+        reviews={reviews} 
         activeTab={activeTab}
-        onTabChange={setActiveTab} // Pass the state setter down
-        // --- END NEW PROPS ---
+        onTabChange={setActiveTab} 
       />
 
       <AlertDialog open={!!reviewingBooking} onOpenChange={(open) => !open && setReviewingBooking(null)}>

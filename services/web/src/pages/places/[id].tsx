@@ -14,10 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/ta
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '../../components/ui/table';
 import { ImageWithFallback } from '../../components/figma/ImageWithFallback';
 import { ImageCarouselModal } from '../../components/ImageCarouselModal';
-import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon, Hourglass, Users } from 'lucide-react'; // <-- IMPORTED Users
+import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Navigation, Clock, Calendar as CalendarIcon, Hourglass, Users } from 'lucide-react'; 
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
 import Image from 'next/image'; 
+import { GetServerSideProps } from 'next'; // <-- NEW IMPORT
 import {
   Select,
   SelectContent,
@@ -28,7 +29,7 @@ import {
 
 const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
-  loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
+  loading: () => <div className="h-64 w-full bg-gray-200 flex items-center justify-center rounded-lg"><Loader2 className="h-6 w-6 animate-spin"/></div>
 });
 
 const ReviewCard = ({ review }: { review: Review }) => {
@@ -59,7 +60,7 @@ const ReviewCard = ({ review }: { review: Review }) => {
   );
 };
 
-// --- MODIFIED: BookingWidget ---
+// --- BookingWidget Component (client-side logic, unchanged from previous fix) ---
 const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPlace, onConfirmBooking: (slot: TimeSlot, duration: number, partySize: number) => void, isBooking: boolean }) => {
     const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
     const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null);
@@ -218,13 +219,43 @@ const BookingWidget = ({ place, onConfirmBooking, isBooking }: { place: StudyPla
         </Card>
     );
 };
-// --- END MODIFICATION ---
+// --- END BookingWidget Component ---
 
-export default function PlaceDetailPage() {
+// --- NEW: getServerSideProps for initial data fetch (PERFORMANCE FIX) ---
+export const getServerSideProps: GetServerSideProps = async (context) => {
+  const { id } = context.params;
+  
+  if (!id) {
+    return { notFound: true };
+  }
+
+  try {
+    const response = await getPlaceById(id as string);
+    
+    return {
+      props: {
+        initialPlace: response.data,
+      },
+    };
+  } catch (error) {
+    console.error(`SSR failed to fetch place ${id}:`, error);
+    return {
+      // Return notFound: true if the place doesn't exist (or API call fails)
+      notFound: true,
+    };
+  }
+};
+// --- END NEW: getServerSideProps ---
+
+
+// --- MODIFIED: Component signature to accept SSR props ---
+export default function PlaceDetailPage({ initialPlace }: { initialPlace: StudyPlace }) {
   const router = useRouter();
-  const { id } = router.query;
   const { user, isAuthenticated, loading: authLoading } = useAuth();
-  const [place, setPlace] = useState<StudyPlace | null>(null);
+  
+  // Initialize place state with server-fetched data
+  const [place, setPlace] = useState<StudyPlace | null>(initialPlace); 
+  
   // ... (rest of state remains unchanged)
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [isBooking, setIsBooking] = useState(false);
@@ -257,8 +288,8 @@ export default function PlaceDetailPage() {
   }, []);
 
   useEffect(() => {
-    // ... (auth/role checks unchanged)
     if (authLoading) return;
+    
     if (!isAuthenticated) {
       router.push('/login');
       return;
@@ -269,20 +300,10 @@ export default function PlaceDetailPage() {
       router.replace(user.role === 'owner' ? '/owner/dashboard' : '/admin/dashboard');
       return;
     }
+    
+    // NOTE: Removed client-side data fetch as it's now handled by getServerSideProps
 
-    if (id && isAuthenticated) {
-      const fetchPlace = async () => {
-        try {
-          const response = await getPlaceById(id as string);
-          setPlace(response.data);
-        } catch (error) {
-          toast.error("Could not load place details.");
-          router.push('/');
-        }
-      };
-      fetchPlace();
-    }
-  }, [id, isAuthenticated, authLoading, router, user]);
+  }, [isAuthenticated, authLoading, router, user]);
 
   const handleGetDirections = () => {
     // ... (unchanged)
@@ -318,9 +339,13 @@ export default function PlaceDetailPage() {
     } catch (error: any) {
         const errorMessage = error.response?.data?.error || "Booking failed. Please try again.";
         toast.error(errorMessage);
-        if (id) {
-           const updatedResponse = await getPlaceById(id as string);
-           setPlace(updatedResponse.data);
+        // Re-fetch data on failure to show updated availability
+        try {
+            // Re-fetch using place.id, which is available from the initial SSR prop
+            const updatedResponse = await getPlaceById(place.id.toString());
+            setPlace(updatedResponse.data);
+        } catch (fetchError) {
+             console.error("Failed to re-fetch place data after booking error:", fetchError);
         }
     } finally {
         setIsBooking(false);
@@ -330,16 +355,17 @@ export default function PlaceDetailPage() {
 
   const hasReservations = place?.reservable && place?.availableSlots && place.availableSlots.length > 0;
 
+  // --- MODIFIED: Only show loader for auth/initial prop check ---
   if (authLoading || !place) {
     return <div className="min-h-screen flex items-center justify-center bg-brand-cream"><Loader2 className="h-12 w-12 animate-spin text-brand-orange"/></div>;
   }
+  // --- END MODIFIED ---
 
   return (
     <>
       <Head>
         <title>Spot2Go | {place.name}</title>
       </Head>
-      {/* ... (rest of the JSX remains unchanged) ... */}
        {place.images && <ImageCarouselModal images={place.images} open={isModalOpen} onOpenChange={setIsModalOpen} />}
 
       <div className="min-h-screen bg-brand-cream">

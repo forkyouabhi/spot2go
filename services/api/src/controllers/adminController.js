@@ -1,27 +1,22 @@
 // services/api/src/controllers/adminController.js
-const { Place, User, MenuItem } = require('../models');
-const { sendEmail } = require('../utils/emailService');
+const { Place, User, Booking } = require('../models');
 
-const getPlaceStats = async (req, res) => {
+const getDashboardStats = async (req, res) => {
   try {
     const totalPlaces = await Place.count();
-    const approvedPlaces = await Place.count({ where: { status: 'approved' } });
     const pendingPlaces = await Place.count({ where: { status: 'pending' } });
+    const totalUsers = await User.count({ where: { role: 'customer' } });
     const pendingOwners = await User.count({ where: { role: 'owner', status: 'pending_verification' } });
 
     res.json({
-      places: {
-        total: totalPlaces,
-        approved: approvedPlaces,
-        pending: pendingPlaces,
-      },
-      owners: {
-        pending: pendingOwners
-      }
+      totalPlaces,
+      pendingPlaces,
+      totalUsers,
+      pendingOwners
     });
   } catch (err) {
-    console.error('Error fetching stats:', err);
-    res.status(500).json({ error: 'Failed to fetch statistics' });
+    console.error("Stats Error:", err);
+    res.status(500).json({ error: 'Failed to fetch stats' });
   }
 };
 
@@ -29,15 +24,11 @@ const getPendingPlaces = async (req, res) => {
   try {
     const places = await Place.findAll({
       where: { status: 'pending' },
-      include: [
-        { model: User, as: 'owner', attributes: ['name', 'email'] },
-        { model: MenuItem, as: 'menuItems', attributes: ['name', 'price'] },
-      ],
-      order: [['created_at', 'ASC']],
+      include: [{ model: User, as: 'owner', attributes: ['name', 'email', 'phone'] }],
+      order: [['created_at', 'ASC']]
     });
     res.json(places);
   } catch (err) {
-    console.error(err);
     res.status(500).json({ error: 'Failed to fetch pending places' });
   }
 };
@@ -45,101 +36,60 @@ const getPendingPlaces = async (req, res) => {
 const updatePlaceStatus = async (req, res) => {
   try {
     const { placeId } = req.params;
-    const { status } = req.body;
-    if (!['approved', 'rejected'].includes(status)) {
-      return res.status(400).json({ error: 'Invalid status' });
-    }
+    const { status } = req.body; // 'approved' or 'rejected'
+
     const place = await Place.findByPk(placeId);
-    if (!place) {
-      return res.status(404).json({ error: 'Place not found' });
-    }
-    place.status = status;
-    await place.save();
-    res.json({ message: `Place status updated to ${status}`, place });
+    if (!place) return res.status(404).json({ error: 'Place not found' });
+
+    await place.update({ status });
+    
+    // Optional: Send email to owner here
+    
+    res.json({ message: `Place ${status} successfully`, place });
   } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Failed to update place status' });
+    res.status(500).json({ error: 'Update failed' });
   }
 };
 
-
-// Get users pending verification
 const getPendingOwners = async (req, res) => {
   try {
-    const pendingUsers = await User.findAll({
-      where: {
-        role: 'owner',
-        status: 'pending_verification'
+    const owners = await User.findAll({
+      where: { 
+        role: 'owner', 
+        status: 'pending_verification' // Must match exact DB enum/string
       },
-      // --- FIX: Use aliasing for 'createdAt' and 'businessLocation' ---
-      attributes: [
-        'id', 
-        'name', 
-        'email', 
-        ['created_at', 'createdAt'], // Map DB column 'created_at' to 'createdAt' in the result
-        'phone', 
-        ['business_location', 'businessLocation'] // Map DB column 'business_location'
-      ],
-      order: [['created_at', 'ASC']], // Order by the actual DB column name
-      // --- END FIX ---
+      attributes: ['id', 'name', 'email', 'phone', 'businessLocation', 'created_at'],
+      order: [['created_at', 'ASC']]
     });
-    res.json(pendingUsers);
+    res.json(owners);
   } catch (err) {
-    console.error('Error fetching pending owners:', err);
+    console.error("Pending Owners Error:", err);
     res.status(500).json({ error: 'Failed to fetch pending owners' });
   }
 };
 
-
 const updateOwnerStatus = async (req, res) => {
-  const { userId } = req.params;
-  const { status } = req.body; // Expecting 'active' or 'rejected'
-
-  if (!['active', 'rejected'].includes(status)) {
-    return res.status(400).json({ error: 'Invalid status provided. Use "active" or "rejected".' });
-  }
-
   try {
-    const user = await User.findOne({
-      where: {
-        id: userId,
-        role: 'owner'
-      }
-    });
+    const { userId } = req.params;
+    const { status } = req.body; // 'active' or 'rejected'
 
-    if (!user) {
-      return res.status(404).json({ error: 'Owner user not found.' });
-    }
+    const owner = await User.findByPk(userId);
+    if (!owner) return res.status(404).json({ error: 'Owner not found' });
 
-    if (user.status === status) {
-        return res.json({ message: `Owner status is already ${status}.`, user });
-    }
+    await owner.update({ status });
 
-    user.status = status;
-    await user.save();
+    // Optional: Send email to owner here
 
-    const emailTemplate = status === 'active' ? 'ownerAccountApproved' : 'ownerAccountRejected';
-    try {
-        await sendEmail(user.email, emailTemplate, {
-            name: user.name,
-        });
-    } catch (emailError) {
-        console.error(`Failed to send owner status update email to ${user.email}:`, emailError);
-    }
-
-    res.json({ message: `Owner status updated to ${status}.`, user });
-
+    res.json({ message: `Owner account updated to ${status}`, owner });
   } catch (err) {
-    console.error('Error updating owner status:', err);
-    res.status(500).json({ error: 'Failed to update owner status.' });
+    res.status(500).json({ error: 'Update failed' });
   }
 };
 
-
 module.exports = {
-  getPlaceStats,
+  getDashboardStats,
   getPendingPlaces,
   updatePlaceStatus,
   getPendingOwners,
-  updateOwnerStatus,
+  updateOwnerStatus
 };

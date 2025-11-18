@@ -7,14 +7,15 @@ import { Input } from "../components/ui/input";
 import { Label } from "../components/ui/label";
 import { toast } from 'sonner';
 import { resetPassword } from '../lib/api';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../context/AuthContext'; // Keeping useAuth for initial auth check (if needed later)
 import { Lock, Loader2, Eye, EyeOff } from "lucide-react";
 import Head from 'next/head';
 import Image from 'next/image';
 
 export default function ResetPasswordPage() {
   const router = useRouter();
-  const { handleTokenUpdate } = useAuth();
+  // FIX: handleTokenUpdate is removed from useAuth() context/type
+  // const { handleTokenUpdate } = useAuth(); // REMOVED
   const [token, setToken] = useState<string | null>(null);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -24,7 +25,7 @@ export default function ResetPasswordPage() {
 
   useEffect(() => {
     if (router.isReady) {
-      // --- FIX: Look for resetToken instead of token ---
+      // FIX: Look for resetToken instead of token
       const queryToken = router.query.resetToken as string;
       if (queryToken) {
         setToken(queryToken);
@@ -57,17 +58,14 @@ export default function ResetPasswordPage() {
 
     setLoading(true);
     try {
-      // API call remains the same as your API client aligns with the updated backend
-      const response = await resetPassword({ token, password });
-      toast.success('Password reset successfully! You are now logged in.');
+      // API call remains the same
+      await resetPassword({ token, password });
+      
+      toast.success('Password reset successfully! Please log in with your new password.');
 
-      if (response.data.token) {
-        handleTokenUpdate(response.data.token);
-        router.push('/');
-      } else {
-         toast.info('Password reset, please log in.');
-         router.push('/login');
-      }
+      // FIX: Since the token is no longer returned or set via client-side logic,
+      // we must redirect the user to the login page.
+      router.push('/login');
 
     } catch (err: any) {
       const errorMessage = err.response?.data?.error || 'Failed to reset password. The link may have expired or is invalid.';

@@ -41,8 +41,6 @@ Booking.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 Bundle.belongsToMany(MenuItem, { through: BundleItem, foreignKey: 'bundleId', as: 'items' });
 MenuItem.belongsToMany(Bundle, { through: BundleItem, foreignKey: 'menuItemId', as: 'bundles' });
 
-// --- 3. ADD NEW ASSOCIATIONS ---
-
 // User <-> Place (Many-to-Many for Bookmarks)
 User.belongsToMany(Place, {
   through: UserBookmark,
@@ -65,8 +63,6 @@ Review.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Place.hasMany(Review, { foreignKey: 'placeId', as: 'reviews' });
 Review.belongsTo(Place, { foreignKey: 'placeId', as: 'place' });
 
-// --- END ADDITIONS ---
-
 const db = {
   sequelize,
   User,
@@ -82,8 +78,10 @@ const db = {
 };
 
 // Sync all models with the database
-sequelize.sync({ alter: true }).then(() => {
-  console.log('All models were synchronized successfully.');
-});
+// CRITICAL FIX: Removed sequelize.sync({ alter: true }) for production safety.
+// Migrations must be used instead.
+// sequelize.sync({ alter: true }).then(() => {
+//   console.log('All models were synchronized successfully.');
+// });
 
 module.exports = db;

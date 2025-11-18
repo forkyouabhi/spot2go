@@ -1,6 +1,10 @@
 require('dotenv').config();
-const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+// FIX 1: Import the ROOT Cloudinary object (not .v2) for the storage engine
+const cloudinary = require('cloudinary');
+
+// FIX 2: Robust import for CloudinaryStorage to handle version differences
+const multerStorage = require('multer-storage-cloudinary');
+const CloudinaryStorage = multerStorage.CloudinaryStorage || multerStorage;
 
 if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !process.env.CLOUDINARY_API_SECRET) {
   console.error('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!');
@@ -9,22 +13,25 @@ if (!process.env.CLOUDINARY_CLOUD_NAME || !process.env.CLOUDINARY_API_KEY || !pr
   process.exit(1);
 }
 
-cloudinary.config({
+// Configure using the v2 interface
+cloudinary.v2.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
   api_key: process.env.CLOUDINARY_API_KEY,
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-// SIMPLIFIED STORAGE CONFIGURATION
 const storage = new CloudinaryStorage({
-  cloudinary: cloudinary,
+  // FIX 3: Pass the ROOT cloudinary object. 
+  // The library internally calls `cloudinary.v2.uploader...`
+  cloudinary: cloudinary, 
   params: {
     folder: 'spot2go_places',
-    allowed_formats: ['jpeg', 'png', 'jpg'],
+    // FIX 4: Use 'allowedFormats' (camelCase) for newer versions
+    allowedFormats: ['jpeg', 'png', 'jpg'], 
   },
 });
 
 module.exports = {
-  cloudinary,
+  cloudinary: cloudinary.v2, // Export v2 for use in your controllers
   storage,
 };

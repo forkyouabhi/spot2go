@@ -1,3 +1,4 @@
+// services/web/src/pages/settings.tsx
 import { useRouter } from 'next/router';
 import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
@@ -9,7 +10,8 @@ import { UserSettings } from '../types';
 
 export default function SettingsPage() {
   const router = useRouter();
-  const { user, isAuthenticated, loading, logout, handleTokenUpdate } = useAuth();
+  // FIX: Removed handleTokenUpdate from destructuring
+  const { user, isAuthenticated, loading, logout } = useAuth();
   
   const [settings, setSettings] = useState<UserSettings>(user?.settings);
 
@@ -33,12 +35,19 @@ export default function SettingsPage() {
       const profileData = { name, email, phone };
 
       const response = await updateUser(user.id, profileData);
-      const { token } = response.data;
+      // Removed token logic
+      // const { token } = response.data; 
 
+      // FIX: Removed client-side token update logic
+      /*
       if (token) {
         handleTokenUpdate(token);
         toast.success('Profile updated successfully!');
       }
+      */
+      
+      // Rely on successful API call and implicit session management
+      toast.success('Profile updated successfully!');
 
       // This is the section for "passwordData"
       if (newPassword && currentPassword) {

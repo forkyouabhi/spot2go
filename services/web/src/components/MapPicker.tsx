@@ -1,6 +1,6 @@
 "use client";
 
-import { MapContainer, TileLayer, Marker, useMapEvents } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, useMapEvents, useMap } from "react-leaflet";
 import L, { LeafletMouseEvent } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useEffect, useRef } from "react";
@@ -17,12 +17,21 @@ interface MapPickerProps {
   setAddress: (address: string) => void; 
 }
 
-// Separate component for the "Use My Location" button
+// --- NEW: Component to update map view when location changes externally ---
+function MapUpdater({ location }: { location: { lat: number; lng: number } | null }) {
+  const map = useMap();
+  useEffect(() => {
+    if (location) {
+      map.flyTo(location, 16, { duration: 1.5 });
+    }
+  }, [location, map]);
+  return null;
+}
+
 function CurrentLocationButton({ setLocation, setAddress }: { setLocation: MapPickerProps['setLocation'], setAddress: MapPickerProps['setAddress'] }) {
   const map = useMapEvents({});
   const buttonRef = useRef<HTMLButtonElement>(null);
 
-  // This effect prevents click events on the button from propagating to the map
   useEffect(() => {
     if (buttonRef.current) {
       L.DomEvent.disableClickPropagation(buttonRef.current);
@@ -39,7 +48,7 @@ function CurrentLocationButton({ setLocation, setAddress }: { setLocation: MapPi
     navigator.geolocation.getCurrentPosition(async (pos) => {
       const newLoc = { lat: pos.coords.latitude, lng: pos.coords.longitude };
       setLocation(newLoc);
-      map.setView(newLoc, 15);
+      map.setView(newLoc, 16);
 
       try {
         const res = await fetch(
@@ -64,7 +73,6 @@ function CurrentLocationButton({ setLocation, setAddress }: { setLocation: MapPi
     </button>
   );
 };
-
 
 export default function MapPicker({ location, setLocation, setAddress }: MapPickerProps) {
   const MapClickHandler = () => {
@@ -93,6 +101,8 @@ export default function MapPicker({ location, setLocation, setAddress }: MapPick
         attribution='&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors'
       />
       <MapClickHandler />
+      {/* Add the Updater here to handle external updates */}
+      <MapUpdater location={location} />
       <CurrentLocationButton setLocation={setLocation} setAddress={setAddress} />
     </MapContainer>
   );

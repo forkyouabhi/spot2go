@@ -12,7 +12,6 @@ import { Label } from '../components/ui/label';
 import { ArrowLeft, Loader2, Eye, EyeOff } from 'lucide-react';
 import Image from 'next/image';
 import { FcGoogle } from 'react-icons/fc';
-// --- Imports for Terms & Checkbox ---
 import { Checkbox } from "../components/ui/checkbox";
 import { TermsAndConditions } from "../components/TermsAndConditions";
 
@@ -29,7 +28,7 @@ export default function SignupPage() {
   
   // UI State
   const [showPassword, setShowPassword] = useState(false);
-  const [agreedToTerms, setAgreedToTerms] = useState(false); // State for checkbox
+  const [agreedToTerms, setAgreedToTerms] = useState(false); 
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -40,13 +39,11 @@ export default function SignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate Terms
     if (!agreedToTerms) {
         toast.error("You must agree to the Terms and Conditions to create an account.");
         return;
     }
     
-    // Validate passwords match
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
@@ -61,7 +58,13 @@ export default function SignupPage() {
     try {
       const response = await register(name, email, password, 'customer');
       toast.success(response.message || 'Registration successful! Please check your email.');
-      router.push(`/verify-email?email=${email}`);
+      
+      // FIX: Ensure safer routing with encoding and await
+      const targetEmail = response.email || email; // Prefer email from response if available
+      console.log(`Attempting redirect to /verify-email?email=${targetEmail}`);
+      
+      await router.push(`/verify-email?email=${encodeURIComponent(targetEmail)}`);
+      
     } catch (error: any) {
       const errorMessage = (error as any).response?.data?.error || 'Signup failed. Please try again.';
       toast.error(errorMessage);
@@ -72,7 +75,6 @@ export default function SignupPage() {
   };
 
   const handleThirdPartyAuth = (provider: string) => {
-    // Optional: Enforce terms for social login too
     if (!agreedToTerms) {
         toast.error("You must agree to the Terms and Conditions.");
         return;
@@ -223,7 +225,7 @@ export default function SignupPage() {
                 
                 <Button 
                   type="submit" 
-                  disabled={loading || !agreedToTerms} // Disable if terms not agreed
+                  disabled={loading || !agreedToTerms} 
                   className="w-full h-12 text-lg font-semibold bg-brand-burgundy hover:bg-brand-burgundy/90 text-brand-cream disabled:opacity-50 disabled:cursor-not-allowed"
                 >
                   {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : "Create Account"}
@@ -232,7 +234,6 @@ export default function SignupPage() {
             </CardContent>
           </Card>
 
-        {/* Bottom Links */}
         <div className="w-full max-w-lg mx-auto z-10 text-center p-4 space-y-2 mt-4">
           <p className="text-sm font-medium text-brand-yellow">
             Already have an account?
