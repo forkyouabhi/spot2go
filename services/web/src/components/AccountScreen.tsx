@@ -4,7 +4,8 @@ import { useAuth } from '../context/AuthContext';
 import { 
   User, Calendar, Star, Settings, LogOut, 
   Bell, Shield, ArrowLeft, Utensils, Clock, Edit3, Ticket, 
-  Loader2, Users, DollarSign,ChevronRight} from 'lucide-react';
+  Loader2, Users, DollarSign, ChevronRight
+} from 'lucide-react';
 import { Button } from './ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
@@ -18,12 +19,50 @@ import { Label } from './ui/label';
 import Image from 'next/image';
 import { format, parseISO } from 'date-fns';
 import { getUserBookings, getUserReviews, createReview } from '../lib/api';
-import { Booking, Review } from '../types';
+import { Booking, Review, StudyPlace } from '../types';
 
 // Extended Booking type to handle amount safely
 interface ExtendedBooking extends Booking {
   amount?: string | number;
 }
+
+// --- HELPER: Fix broken/JSON image strings ---
+const getPlaceImage = (place: StudyPlace | undefined) => {
+  if (!place) return null;
+  let imageSrc = '';
+
+  // 1. Handle JSON string from DB (e.g., "['uploads/img.jpg']")
+  if (typeof place.images === 'string') {
+      try {
+          const parsed = JSON.parse(place.images);
+          if (Array.isArray(parsed) && parsed.length > 0) {
+             imageSrc = parsed[0];
+          } else {
+             imageSrc = place.images; 
+          }
+      } catch (e) {
+          // If parse fails, assume it is a raw string URL
+          imageSrc = place.images; 
+      }
+  } 
+  // 2. Handle Standard Array
+  else if (Array.isArray(place.images) && place.images.length > 0) {
+      imageSrc = place.images[0];
+  }
+
+  // 3. Fallback if empty
+  if (!imageSrc) return null;
+
+  // 4. Fix Relative URLs (prepend API URL for local uploads)
+  if (!imageSrc.startsWith('http') && !imageSrc.startsWith('data:')) {
+       const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000';
+       // Ensure we don't double slash
+       const cleanPath = imageSrc.startsWith('/') ? imageSrc : `/${imageSrc}`;
+       return `${apiUrl}${cleanPath}`;
+  }
+  
+  return imageSrc;
+};
 
 export default function AccountScreen() {
   const router = useRouter();
@@ -121,7 +160,6 @@ export default function AccountScreen() {
       {/* --- Header --- */}
       <div className="sticky top-0 z-40 bg-[#6C0345] text-[#FFF8DC] px-4 py-3 shadow-md flex justify-between items-center">
          <div className="flex items-center gap-2">
-             {/* FIX: Routes to Home */}
              <Button 
                 variant="ghost" 
                 size="icon" 
@@ -364,10 +402,9 @@ function BookingCard({ booking, isPast, onReview }: { booking: ExtendedBooking, 
     'no-show': 'bg-gray-100 text-gray-600 border-gray-200'
   };
 
-  // FIX: Use First Image
-  const placeImage = booking.place?.images?.[0] || null;
+  // FIX: Use the helper function to resolve the image
+  const placeImage = getPlaceImage(booking.place);
 
-  // FIX: Format Amount
   const formattedAmount = booking.amount && Number(booking.amount) > 0
       ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'CAD' }).format(Number(booking.amount))
       : null;
@@ -383,6 +420,7 @@ function BookingCard({ booking, isPast, onReview }: { booking: ExtendedBooking, 
                   alt={booking.place?.name || "Place"} 
                   fill 
                   className={`object-cover ${isPast ? 'grayscale' : ''}`}
+                  unoptimized={true} // CRITICAL: Fixes crash on external/local images
                />
              ) : (
                <div className="absolute inset-0 flex items-center justify-center text-gray-400">
@@ -436,7 +474,6 @@ function BookingCard({ booking, isPast, onReview }: { booking: ExtendedBooking, 
 
              {/* Actions */}
              <div className="flex gap-2 mt-auto">
-                 {/* FIX: Route to Existing Confirmation Page */}
                  {['confirmed', 'pending'].includes(booking.status) && (
                      <Button 
                         size="sm" 
