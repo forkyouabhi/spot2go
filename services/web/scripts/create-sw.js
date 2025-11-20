@@ -1,5 +1,5 @@
 const fs = require('fs');
-require('dotenv').config({ path: '.env.local' });
+require('dotenv').config({ path: '.env' });
 
 const swContent = `
 importScripts('https://www.gstatic.com/firebasejs/9.23.0/firebase-app-compat.js');
