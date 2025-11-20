@@ -2,8 +2,8 @@
 const { User } = require('../models');
 const jwt = require('jsonwebtoken');
 const { sendEmail } = require('../utils/emailService');
-const crypto = require('crypto'); 
-const bcrypt = require('bcryptjs'); // Required for changePassword
+const crypto = require('crypto');
+const bcrypt = require('bcryptjs');
 const { Op } = require('sequelize');
 
 // --- Helpers ---
@@ -11,12 +11,12 @@ const generateOTP = () => crypto.randomInt(100000, 999999).toString();
 
 const setAuthCookie = (res, user) => {
   const token = jwt.sign(
-    { 
-      id: user.id, 
-      email: user.email, 
-      role: user.role, 
-      name: user.name, 
-      phone: user.phone, 
+    {
+      id: user.id,
+      email: user.email,
+      role: user.role,
+      name: user.name,
+      phone: user.phone,
       createdAt: user.created_at,
       status: user.status
     },
@@ -31,11 +31,11 @@ const setAuthCookie = (res, user) => {
     maxAge: 24 * 60 * 60 * 1000 // 1 day
   });
 
-  return { 
-    id: user.id, 
-    name: user.name, 
-    email: user.email, 
-    role: user.role, 
+  return {
+    id: user.id,
+    name: user.name,
+    email: user.email,
+    role: user.role,
     status: user.status,
     phone: user.phone
   };
@@ -52,7 +52,7 @@ const register = async (req, res) => {
     if (existingUser && existingUser.emailVerified) return res.status(409).json({ error: 'Email is already in use' });
 
     const otp = generateOTP();
-    const expires = new Date(Date.now() + 10 * 60 * 1000);
+    const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
     const status = role === 'owner' ? 'pending_verification' : 'active';
 
     let user;
@@ -99,40 +99,34 @@ const login = async (req, res) => {
   }
 };
 
-// --- NEW: Secure Logout ---
 const logout = (req, res) => {
   res.cookie('token', '', {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: process.env.NODE_ENV === 'production' ? 'strict' : 'lax',
-    expires: new Date(0) // Expire immediately
+    expires: new Date(0)
   });
   res.json({ message: 'Logged out successfully' });
 };
 
-// --- NEW: Change Password ---
 const changePassword = async (req, res) => {
   try {
     const { currentPassword, newPassword } = req.body;
     const userId = req.user.id;
 
-    // 1. Get user with password field
     const user = await User.findByPk(userId);
     if (!user) return res.status(404).json({ error: 'User not found' });
 
-    // 2. Verify Old Password
     const isMatch = await user.comparePassword(currentPassword);
     if (!isMatch) {
       return res.status(401).json({ error: 'Incorrect current password' });
     }
 
-    // 3. Hash & Save New Password
-    // Note: The User model hook 'beforeUpdate' will handle hashing automatically
-    // if your model is set up correctly. To be safe, we assign plain text
-    // and let the model hook hash it, OR hash it here manually.
-    // Assuming your User.js hook handles hashing on changed('password'):
-    user.password = newPassword; 
+    user.password = newPassword;
     await user.save();
+    
+    // Optional: Send confirmation email
+    sendEmail(user.email, 'passwordResetConfirmation', { name: user.name }).catch(console.error);
 
     res.json({ message: 'Password updated successfully' });
   } catch (err) {
@@ -158,18 +152,96 @@ const verifyEmail = async (req, res) => {
 };
 
 const resendVerificationOtp = async (req, res) => {
-   /* ... implementation same as before ... */
-   res.json({ message: 'OTP Resent' });
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+    if (!user) return res.status(404).json({ error: 'User not found' });
+    
+    const otp = generateOTP();
+    user.emailVerificationToken = otp;
+    user.emailVerificationExpires = new Date(Date.now() + 10 * 60 * 1000);
+    await user.save();
+
+    sendEmail(email, 'emailVerificationOTP', { name: user.name, otp }).catch(console.error);
+    res.json({ message: 'OTP Resent' });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to resend OTP' });
+  }
 };
 
-const requestPasswordReset = async (req, res) => { res.json({message: "Coming soon"}); };
-const resetPassword = async (req, res) => { res.json({message: "Coming soon"}); };
+// --- Password Reset Logic ---
+
+const requestPasswordReset = async (req, res) => {
+  const { email } = req.body;
+  try {
+    const user = await User.findOne({ where: { email } });
+
+    // Security Best Practice: Always return success to prevent email enumeration
+    if (!user) {
+      return res.json({ message: 'If an account exists, a reset link has been sent.' });
+    }
+
+    // Generate a secure random token (hex string)
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const tokenExpires = new Date(Date.now() + 1 * 60 * 60 * 1000); // 1 hour from now
+
+    user.passwordResetToken = resetToken;
+    user.passwordResetExpires = tokenExpires;
+    await user.save();
+
+    // Construct Reset Link
+    const resetLink = `${process.env.FRONTEND_URL}/reset-password?resetToken=${resetToken}`;
+
+    // FIX: Used 'passwordResetRequest' to match emailService.js
+    // FIX: Passed 'resetLink' property to match email template destructuring
+    await sendEmail(user.email, 'passwordResetRequest', { 
+      name: user.name,
+      resetLink: resetLink 
+    });
+
+    res.json({ message: 'If an account exists, a reset link has been sent.' });
+  } catch (err) {
+    console.error('Request Password Reset Error:', err);
+    res.status(500).json({ error: 'Failed to process request' });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  const { token, password } = req.body;
+  try {
+    // Find user with valid, non-expired token
+    const user = await User.findOne({
+      where: {
+        passwordResetToken: token,
+        passwordResetExpires: { [Op.gt]: new Date() } // Expires > Now
+      }
+    });
+
+    if (!user) {
+      return res.status(400).json({ error: 'Token is invalid or has expired.' });
+    }
+
+    // Update password (hook will hash it)
+    user.password = password;
+    user.passwordResetToken = null;
+    user.passwordResetExpires = null;
+    await user.save();
+
+    // Optional: Send confirmation email that password changed
+    sendEmail(user.email, 'passwordResetConfirmation', { name: user.name }).catch(console.error);
+
+    res.json({ message: 'Password has been reset successfully.' });
+  } catch (err) {
+    console.error('Reset Password Error:', err);
+    res.status(500).json({ error: 'Failed to reset password.' });
+  }
+};
 
 module.exports = {
   register,
   login,
-  logout, // Exported
-  changePassword, // Exported
+  logout,
+  changePassword,
   verifyEmail,
   requestPasswordReset,
   resetPassword,

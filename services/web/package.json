@@ -3,10 +3,10 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --turbopack",
-    "build": "next build --webpack",
-    "start": "next start",
-    "lint": "next lint"
+    "dev": "node scripts/create-sw.js && next dev --turbopack",
+    "build": "node scripts/create-sw.js && next build --webpack",
+    "start": "node scripts/create-sw.js && next start",
+    "lint": "node scripts/create-sw.js && next lint"
   },
   "dependencies": {
     "@ducanh2912/next-pwa": "^10.2.9",
@@ -43,7 +43,9 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "*",
     "cmdk": "^1.1.1",
+    "dotenv": "^17.2.3",
     "embla-carousel-react": "^8.6.0",
+    "firebase": "^12.6.0",
     "framer-motion": "^12.23.24",
     "input-otp": "^1.4.2",
     "jwt-decode": "^4.0.0",

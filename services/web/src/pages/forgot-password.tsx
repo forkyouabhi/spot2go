@@ -9,7 +9,13 @@ import { toast } from 'sonner';
 import { requestPasswordReset } from '../lib/api';
 import { ArrowLeft, Mail, Loader2 } from "lucide-react";
 import Head from 'next/head';
-import Image from 'next/image'; // Import Image
+import Image from 'next/image';
+import { AxiosError } from 'axios';
+
+interface ApiErrorResponse {
+  error: string;
+  message?: string;
+}
 
 export default function ForgotPasswordPage() {
   const router = useRouter();
@@ -21,12 +27,17 @@ export default function ForgotPasswordPage() {
     e.preventDefault();
     setLoading(true);
     setMessageSent(false); 
+    
     try {
       const response = await requestPasswordReset({ email });
       toast.success(response.data.message || 'Password reset link sent.');
       setMessageSent(true); 
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.error || 'Failed to send reset link. Please try again.';
+    } catch (error) {
+      const axiosError = error as AxiosError<ApiErrorResponse>;
+      const errorMessage = axiosError.response?.data?.error || 
+                          axiosError.response?.data?.message || 
+                          'Failed to send reset link. Please try again.';
+      
       toast.error(errorMessage);
       console.error('Password reset request failed:', error);
     } finally {
@@ -38,9 +49,9 @@ export default function ForgotPasswordPage() {
     <>
       <Head>
         <title>Spot2Go | Forgot Password</title>
+        <meta name="description" content="Reset your Spot2Go password" />
       </Head>
       <div className="min-h-screen relative overflow-hidden auth-background">
-
         <div className="relative z-10 min-h-screen flex flex-col items-center justify-center p-6">
           <div className="max-w-md w-full space-y-8">
             <Button
@@ -48,24 +59,23 @@ export default function ForgotPasswordPage() {
               onClick={() => router.push('/login')}
               className="self-start p-3 rounded-xl border-2 transition-button"
               style={{ color: '#FFF8DC', borderColor: '#F7C566', backgroundColor: 'rgba(255, 248, 220, 0.1)' }}
+              aria-label="Back to Login"
             >
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to Login
             </Button>
 
-            {/* --- MODIFIED: Use Logo Image --- */}
             <div className="text-center space-y-4 mb-8">
               <Image 
-                src="/logo-full.png" // Assumes 'logo-full.png' is in /public
+                src="/logo-full.png"
                 alt="Spot2Go Logo"
                 width={250}
                 height={67}
                 className="object-contain mx-auto"
-                style={{ filter: 'brightness(0) invert(1)' }} // Makes logo white
+                style={{ filter: 'brightness(0) invert(1)' }}
                 priority
               />
             </div>
-            {/* --- END MODIFICATION --- */}
 
             <Card className="shadow-2xl border-2 rounded-2xl animate-scale-in" style={{ backgroundColor: '#FFF8DC', borderColor: '#F7C566' }}>
               <CardHeader className="text-center space-y-4 pb-6">
@@ -79,7 +89,7 @@ export default function ForgotPasswordPage() {
 
               <CardContent>
                 {messageSent ? (
-                    <div className="text-center p-4 rounded-lg bg-green-100 border border-green-300">
+                    <div className="text-center p-4 rounded-lg bg-green-100 border border-green-300 animate-in fade-in">
                         <p className="font-medium text-green-700">
                             Check your email! If an account exists, you'll receive a password reset link shortly.
                         </p>

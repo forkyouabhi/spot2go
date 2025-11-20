@@ -1,10 +1,21 @@
+// services/web/next.config.js
+const withPWA = require("@ducanh2912/next-pwa").default({
+  dest: "public",
+  cacheOnFrontEndNav: true,
+  aggressiveFrontEndNavCaching: true,
+  reloadOnOnline: true,
+  swcMinify: true,
+  disable: process.env.NODE_ENV === "development",
+  workboxOptions: {
+    disableDevLogs: true,
+  },
+});
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
-  // 1. Optimize Docker Build
   output: 'standalone', 
   
-  // 2. Image Optimization (Allow specific domains)
   images: {
     remotePatterns: [
       {
@@ -16,7 +27,6 @@ const nextConfig = {
     minimumCacheTTL: 60,
   },
 
-  // 3. Security Headers
   async headers() {
     return [
       {
@@ -33,10 +43,9 @@ const nextConfig = {
     ];
   },
   
-  // 4. Experimental optimizations
   experimental: {
     optimizePackageImports: ['lucide-react', 'date-fns', 'lodash'],
   },
-}
+};
 
-module.exports = nextConfig;
+module.exports = withPWA(nextConfig);
