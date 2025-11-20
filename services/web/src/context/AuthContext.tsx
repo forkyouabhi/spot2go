@@ -1,7 +1,13 @@
-// services/web/src/context/AuthContext.tsx
 import React, { createContext, useState, useEffect, useContext, ReactNode, useCallback } from 'react';
 import { useRouter } from 'next/router';
-import { registerUser, loginUser, getUserBookmarks, addBookmark as apiAddBookmark, removeBookmark as apiRemoveBookmark } from '../lib/api';
+import { 
+  loginUser, 
+  logoutUser, 
+  registerUser, 
+  getUserBookmarks, 
+  addBookmark as apiAddBookmark, 
+  removeBookmark as apiRemoveBookmark 
+} from '../lib/api';
 import axios from 'axios';
 import { toast } from "sonner"; 
 import { User } from '../types';
@@ -12,36 +18,33 @@ interface AuthContextType {
   loading: boolean;
   bookmarks: string[];
   login: (email: string, password: string) => Promise<User>;
+  
+  // --- FIX: Added 'businessLocation' to the interface definition ---
   register: (
     name: string, 
     email: string, 
     password: string, 
-    role: 'customer' | 'owner',
-    phone?: string,
+    role: 'customer' | 'owner', 
+    phone?: string, 
     businessLocation?: string
   ) => Promise<any>; 
+  
   logout: () => void;
   addBookmark: (placeId: string) => Promise<void>;
   removeBookmark: (placeId: string) => Promise<void>;
-  // --- NEW: Allow manual user setting for auto-login flows ---
   setAuthenticatedUser: (user: User) => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
 
-interface AuthProviderProps {
-  children: ReactNode;
-}
-
-export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
+export const AuthProvider: React.FC<{children: ReactNode}> = ({ children }) => {
   const [user, setUser] = useState<User | null>(null);
   const [bookmarks, setBookmarks] = useState<string[]>([]); 
   const [loading, setLoading] = useState(true);
@@ -51,89 +54,70 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     try {
       const response = await getUserBookmarks();
       setBookmarks(response.data || []);
-    } catch (error) {
-      console.warn("Could not fetch bookmarks (user might not be logged in or session expired).");
-      setBookmarks([]);
-    }
+    } catch (error) { setBookmarks([]); }
   }, []);
   
-  const checkSessionAndLoadUser = useCallback(async () => {
-    const localUserString = localStorage.getItem('user');
-    if (!localUserString) {
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-    
-    try {
-      const localUser = JSON.parse(localUserString) as User;
-      setUser(localUser);
-      
-      if (localUser.role === 'customer') {
-          await fetchBookmarks();
-      }
-      
-    } catch (error) {
-        console.log("Session invalid. Clearing local user data.");
-        localStorage.removeItem('user');
-        setUser(null);
-        setBookmarks([]);
-    } finally {
-      setLoading(false);
-    }
-  }, [fetchBookmarks]); 
-
   useEffect(() => {
     if (router.isReady) {
-      checkSessionAndLoadUser();
+      const localUserString = localStorage.getItem('user');
+      if (localUserString) {
+        const localUser = JSON.parse(localUserString) as User;
+        setUser(localUser);
+        if (localUser.role === 'customer') fetchBookmarks();
+      }
+      setLoading(false);
     }
-  }, [router.isReady, checkSessionAndLoadUser]); 
+  }, [router.isReady, fetchBookmarks]); 
   
-  // --- NEW: Implementation of setAuthenticatedUser ---
   const setAuthenticatedUser = (newUser: User) => {
     setUser(newUser);
     localStorage.setItem('user', JSON.stringify(newUser));
-    // Optionally fetch bookmarks if it's a customer
-    if (newUser.role === 'customer') {
-        fetchBookmarks();
-    }
+    if (newUser.role === 'customer') fetchBookmarks();
+  };
+
+  const refreshUser = async () => {
+    const localUserString = localStorage.getItem('user');
+    if (localUserString) setUser(JSON.parse(localUserString));
   };
 
   const login = async (email: string, password: string): Promise<User> => {
     try {
       const response = await loginUser({ email, password });
       const user = response.data.user;
-      
-      setAuthenticatedUser(user); // Use the shared setter
-
-      const targetPath = user.role === 'owner' ? '/owner/dashboard' : user.role === 'admin' ? '/admin/dashboard' : '/';
+      setAuthenticatedUser(user);
+      const targetPath = user.role === 'owner' ? '/owner/dashboard' : '/';
       router.replace(targetPath);
       return user;
     } catch (error: any) {
-      if (axios.isAxiosError(error) && error.response?.data?.needsVerification) {
-        throw error; 
-      }
+      if (error.response?.data?.needsVerification) throw error;
       throw error;
     }
   };
     
+  // --- FIX: Added 'businessLocation' to implementation ---
   const register = async (
     name: string, 
     email: string, 
     password: string, 
-    role: 'customer' | 'owner',
-    phone?: string,
+    role: 'customer' | 'owner', 
+    phone?: string, 
     businessLocation?: string
-  ): Promise<any> => {
-    const response = await registerUser({ name, email, password, role, phone, businessLocation });
-    return response.data;
+  ) => {
+    // Pass businessLocation to the API call
+    return (await registerUser({ name, email, password, role, phone, businessLocation })).data;
   };
 
-  const logout = () => {
-    localStorage.removeItem('user');
-    setUser(null);
-    setBookmarks([]);
-    router.push('/login');
+  const logout = async () => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.warn("Server logout failed (cookie might be gone)", err);
+    } finally {
+      localStorage.removeItem('user');
+      setUser(null);
+      setBookmarks([]);
+      router.push('/login');
+    }
   };
 
   const addBookmark = async (placeId: string) => {
@@ -141,9 +125,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiAddBookmark(placeId);
       setBookmarks((prev) => [...prev, response.data.placeId.toString()]);
       toast.success("Bookmarked!");
-    } catch (error) {
-      toast.error("Failed to add bookmark.");
-    }
+    } catch (error) { toast.error("Failed to add bookmark."); }
   };
 
   const removeBookmark = async (placeId: string) => {
@@ -151,26 +133,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
       const response = await apiRemoveBookmark(placeId);
       setBookmarks((prev) => prev.filter((id) => id !== response.data.placeId.toString()));
       toast.success("Bookmark removed.");
-    } catch (error) {
-      toast.error("Failed to remove bookmark.");
-    }
-  };
-
-  const authContextValue: AuthContextType = {
-    user,
-    isAuthenticated: !!user,
-    loading,
-    bookmarks,
-    login,
-    register,
-    logout,
-    addBookmark, 
-    removeBookmark,
-    setAuthenticatedUser, // Export the new function
+    } catch (error) { toast.error("Failed to remove bookmark."); }
   };
 
   return (
-    <AuthContext.Provider value={authContextValue}>
+    <AuthContext.Provider value={{
+      user, isAuthenticated: !!user, loading, bookmarks,
+      login, register, logout, addBookmark, removeBookmark, setAuthenticatedUser, refreshUser
+    }}>
       {children}
     </AuthContext.Provider>
   );

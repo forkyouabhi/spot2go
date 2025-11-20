@@ -3,6 +3,30 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Mobile Safe Area Utilities */
+@layer utilities {
+  .pt-safe {
+    padding-top: env(safe-area-inset-top);
+  }
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .h-safe-screen {
+    height: calc(100vh - env(safe-area-inset-top) - env(safe-area-inset-bottom));
+  }
+  .bottom-nav-spacing {
+    padding-bottom: calc(4rem + env(safe-area-inset-bottom));
+  }
+}
+
+/* Hide scrollbar for horizontal lists but keep functionality */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
 /* --- ADDED FROM INDEX.CSS --- */
 :root {
   --font-size: 16px;

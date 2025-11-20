@@ -4,52 +4,21 @@ import { AuthProvider } from '../context/AuthContext';
 import { Toaster } from '../components/ui/sonner';
 import type { AppProps } from 'next/app';
 import Head from 'next/head';
-import { useRouter } from 'next/router';
-import { motion, AnimatePresence, Variants, easeInOut } from 'framer-motion';
-
-// --- THIS IS THE MODIFIED ANIMATION ---
-const pageVariants: Variants = {
-  initial: {
-    opacity: 0,
-  },
-  animate: {
-    opacity: 1,
-    transition: {
-      duration: 0.2, // <-- Faster animation
-      ease: easeInOut,
-    },
-  },
-  exit: {
-    opacity: 0,
-    transition: {
-      duration: 0.2, // <-- Faster animation
-      ease: easeInOut,
-    },
-  },
-};
-// --- END MODIFICATION ---
+// Removed Framer Motion page transitions to fix "glitch/lag" on mobile
 
 export default function App({ Component, pageProps }: AppProps) {
-  const router = useRouter();
-
   return (
     <AuthProvider>
       <Head>
         <title>Spot2Go - Find Your Study Spot</title>
+        <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=0" />
+        {/* FIX: Matches mobile browser top bar color to your brand cream color */}
+        <meta name="theme-color" content="#FFF8DC" />
       </Head>
       <Toaster />
-
-      <AnimatePresence mode="wait">
-        <motion.div
-          key={router.route} 
-          initial="initial"
-          animate="animate"
-          exit="exit"
-          variants={pageVariants}
-        >
-          <Component {...pageProps} />
-        </motion.div>
-      </AnimatePresence>
+      
+      {/* Render component directly for instant navigation */}
+      <Component {...pageProps} />
     </AuthProvider>
   );
 }

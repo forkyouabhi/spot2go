@@ -1,247 +1,191 @@
-import { useState } from 'react';
-import { Button } from "./ui/button";
-import { Input } from "./ui/input";
-import { Card, CardContent } from "./ui/card";
-import { Badge } from "./ui/badge";
-import { Search, MapPin, Star, User, Bookmark, Clock } from "lucide-react";
-import { StudyPlace } from '../types';
-import { ImageWithFallback } from './figma/ImageWithFallback';
+import React, { useState, useMemo } from 'react';
+import Link from 'next/link';
+import { StudyPlace } from '../types'; // FIXED: Importing StudyPlace
+import InteractiveMap from './InteractiveMap';
+import { 
+  MapPin, 
+  Search, 
+  Star, 
+  Zap, 
+  Wifi, 
+  Coffee, 
+  Map as MapIcon, 
+  List 
+} from 'lucide-react';
+import { Button } from './ui/button';
+import { Input } from './ui/input';
+import { Badge } from './ui/badge';
+import { Card, CardContent } from './ui/card';
 
 interface HomeScreenProps {
-  userName: string;
   places: StudyPlace[];
-  onPlaceSelect: (place: StudyPlace) => void;
-  onNavigate: (screen: 'account' | 'owner/dashboard' | 'admin/dashboard') => void;
+  userLocation: { lat: number; lng: number } | null;
 }
 
-export function HomeScreen({ userName, places, onPlaceSelect, onNavigate }: HomeScreenProps) {
+const FILTERS = [
+  { id: 'open', label: 'Open Now', icon: Zap },
+  { id: 'quiet', label: 'Quiet', icon: null },
+  { id: 'wifi', label: 'Fast Wifi', icon: Wifi },
+  { id: 'coffee', label: 'Good Coffee', icon: Coffee },
+  { id: 'power', label: 'Power Outlets', icon: null },
+];
+
+export default function HomeScreen({ places, userLocation }: HomeScreenProps) {
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedFilter, setSelectedFilter] = useState<string>('all');
+  const [activeFilters, setActiveFilters] = useState<string[]>([]);
 
-  const filteredPlaces = places.filter(place => {
-    const matchesSearch = place.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                         place.type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesFilter = selectedFilter === 'all' || place.type === selectedFilter;
-    return matchesSearch && matchesFilter;
-  });
-
-  const getTypeColor = (type: string) => {
-    switch (type) {
-      case 'cafe': 
-        return { bg: '#FFF8DC', text: '#DC6B19', border: '#F7C566' };
-      case 'library': 
-        return { bg: '#FFF8DC', text: '#6C0345', border: '#DC6B19' };
-      case 'coworking': 
-        return { bg: '#F7C566', text: '#6C0345', border: '#DC6B19' };
-      case 'university': 
-        return { bg: '#DC6B19', text: '#FFF8DC', border: '#6C0345' };
-      default: 
-        return { bg: '#FFF8DC', text: '#6C0345', border: '#F7C566' };
-    }
+  const toggleFilter = (id: string) => {
+    setActiveFilters(prev => 
+      prev.includes(id) ? prev.filter(f => f !== id) : [...prev, id]
+    );
   };
 
+  const filteredPlaces = useMemo(() => {
+    if (!places) return [];
+    return places.filter(place => {
+      const matchesSearch = place.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                            place.type.toLowerCase().includes(searchQuery.toLowerCase());
+      
+      const matchesFilters = activeFilters.every(filterId => {
+        if (filterId === 'open') return true; 
+        return place.amenities?.some(a => a.toLowerCase().includes(filterId));
+      });
+
+      return matchesSearch && matchesFilters;
+    });
+  }, [places, searchQuery, activeFilters]);
+
   return (
-    <div className="min-h-screen" style={{ backgroundColor: '#FFF8DC' }}>
-      <div 
-        className="p-4 shadow-sm"
-        style={{ backgroundColor: '#6C0345' }}
-      >
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-bold" style={{ color: '#FFF8DC' }}>
-              Hi, {userName}! 👋
+    <div className="min-h-screen bg-gray-50 pb-safe">
+      {/* Sticky Header */}
+      <header className="sticky top-0 z-40 bg-brand-cream/80 backdrop-blur-md border-b border-brand-burgundy/5">
+        <div className="pt-safe px-4 pb-3">
+          <div className="flex items-center justify-between mb-3 mt-2">
+            <h1 className="text-2xl font-bold text-brand-burgundy tracking-tight">
+              Spot2Go
             </h1>
-            <p className="text-sm mt-1 opacity-90" style={{ color: '#FFF8DC' }}>
-              Find your perfect study spot in Thunder Bay
-            </p>
-          </div>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={() => onNavigate('account')}
-            className="rounded-xl border-2 hover:bg-white/10"
-            style={{ 
-              color: '#FFF8DC', 
-              borderColor: '#DC6B19'
-            }}
-          >
-            <User className="h-4 w-4" />
-          </Button>
-        </div>
-
-        <div className="relative mb-4">
-          <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5" 
-                 style={{ color: '#6C0345' }} />
-          <Input
-            placeholder="Search cafés, libraries, co-working spaces..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-12 h-12 rounded-xl border-2 shadow-sm"
-            style={{ 
-              backgroundColor: '#FFF8DC',
-              borderColor: '#DC6B19',
-              color: '#6C0345'
-            }}
-          />
-        </div>
-
-        <div className="flex space-x-3 overflow-x-auto pb-2">
-          {['all', 'cafe', 'library', 'coworking', 'university'].map((filter) => (
-            <Button
-              key={filter}
+            <Button 
+              variant="ghost" 
               size="sm"
-              onClick={() => setSelectedFilter(filter)}
-              className={`whitespace-nowrap rounded-full px-4 py-2 border-2 transition-all ${
-                selectedFilter === filter 
-                  ? 'shadow-md' 
-                  : 'hover:shadow-sm'
-              }`}
-              style={selectedFilter === filter 
-                ? { 
-                    backgroundColor: '#F7C566', 
-                    color: '#6C0345',
-                    borderColor: '#DC6B19'
-                  }
-                : { 
-                    backgroundColor: 'transparent', 
-                    color: '#FFF8DC',
-                    borderColor: '#DC6B19'
-                  }}
+              onClick={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+              className="text-brand-burgundy hover:bg-brand-burgundy/10 rounded-full"
             >
-              {filter === 'all' ? 'All' : filter.charAt(0).toUpperCase() + filter.slice(1)}
+              {viewMode === 'list' ? <MapIcon className="w-5 h-5 mr-2" /> : <List className="w-5 h-5 mr-2" />}
+              {viewMode === 'list' ? 'Map' : 'List'}
             </Button>
-          ))}
+          </div>
+
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-brand-burgundy/50" />
+            <Input 
+              placeholder="Search cafes, libraries..." 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9 bg-white/80 border-none shadow-sm focus-visible:ring-brand-orange h-11 rounded-xl text-base"
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="p-4">
-        <Card className="mb-6 border-2 shadow-sm rounded-2xl" 
-              style={{ borderColor: '#DC6B19', backgroundColor: '#FFF8DC' }}>
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="font-semibold" style={{ color: '#6C0345' }}>Nearby Locations</h3>
-              <div className="flex items-center gap-2">
-                <MapPin className="h-5 w-5" style={{ color: '#DC6B19' }} />
-                <span className="text-sm" style={{ color: '#6C0345' }}>Thunder Bay, ON</span>
-              </div>
-            </div>
-            <div 
-              className="rounded-xl h-36 flex items-center justify-center border-2"
-              style={{ 
-                backgroundColor: '#F7C566',
-                borderColor: '#DC6B19'
-              }}
-            >
-              <div className="text-center">
-                <MapPin className="h-8 w-8 mx-auto mb-2" style={{ color: '#6C0345' }} />
-                <p className="font-medium" style={{ color: '#6C0345' }}>Interactive Map</p>
-                <p className="text-sm opacity-80" style={{ color: '#6C0345' }}>Coming soon</p>
-              </div>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="space-y-4">
-          <h3 className="font-semibold" style={{ color: '#6C0345' }}>Study Spaces Near You</h3>
-          {filteredPlaces.map((place) => {
-            const typeColors = getTypeColor(place.type);
+        {/* Filter Scroll */}
+        <div className="px-4 pb-3 overflow-x-auto no-scrollbar flex gap-2">
+          {FILTERS.map((filter) => {
+            const Icon = filter.icon;
+            const isActive = activeFilters.includes(filter.id);
             return (
-              <Card 
-                key={place.id} 
-                className="cursor-pointer hover:shadow-md transition-all border-2 rounded-2xl" 
-                style={{ borderColor: '#DC6B19' }}
-                onClick={() => onPlaceSelect(place)}
+              <button
+                key={filter.id}
+                onClick={() => toggleFilter(filter.id)}
+                className={`
+                  flex items-center gap-1.5 px-4 py-2 rounded-full text-sm font-medium whitespace-nowrap transition-all
+                  ${isActive 
+                    ? 'bg-brand-burgundy text-white shadow-md scale-105' 
+                    : 'bg-white text-brand-burgundy border border-gray-100 shadow-sm hover:bg-gray-50'}
+                `}
               >
-                <CardContent className="p-4">
-                  <div className="flex space-x-4">
-                    <div className="w-20 h-20 rounded-xl overflow-hidden flex-shrink-0 border-2"
-                         style={{ borderColor: '#F7C566' }}>
-                      <ImageWithFallback
-                        src={place.images && place.images.length > 0 ? place.images[0] : ''}
-                        alt={place.name}
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h4 className="font-semibold truncate" style={{ color: '#6C0345' }}>
-                            {place.name}
-                          </h4>
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge 
-                              className="text-xs px-2 py-1 rounded-full border"
-                              style={{ 
-                                backgroundColor: typeColors.bg,
-                                color: typeColors.text,
-                                borderColor: typeColors.border
-                              }}
-                            >
-                              {place.type}
-                            </Badge>
-                            <span className="text-sm" style={{ color: '#6C0345' }}>
-                              {place.distance || 'N/A'}
-                            </span>
-                          </div>
-                        </div>
-                        
-                        <Bookmark className="h-5 w-5" style={{ color: '#DC6B19' }} />
-                      </div>
-                      
-                      <div className="flex items-center space-x-4 mb-3">
-                        <div className="flex items-center space-x-1">
-                          <Star className="h-4 w-4 fill-current" style={{ color: '#F7C566' }} />
-                          <span className="text-sm font-medium" style={{ color: '#6C0345' }}>
-                            {place.rating || 'New'}
-                          </span>
-                        </div>
-                        
-                        {place.pricePerHour && (
-                          <div className="flex items-center space-x-1">
-                            <Clock className="h-4 w-4" style={{ color: '#DC6B19' }} />
-                            <span className="text-sm font-medium" style={{ color: '#6C0345' }}>
-                              ${place.pricePerHour}/hr
-                            </span>
-                          </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex flex-wrap gap-1">
-                        {(place.amenities || []).slice(0, 4).map((amenity) => (
-                          <Badge 
-                            key={amenity} 
-                            variant="outline" 
-                            className="text-xs px-2 py-1 rounded-full"
-                            style={{ 
-                              borderColor: '#F7C566',
-                              color: '#6C0345'
-                            }}
-                          >
-                            {amenity}
-                          </Badge>
-                        ))}
-                        {place.amenities && place.amenities.length > 4 && (
-                          <Badge 
-                            variant="outline" 
-                            className="text-xs px-2 py-1 rounded-full"
-                            style={{ 
-                              borderColor: '#DC6B19',
-                              color: '#6C0345'
-                            }}
-                          >
-                            +{place.amenities.length - 4}
-                          </Badge>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+                {Icon && <Icon className="w-3.5 h-3.5" />}
+                {filter.label}
+              </button>
             );
           })}
         </div>
-      </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="px-4 pt-4 bottom-nav-spacing">
+        {viewMode === 'map' ? (
+          <div className="h-[70vh] rounded-3xl overflow-hidden shadow-xl border-4 border-white">
+             <InteractiveMap 
+               places={filteredPlaces} 
+               selectedPlaceId={null} 
+               userLocation={userLocation} 
+             />
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {filteredPlaces.map((place) => (
+              <PlaceCard key={place.id} place={place} />
+            ))}
+          </div>
+        )}
+      </main>
     </div>
+  );
+}
+
+function PlaceCard({ place }: { place: StudyPlace }) {
+  return (
+    <Link href={`/places/${place.id}`} className="block group">
+      <Card className="border-none shadow-md hover:shadow-xl transition-all duration-300 overflow-hidden rounded-3xl bg-white h-full">
+        <div className="relative aspect-[4/3] w-full overflow-hidden bg-gray-100">
+          <div className="absolute top-3 right-3 z-10 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-xs font-bold text-brand-burgundy flex items-center gap-1 shadow-sm">
+            <Star className="w-3 h-3 fill-brand-orange text-brand-orange" />
+            {place.rating ? Number(place.rating).toFixed(1) : "New"}
+          </div>
+          
+          {place.images && place.images.length > 0 ? (
+             // eslint-disable-next-line @next/next/no-img-element
+             <img 
+               src={place.images[0]} 
+               alt={place.name}
+               className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500"
+             />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-gray-300">
+              <Coffee className="w-12 h-12" />
+            </div>
+          )}
+        </div>
+
+        <CardContent className="p-5">
+          <div className="flex justify-between items-start mb-2">
+            <h3 className="font-bold text-lg text-gray-900 leading-tight line-clamp-1">
+              {place.name}
+            </h3>
+          </div>
+          
+          <div className="flex items-center text-gray-500 text-sm mb-4 gap-1">
+            <MapPin className="w-3.5 h-3.5 shrink-0" />
+            <span className="line-clamp-1">{place.location?.address || "Thunder Bay"}</span>
+            {place.distance && (
+              <span className="text-brand-orange font-medium ml-1">• {place.distance} km</span>
+            )}
+          </div>
+
+          <div className="flex flex-wrap gap-2 mb-4">
+            {place.type && (
+              <Badge variant="secondary" className="bg-brand-cream text-brand-burgundy hover:bg-brand-cream/80 font-normal capitalize">
+                {place.type}
+              </Badge>
+            )}
+            {place.reservable && (
+              <Badge variant="outline" className="border-brand-orange text-brand-orange">
+                Reservable
+              </Badge>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+    </Link>
   );
 }

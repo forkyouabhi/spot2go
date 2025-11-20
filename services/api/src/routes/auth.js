@@ -1,29 +1,24 @@
 // services/api/src/routes/auth.js
 const router = require('express').Router();
 const passport = require('passport');
-const jwt = require('jsonwebtoken');
-const { 
-  register, 
-  login, // <--- Import the login function
-  verifyEmail, 
-  requestPasswordReset, 
-  resetPassword, 
-  resendVerificationOtp 
-} = require('../controllers/authController');
+const validate = require('../middleware/validate'); // Ensure you created validate.js previously
+const { changePasswordSchema } = require('../middleware/validationSchemas');
+const authController = require('../controllers/authController');
+const { authenticate } = require('../middleware/auth');
 
-// Register
-router.post('/register', register);
+router.post('/register', authController.register);
+router.post('/login', authController.login);
+router.post('/logout', authController.logout); // New
+router.post('/verify-email', authController.verifyEmail);
+router.post('/resend-otp', authController.resendVerificationOtp);
 
-// --- CRITICAL FIX: Use the controller login that sets cookies ---
-// Do NOT use passport.authenticate('local') here anymore
-router.post('/login', login); 
-
-// Other Routes
-router.post('/request-password-reset', requestPasswordReset);
-router.post('/reset-password', resetPassword);
-router.post('/verify-email', verifyEmail);
-router.post('/resend-otp', resendVerificationOtp);
-
+// Secure Change Password
+router.post(
+  '/change-password', 
+  authenticate, // Use our custom middleware or passport
+  validate(changePasswordSchema), 
+  authController.changePassword
+);
 // Google OAuth
 router.get('/google', passport.authenticate('google', { scope: ['profile', 'email'] }));
 router.get('/google/callback',

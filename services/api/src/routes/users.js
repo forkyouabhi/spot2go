@@ -1,16 +1,27 @@
+// services/api/src/routes/users.js
 const router = require('express').Router();
 const { authenticate } = require('../middleware/auth.js');
+const validate = require('../middleware/validate');
+const { updateProfileSchema, updateSettingsSchema } = require('../middleware/validationSchemas');
 const userController = require('../controllers/userController.js');
 
-// Route to update a user's profile information (name, email, phone)
-// The user can only update their own profile.
-router.put('/:userId', authenticate, userController.updateUserProfile);
+// Route to get current user profile
+router.get('/profile', authenticate, userController.getProfile);
 
-// Route to change a user's password
-// This is a separate, dedicated route for security.
-router.put('/:userId/password', authenticate, userController.changePassword);
+// Route to update profile (name, phone)
+router.put(
+  '/profile', 
+  authenticate, 
+  validate(updateProfileSchema), 
+  userController.updateProfile
+);
 
-// Route to update a user's settings
-router.put('/:userId/settings', authenticate, userController.updateUserSettings);
+// Route to update settings (notifications)
+router.put(
+  '/settings', 
+  authenticate, 
+  validate(updateSettingsSchema), 
+  userController.updateSettings
+);
 
 module.exports = router;

@@ -11,7 +11,6 @@ import { ArrowLeft, Loader2, User, Mail, Phone, MapPin, Lock, Eye, EyeOff } from
 import Head from 'next/head';
 import Image from 'next/image';
 import Link from 'next/link';
-// --- New Imports for Terms & Checkbox ---
 import { Checkbox } from "../components/ui/checkbox";
 import { TermsAndConditions } from "../components/TermsAndConditions";
 
@@ -19,18 +18,16 @@ export default function BusinessSignupPage() {
   const router = useRouter();
   const { register, isAuthenticated } = useAuth();
   
-  // Form State
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [businessLocation, setBusinessLocation] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState(''); // New State
+  const [confirmPassword, setConfirmPassword] = useState('');
   
-  // UI State
   const [loading, setLoading] = useState(false);
-  const [showPassword, setShowPassword] = useState(false); // New State
-  const [agreedToTerms, setAgreedToTerms] = useState(false); // New State
+  const [showPassword, setShowPassword] = useState(false);
+  const [agreedToTerms, setAgreedToTerms] = useState(false);
 
   useEffect(() => {
     if (isAuthenticated) {
@@ -41,18 +38,14 @@ export default function BusinessSignupPage() {
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Validate Terms
     if (!agreedToTerms) {
-        toast.error("You must agree to the Terms and Conditions to create an account.");
+        toast.error("You must agree to the Terms and Conditions.");
         return;
     }
-
-    // Validate passwords match
     if (password !== confirmPassword) {
       toast.error("Passwords do not match.");
       return;
     }
-
     if (password.length < 8) {
       toast.error("Password must be at least 8 characters long.");
       return;
@@ -61,13 +54,14 @@ export default function BusinessSignupPage() {
     setLoading(true);
 
     try {
+      // Register now accepts businessLocation as the 6th argument
       await register(name, email, password, 'owner', phone, businessLocation);
       
       toast.success('Account created successfully! Check your email for an OTP.');
       router.push(`/verify-email?email=${email}`);
 
-    } catch (error) {
-        const errorMessage = (error as any).response?.data?.error || 'Signup failed. Please try again.';
+    } catch (error: any) {
+        const errorMessage = error.response?.data?.error || 'Signup failed. Please try again.';
         toast.error(errorMessage);
         console.error('Signup failed:', error);
     } finally {
@@ -81,114 +75,81 @@ export default function BusinessSignupPage() {
         <title>Spot2Go | Business Signup</title>
       </Head>
       <div className="min-h-screen relative flex flex-col items-center justify-center p-4 md:p-6 auth-background">
-        
-        <Card className="w-full max-w-lg bg-brand-cream border-2 border-brand-orange shadow-2xl z-10 animate-fade-in-up relative">
-            
+        <Card className="w-full max-w-lg bg-brand-cream border-2 border-brand-orange shadow-2xl z-10 relative animate-in fade-in zoom-in-95 duration-300">
             <Button 
                 variant="ghost" 
                 size="icon"
                 onClick={() => router.push('/')}
-                className="absolute top-4 left-4 text-brand-burgundy hover:bg-brand-yellow/20 transition-colors rounded-full"
-                aria-label="Back to Home"
+                className="absolute top-4 left-4 text-brand-burgundy hover:bg-brand-yellow/20 rounded-full"
             >
                 <ArrowLeft className="h-6 w-6" />
             </Button>
 
             <CardHeader className="text-center pt-10">
-              <Image 
-                src="/logo-full.png"
-                alt="Spot2Go Logo"
-                width={200}
-                height={100}
-                className="object-contain mx-auto"
-                priority
-              />
-              <CardTitle className="text-3xl font-bold text-brand-burgundy mt-4">
-                Create your Owner Account
+               <div className="mx-auto mb-4 relative w-40 h-12">
+                 {/* Ensure logo exists in public/logo-full.png */}
+                 <Image src="/logo-full.png" alt="Spot2Go" fill className="object-contain" priority />
+               </div>
+              <CardTitle className="text-3xl font-bold text-brand-burgundy">
+                Create Owner Account
               </CardTitle>
               <CardDescription className="text-brand-orange">
-                Fill in your business details. All accounts are verified by an admin.
+                Start managing your spot today.
               </CardDescription>
             </CardHeader>
             
             <CardContent>
-              <form onSubmit={handleSignup} className="space-y-4"> {/* Changed space-y-5 to space-y-4 for tighter form */}
+              <form onSubmit={handleSignup} className="space-y-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-brand-burgundy flex items-center gap-2">
-                    <User className="h-4 w-4 text-brand-orange" /> Owner's Full Name
-                  </Label>
-                  <Input 
-                    id="name" 
-                    type="text" 
-                    placeholder="e.g., Jane Doe" 
-                    value={name} 
-                    onChange={(e) => setName(e.target.value)} 
-                    required 
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label htmlFor="email" className="text-brand-burgundy flex items-center gap-2">
-                    <Mail className="h-4 w-4 text-brand-orange" /> Business Email
-                  </Label>
-                  <Input 
-                    id="email" 
-                    type="email" 
-                    placeholder="you@yourbusiness.com" 
-                    value={email} 
-                    onChange={(e) => setEmail(e.target.value)} 
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="phone" className="text-brand-burgundy flex items-center gap-2">
-                    <Phone className="h-4 w-4 text-brand-orange" /> Business Phone
-                  </Label>
-                  <Input 
-                    id="phone" 
-                    type="tel" 
-                    placeholder="(807) 555-1234" 
-                    value={phone} 
-                    onChange={(e) => setPhone(e.target.value)} 
-                    required 
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="businessLocation" className="text-brand-burgundy flex items-center gap-2">
-                    <MapPin className="h-4 w-4 text-brand-orange" /> Business Address
-                  </Label>
-                  <Input 
-                    id="businessLocation" 
-                    type="text" 
-                    placeholder="123 Main St, Thunder Bay, ON" 
-                    value={businessLocation} 
-                    onChange={(e) => setBusinessLocation(e.target.value)} 
-                    required 
-                  />
-                </div>
-                
-                {/* --- Password Field with Toggle --- */}
-                <div className="space-y-2">
-                  <Label htmlFor="password" className="text-brand-burgundy flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-brand-orange" /> Password
-                  </Label>
+                  <Label htmlFor="name">Owner's Full Name</Label>
                   <div className="relative">
+                    <User className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input id="name" className="pl-9" type="text" value={name} onChange={(e) => setName(e.target.value)} required placeholder="John Doe" />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="email">Business Email</Label>
+                   <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input id="email" className="pl-9" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required placeholder="owner@business.com" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="phone">Business Phone</Label>
+                   <div className="relative">
+                    <Phone className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input id="phone" className="pl-9" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required placeholder="(555) 000-0000" />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessLocation">Business Address</Label>
+                   <div className="relative">
+                    <MapPin className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
+                    <Input id="businessLocation" className="pl-9" type="text" value={businessLocation} onChange={(e) => setBusinessLocation(e.target.value)} required placeholder="123 Main St" />
+                  </div>
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="password">Password</Label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input 
                       id="password" 
                       type={showPassword ? "text" : "password"} 
-                      placeholder="Create a secure password (min. 8 chars)" 
                       value={password} 
                       onChange={(e) => setPassword(e.target.value)} 
                       required 
-                      className="pr-10"
+                      className="pl-9 pr-10"
+                      placeholder="••••••••"
                     />
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
-                      className="absolute right-0 top-0 h-full px-3 text-brand-orange hover:bg-transparent hover:text-brand-burgundy"
+                      className="absolute right-0 top-0 h-full px-3 text-brand-orange hover:bg-transparent"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -196,41 +157,31 @@ export default function BusinessSignupPage() {
                   </div>
                 </div>
                 
-                {/* --- Confirm Password Field --- */}
                 <div className="space-y-2">
-                  <Label htmlFor="confirmPassword" className="text-brand-burgundy">Confirm Password</Label>
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
                   <div className="relative">
+                    <Lock className="absolute left-3 top-3 h-4 w-4 text-gray-400" />
                     <Input 
-                      id="confirmPassword" 
-                      type={showPassword ? "text" : "password"} 
-                      value={confirmPassword}
-                      onChange={e => setConfirmPassword(e.target.value)}
-                      required 
-                      placeholder="Re-enter password" 
-                      className="pr-10"
+                        id="confirmPassword" 
+                        type={showPassword ? "text" : "password"} 
+                        value={confirmPassword}
+                        onChange={e => setConfirmPassword(e.target.value)}
+                        required 
+                        className="pl-9"
+                        placeholder="••••••••"
                     />
                   </div>
                 </div>
 
-                {/* --- Terms Checkbox --- */}
                 <div className="flex items-start space-x-2 pt-2">
                   <Checkbox 
                     id="terms"
                     checked={agreedToTerms}
-                    onCheckedChange={(checked) => setAgreedToTerms(checked as boolean)}
-                    className="border-brand-orange data-[state=checked]:bg-brand-orange mt-1"
+                    onCheckedChange={(c) => setAgreedToTerms(c as boolean)}
+                    className="mt-1 border-brand-orange data-[state=checked]:bg-brand-orange"
                   />
-                  <label
-                    htmlFor="terms"
-                    className="text-sm font-medium leading-none text-brand-burgundy peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                  >
-                    I agree to the 
-                    <TermsAndConditions>
-                      <span className="underline text-brand-orange cursor-pointer hover:text-brand-orange/80 ml-1">
-                        Terms of Service and Privacy Policy
-                      </span>
-                    </TermsAndConditions>
-                    .
+                  <label htmlFor="terms" className="text-sm font-medium text-brand-burgundy leading-none">
+                    I agree to the <TermsAndConditions><span className="underline cursor-pointer text-brand-orange">Terms of Service</span></TermsAndConditions>.
                   </label>
                 </div>
                 
@@ -238,31 +189,21 @@ export default function BusinessSignupPage() {
                   <Button 
                     type="submit" 
                     disabled={loading || !agreedToTerms} 
-                    className="w-full h-12 text-lg font-semibold bg-brand-burgundy hover:bg-brand-burgundy/90 text-brand-cream disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full h-12 text-lg font-semibold bg-brand-burgundy hover:bg-brand-burgundy/90 text-brand-cream"
                   >
-                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : '🌟 Submit for Verification'}
+                    {loading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Create Account'}
                   </Button>
                 </div>
               </form>
             </CardContent>
           </Card>
           
-        {/* Bottom Links */}
-        <div className="w-full max-w-lg mx-auto z-10 text-center p-4 space-y-2 mt-4">
-          <p className="text-sm font-medium text-brand-yellow">
-            Already have an owner account?
-            <Link href="/login" className="font-semibold text-brand-yellow hover:text-white underline ml-1">
-              Log in
-            </Link>
-          </p>
-          <div className="text-brand-yellow/50 text-xs">|</div>
-          <p className="text-sm font-medium text-brand-yellow">
-            Are you a customer?
-            <Link href="/signup" className="font-semibold text-brand-yellow hover:text-white underline ml-1">
-              Sign up here
-            </Link>
-          </p>
-        </div>
+          <div className="mt-8 text-center">
+            <p className="text-white/90 text-sm">
+              Already have an account? 
+              <Link href="/login" className="font-bold text-brand-yellow hover:underline ml-1">Log in</Link>
+            </p>
+          </div>
       </div>
     </>
   );

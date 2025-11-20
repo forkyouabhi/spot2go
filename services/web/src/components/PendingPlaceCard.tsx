@@ -8,7 +8,6 @@ import { ImageWithFallback } from './figma/ImageWithFallback';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from './ui/table';
 import dynamic from 'next/dynamic';
 
-// FIX: Dynamically import the map component to prevent SSR issues
 const StaticMap = dynamic(() => import('./StaticMap').then(mod => mod.StaticMap), {
   ssr: false,
   loading: () => <div className="h-full w-full bg-gray-200 flex items-center justify-center rounded-lg"><p>Loading map...</p></div>
@@ -93,7 +92,7 @@ export function PendingPlaceCard({ place, onApprove, onReject }: PendingPlaceCar
             <div>
               <h3 className="font-semibold text-sm mb-2 text-brand-burgundy flex items-center"><Utensils className="h-4 w-4 mr-2 text-brand-orange"/>Menu</h3>
               <div className="border rounded-lg max-h-32 overflow-y-auto">
-                <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Price</TableHead></TableRow></TableHeader><TableBody>{place.menuItems.map((item, index) => (<TableRow key={index}><TableCell className="font-medium py-1">{item.name}</TableCell><TableCell className="text-right py-1">${parseFloat(item.price).toFixed(2)}</TableCell></TableRow>))}</TableBody></Table>
+                <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Price</TableHead></TableRow></TableHeader><TableBody>{place.menuItems.map((item, index) => (<TableRow key={index}><TableCell className="font-medium py-1">{item.name}</TableCell><TableCell className="text-right py-1">${parseFloat(String(item.price)).toFixed(2)}</TableCell></TableRow>))}</TableBody></Table>
               </div>
             </div>
           )}

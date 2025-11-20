@@ -4,16 +4,39 @@ import { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { SettingsScreen } from '../components/SettingsScreen';
 import { toast } from 'sonner';
-import { updateUser, updateUserPassword,updateUserSettings } from '../lib/api';
-
+import { updateUserProfile, changePassword, updateUserSettings } from '../lib/api';
 import { UserSettings } from '../types';
 
 export default function SettingsPage() {
   const router = useRouter();
-  // FIX: Removed handleTokenUpdate from destructuring
-  const { user, isAuthenticated, loading, logout } = useAuth();
-  
-  const [settings, setSettings] = useState<UserSettings>(user?.settings);
+  const { user, isAuthenticated, loading, logout, setAuthenticatedUser } = useAuth();
+
+  // --- FIX: Default object that matches UserSettings interface ---
+  const DEFAULT_SETTINGS: UserSettings = {
+    notifications: {
+      emailNotifications: true,
+      pushNotifications: true,
+      promotionalEmails: false,
+      bookingReminders: true,
+      
+    },
+    privacy: {
+      profileVisibility: 'public',
+      showBookingHistory: true,
+      allowLocationTracking: false,
+    },
+    preferences: {
+      theme: 'light',
+      language: 'en',
+      currency: 'CAD',
+      distanceUnit: 'km',
+    },
+  };
+
+  // Initialize settings safely
+  const [settings, setSettings] = useState<UserSettings>(
+    (user?.settings as UserSettings) || DEFAULT_SETTINGS
+  );
 
   useEffect(() => {
     if (!loading && !isAuthenticated) {
@@ -34,26 +57,19 @@ export default function SettingsPage() {
       const { name, email, phone, currentPassword, newPassword } = formData;
       const profileData = { name, email, phone };
 
-      const response = await updateUser(user.id, profileData);
-      // Removed token logic
-      // const { token } = response.data; 
+      const response = await updateUserProfile(profileData);
 
-      // FIX: Removed client-side token update logic
-      /*
-      if (token) {
-        handleTokenUpdate(token);
-        toast.success('Profile updated successfully!');
+      // Update global context
+      if (setAuthenticatedUser) {
+          const updatedUser = response.data?.user || { ...user, ...profileData };
+          setAuthenticatedUser(updatedUser);
       }
-      */
-      
-      // Rely on successful API call and implicit session management
+
       toast.success('Profile updated successfully!');
 
-      // This is the section for "passwordData"
       if (newPassword && currentPassword) {
-        // This object is the correct format for the API
         const passwordData = { currentPassword, newPassword };
-        await updateUserPassword(user.id, passwordData);
+        await changePassword(passwordData);
         toast.success('Password changed successfully!');
       }
     } catch (error: any) {
@@ -68,11 +84,15 @@ export default function SettingsPage() {
       toast.error("You must be logged in to update settings.");
       return;
     }
-    
+
     setSettings(newSettings);
 
     try {
-      await updateUserSettings(user.id, newSettings);
+      await updateUserSettings(newSettings);
+      // Update global context
+      if (setAuthenticatedUser) {
+          setAuthenticatedUser({ ...user, settings: newSettings });
+      }
       toast.success("Settings saved!");
     } catch (error) {
       toast.error("Failed to save settings.");
@@ -82,7 +102,7 @@ export default function SettingsPage() {
   if (loading || !isAuthenticated || !user) {
     return (
         <div className="min-h-screen flex items-center justify-center bg-brand-cream">
-            <p>Loading...</p>
+            <p className="text-brand-burgundy font-semibold">Loading...</p>
         </div>
     );
   }

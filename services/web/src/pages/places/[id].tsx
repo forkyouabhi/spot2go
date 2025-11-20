@@ -18,7 +18,7 @@ import { MapPin, Star, Loader2, Info, Utensils, MessageSquare, ArrowLeft, Naviga
 import dynamic from 'next/dynamic';
 import { Label } from '../../components/ui/label';
 import Image from 'next/image'; 
-import { GetServerSideProps } from 'next'; // <-- NEW IMPORT
+import { GetServerSideProps } from 'next';
 import {
   Select,
   SelectContent,
@@ -34,7 +34,7 @@ const StaticMap = dynamic(() => import('../../components/StaticMap').then(mod =>
 
 const ReviewCard = ({ review }: { review: Review }) => {
   // ... (unchanged)
-  const userName = review.user?.name || review.userName;
+  const userName = review.user?.name;
   const userInitial = userName ? userName.charAt(0).toUpperCase() : '?';
   
   return (
@@ -440,7 +440,7 @@ export default function PlaceDetailPage({ initialPlace }: { initialPlace: StudyP
                               </div>
                           </div>
                       </TabsContent>
-                      <TabsContent value="menu" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">{place.menuItems && place.menuItems.length > 0 ? <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Price</TableHead></TableRow></TableHeader><TableBody>{place.menuItems.map((i,idx)=><TableRow key={idx}><TableCell>{i.name}</TableCell><TableCell className="text-right">${parseFloat(i.price).toFixed(2)}</TableCell></TableRow>)}</TableBody></Table> : <p>No menu available.</p>}</TabsContent>
+                      <TabsContent value="menu" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">{place.menuItems && place.menuItems.length > 0 ? <Table><TableHeader><TableRow><TableHead>Item</TableHead><TableHead className="text-right">Price</TableHead></TableRow></TableHeader><TableBody>{place.menuItems.map((i,idx)=><TableRow key={idx}><TableCell>{i.name}</TableCell><TableCell className="text-right">${parseFloat(String(i.price)).toFixed(2)}</TableCell></TableRow>)}</TableBody></Table> : <p>No menu available.</p>}</TabsContent>
                       <TabsContent value="reviews" className="mt-4 p-6 bg-white rounded-lg border-2 border-brand-yellow">
                         <div className="space-y-4">
                           {place.reviews && place.reviews.length > 0 ? (

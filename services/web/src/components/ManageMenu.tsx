@@ -5,14 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { addMenuItem } from '../lib/api';
-import { StudyPlace } from '../types';
+import { StudyPlace, MenuItem } from '../types';
 import { Coffee, DollarSign, PlusCircle, Loader2 } from 'lucide-react';
-
-interface MenuItem {
-  id: number;
-  name: string;
-  price: string;
-}
 
 interface ManageMenuProps {
   place: StudyPlace;
@@ -31,7 +25,7 @@ export function ManageMenu({ place, onMenuItemAdded }: ManageMenuProps) {
     
     setIsSubmitting(true);
     try {
-      const response = await addMenuItem(place.id, { name: newItemName, price: parseFloat(newItemPrice) });
+      const response = await addMenuItem(place.id as string, { name: newItemName, price: parseFloat(newItemPrice) });
       const newItem = response.data.item;
       setMenuItems(prev => [...prev, newItem]);
       onMenuItemAdded(newItem);
@@ -57,7 +51,9 @@ export function ManageMenu({ place, onMenuItemAdded }: ManageMenuProps) {
               {menuItems.map(item => (
                 <li key={item.id} className="flex justify-between items-center p-3 bg-brand-cream rounded-lg border border-brand-orange">
                   <span className="font-medium text-brand-burgundy">{item.name}</span>
-                  <span className="font-semibold text-brand-orange">${parseFloat(item.price).toFixed(2)}</span>
+                  <span className="font-semibold text-brand-orange">
+                    ${typeof item.price === 'number' ? item.price.toFixed(2) : parseFloat(item.price).toFixed(2)}
+                  </span>
                 </li>
               ))}
             </ul>
